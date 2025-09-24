@@ -1,10 +1,30 @@
 body {
   font-family: "Quicksand", sans-serif !important;
-  font-size: 12px !important;
+  font-size: 16px !important;
+}
+
+.card {
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.card-body {
+  padding: 0;
 }
 
 body .btn {
-  font-size: 14px;
+  font-size: 18px;
+  padding: 12px 24px;
+}
+
+.form-control {
+  font-size: 18px;
+  padding: 12px 24px;
+  height: auto;
+}
+
+textarea.form-control {
+  min-height: 120px;
 }
 
 h5 {
@@ -13,12 +33,19 @@ h5 {
 }
 
 h1 {
-  color: #71258f;
+  color: #fff;
   font-weight: 700;
   font-size: 36px;
   line-height: 45px;
   margin-top: 15px;
   padding-bottom: 0;
+  text-align: center;
+}
+
+.subtitle {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 18px;
 }
 
 .align-center {
@@ -27,12 +54,12 @@ h1 {
 }
 
 #transferTab {
-  max-width: 660px;
+  max-width: 500px;
   margin-bottom: 30px;
-  padding: 40px 20px;
 }
 
 #claimTab {
+  max-width: 500px;
   margin-bottom: 150px;
 }
 
@@ -74,30 +101,6 @@ h1 {
   display: none;
 }
 
-.approve-deposit {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.form-check {
-  margin-top: -1em;
-}
-
-.form-check label {
-  position: relative;
-  bottom: 1px;
-  color: black;
-}
-
-#approve {
-  min-width: 10em;
-}
-
-#deposit {
-  align-self: flex-start;
-  min-width: 10em;
-}
 
 .form-control:disabled {
   background-color: transparent;
@@ -117,11 +120,24 @@ label {
 }
 
 .network {
-  color: #71258f;
-  font-size: 20px;
+  color: #fff;
+  font-size: 24px;
   font-weight: 500;
-  line-height: 25px;
+  line-height: 30px;
   margin-bottom: 20px;
+}
+
+.amount {
+  position: relative;
+}
+
+.amount .max {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  color: #71258f;
+  cursor: pointer;
 }
 
 .bootstrap-select .dropdown-toggle .filter-option {
@@ -167,15 +183,6 @@ label {
   font-size: 12px;
 }
 
-.inputs-area {
-  font-family: "Quicksand";
-  font-size: 20px;
-  line-height: 25px;
-  border: 1px solid #000000;
-  box-sizing: border-box;
-  border-radius: 10px;
-  padding: 2px;
-}
 
 .outline {
   border: 1px solid #000;
@@ -271,7 +278,17 @@ label {
 }
 
 .navbar-dark.bg-dark {
-  background-color: white !important;
+  background-color: #1f1f1f !important;
+  padding: 16px 0;
+}
+
+.navbar-brand {
+  margin-right: 0;
+}
+
+.logo {
+  width: 150px;
+  filter: invert(1);
 }
 
 input::placeholder {
@@ -286,6 +303,32 @@ input::placeholder {
 
 #footer {
   margin-top: 0;
+  background-color: #1f1f1f;
+  padding: 30px 0;
+}
+
+.footer-top {
+  background-color: transparent;
+}
+
+.footer-links ul li a {
+  color: #fff;
+}
+
+.footer-links ul li a:hover {
+  color: #71258f;
+}
+
+.copyright {
+  color: #aaa;
+}
+
+.powered {
+  color: #aaa;
+}
+
+.hathor-logo {
+  filter: invert(1);
 }
 
 .title {
