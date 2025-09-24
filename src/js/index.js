@@ -35,6 +35,11 @@ $(document).ready(function () {
   isTestnet = window.location.href.includes("testnet");
   if (isTestnet) {
     $("#title").text("Hathor Golf Testnet bridge with Sepolia");
+    $("#network-navlink").text("Use Mainnet");
+    $("#network-navlink").attr("href", "./index.html");
+  } else {
+    $("#network-navlink").text("Use Testnet");
+    $("#network-navlink").attr("href", "./index.html?testnet");
   }
   if (
     !/chrom(e|ium)/.test(navigator.userAgent.toLowerCase()) &&
