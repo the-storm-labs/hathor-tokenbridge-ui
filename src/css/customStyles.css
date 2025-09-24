@@ -1,10 +1,10 @@
 body {
-  font-family: "Quicksand", sans-serif !important;
+  font-family: "Poppins", sans-serif !important;
   font-size: 16px !important;
 }
 
 .card {
-  border-radius: 16px;
+  border-radius: 10px;
   padding: 24px;
 }
 
@@ -34,7 +34,6 @@ h5 {
 
 h1 {
   color: #1f1f1f;
-  font-weight: 700;
   font-size: 36px;
   line-height: 45px;
   margin-top: 15px;
@@ -65,7 +64,7 @@ h1 {
 
 .claim-title {
   text-align: center;
-  font-weight: bold;
+  font-weight: 300;
 }
 
 .claim-table {
@@ -108,7 +107,7 @@ h1 {
 }
 
 label {
-  font-weight: 500;
+  font-weight: 300;
   font-size: 12px;
   line-height: 15px;
   color: #bfbdbd;
@@ -122,7 +121,7 @@ label {
 .network {
   color: #1f1f1f;
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 300;
   line-height: 30px;
   margin-bottom: 20px;
 }
@@ -141,7 +140,7 @@ label {
 }
 
 .bootstrap-select .dropdown-toggle .filter-option {
-  font-family: "Quicksand";
+  font-family: "Poppins";
   font-size: 20px;
   line-height: 25px;
   text-align: center;
@@ -149,13 +148,13 @@ label {
 
 .dropdown-item,
 .form-control-plaintext {
-  font-family: "Quicksand";
+  font-family: "Poppins";
   font-size: 20px;
   line-height: 25px;
 }
 
 .fees {
-  font-family: "Roboto";
+  font-family: "Poppins";
   font-size: 14px;
   line-height: 30px;
   color: #919191;
@@ -167,7 +166,7 @@ label {
 
 .black {
   color: #000;
-  font-weight: bold;
+  font-weight: 300;
 }
 
 #amount {
@@ -256,7 +255,7 @@ label {
 }
 
 .btn-primary {
-  font-family: "Quicksand";
+  font-family: "Poppins";
   color: #fff;
   background-color: #1f1f1f;
   border-color: #1f1f1f;
@@ -362,7 +361,7 @@ input::placeholder {
 }
 
 .navbar a {
-  font-family: "Rubik";
+  font-family: "Poppins";
   color: #1f1f1f;
   font-size: 14px;
 }
@@ -377,7 +376,7 @@ a:hover {
 }
 
 .nav-tabs .nav-link {
-  font-weight: bold;
+  font-weight: 300;
   color: #1f1f1f;
 }
 
@@ -394,18 +393,18 @@ a:hover {
 
 .config-section .config-value {
   font-size: 36px;
-  font-weight: bold;
+  font-weight: 300;
   color: #1f1f1f;
 }
 
 .config-section .config-title {
-  font-weight: bold;
+  font-weight: 300;
 }
 
 .config-section .config-address {
   font-size: 13px;
   color: #1f1f1f;
-  font-weight: bold;
+  font-weight: 300;
 }
 
 .fed-addresses {
@@ -502,14 +501,14 @@ a:hover {
 .dropup .dropdown-toggle::after {
   content: "\f106";
   font-family: "Font Awesome 5 Free";
-  font-weight: 900;
+  font-weight: 300;
   border: 0;
 }
 
 .dropdown-toggle::after {
   content: "\f107";
   font-family: "Font Awesome 5 Free";
-  font-weight: 900;
+  font-weight: 300;
   border: 0;
   display: inline-block;
   vertical-align: 0.255em;
