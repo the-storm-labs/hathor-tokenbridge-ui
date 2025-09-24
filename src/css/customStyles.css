@@ -342,7 +342,6 @@ input::placeholder {
 }
 
 .logo {
-  width: 206px;
   height: auto;
   transition: all 0.5s ease;
 }
