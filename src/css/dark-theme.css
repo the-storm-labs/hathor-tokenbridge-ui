@@ -4,10 +4,6 @@ body {
   color: #ffffff;
 }
 
-.navbar-dark.bg-dark {
-  background-color: #1f1f1f !important;
-}
-
 .card {
   background-color: #1f1f1f;
   border: 1px solid #333;
@@ -20,8 +16,8 @@ body {
 }
 
 .btn-primary {
-  background-color: #71258f;
-  border-color: #71258f;
+  background-color: #1f1f1f;
+  border-color: #1f1f1f;
 }
 
 .btn-primary:hover {
@@ -102,7 +98,7 @@ body {
 
 .bootstrap-select .dropdown-item.active,
 .bootstrap-select .dropdown-item:active {
-    background-color: #71258f;
+    background-color: #1f1f1f;
 }
 
 .text-muted {
@@ -143,13 +139,13 @@ body {
 }
 
 .outline-rounded {
-    border: 1px solid #71258f;
-    color: #71258f;
+    border: 1px solid #1f1f1f;
+    color: #1f1f1f;
 }
 
 .badge-outline {
-    border: 1px solid #71258f;
-    color: #71258f;
+    border: 1px solid #1f1f1f;
+    color: #1f1f1f;
 }
 
 .subtitle {
@@ -164,8 +160,7 @@ h1 {
     color: #fff;
 }
 
-.max {
-    color: #71258f;
+color: #1f1f1f;
 }
 
 .black {
@@ -281,4 +276,3 @@ input::placeholder {
 .pending {
     color: #531b69;
 }
-

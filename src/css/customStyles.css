@@ -33,7 +33,7 @@ h5 {
 }
 
 h1 {
-  color: #fff;
+  color: #1f1f1f;
   font-weight: 700;
   font-size: 36px;
   line-height: 45px;
@@ -116,11 +116,11 @@ label {
 }
 
 .max {
-  color: #71258f;
+  color: #1f1f1f;
 }
 
 .network {
-  color: #fff;
+  color: #1f1f1f;
   font-size: 24px;
   font-weight: 500;
   line-height: 30px;
@@ -176,7 +176,7 @@ label {
 }
 
 #amount.ok {
-  border-color: #71258f;
+  border-color: #1f1f1f;
 }
 
 .invalid-feedback {
@@ -199,7 +199,7 @@ label {
 
 .outline-rounded,
 .badge-outline {
-  border: 1px solid #71258f;
+  border: 1px solid #1f1f1f;
 }
 
 .disabled,
@@ -258,8 +258,8 @@ label {
 .btn-primary {
   font-family: "Quicksand";
   color: #fff;
-  background-color: #71258f;
-  border-color: #71258f;
+  background-color: #1f1f1f;
+  border-color: #1f1f1f;
   border-radius: 10px;
 }
 
@@ -278,7 +278,6 @@ label {
 }
 
 .navbar-dark.bg-dark {
-  background-color: #1f1f1f !important;
   padding: 16px 0;
 }
 
@@ -358,12 +357,13 @@ input::placeholder {
 }
 
 .navbar {
-  margin-top: 15px;
+  margin-top: 0;
+  background-color: transparent !important;
 }
 
 .navbar a {
   font-family: "Rubik";
-  color: #71258f;
+  color: #1f1f1f;
   font-size: 14px;
 }
 
@@ -378,7 +378,7 @@ a:hover {
 
 .nav-tabs .nav-link {
   font-weight: bold;
-  color: #71258f;
+  color: #1f1f1f;
 }
 
 .nav-tabs .nav-link:hover {
@@ -395,7 +395,7 @@ a:hover {
 .config-section .config-value {
   font-size: 36px;
   font-weight: bold;
-  color: #71258f;
+  color: #1f1f1f;
 }
 
 .config-section .config-title {
@@ -404,7 +404,7 @@ a:hover {
 
 .config-section .config-address {
   font-size: 13px;
-  color: #71258f;
+  color: #1f1f1f;
   font-weight: bold;
 }
 
@@ -544,11 +544,11 @@ a:hover {
 }
 
 .confirmed {
-  color: #71258f;
+  color: #1f1f1f;
 }
 
 .pending {
-  color: #531b69;
+  color: #1f1f1f;
 }
 
 /*Spinner*/
