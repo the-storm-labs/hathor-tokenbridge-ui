@@ -18,7 +18,7 @@ let minTokensAllowed = 1;
 let maxTokensAllowed = 100_000;
 let maxDailyLimit = 1_000_000;
 let currentBlockNumber = null;
-// Selected Token To Cross  
+// Selected Token To Cross
 let tokenContract = null;
 let isSideToken = false;
 let sideTokenAddress = null;
@@ -28,10 +28,10 @@ let feePercentageDivider = 10_000;
 let rLogin;
 let pollingLastBlockIntervalId = 0;
 let DateTime = luxon.DateTime;
-const evmHost = !isTestnet ? 
+const evmHost = !isTestnet ?
   "https://arbitrum-mainnet.infura.io/v3/399500b5679b442eb991fefee1c5bfdc" :
   "https://sepolia.infura.io/v3/399500b5679b442eb991fefee1c5bfdc";
-const hathorFederationHost = !isTestnet ? 
+const hathorFederationHost = !isTestnet ?
   "https://arbitrum-mainnet.infura.io/v3/399500b5679b442eb991fefee1c5bfdc" :
   "https://arb-sepolia.g.alchemy.com/v2/uZC_k6qzUFbIP5MigPnBCvry-n9M-gOV";
 
@@ -173,7 +173,7 @@ $(document).ready(function () {
 
 // CLAIMS
 
-async function fillHathorToEvmTxs() {  
+async function fillHathorToEvmTxs() {
   const walletAddress = $("#address").text();
 
   if (!walletAddress || walletAddress === "0x123456789") {
@@ -183,10 +183,10 @@ async function fillHathorToEvmTxs() {
   const claims = await getPendingClaims();
   const transactions = await getPendingHathorTxs(claims);
 
-  transactions.forEach(prpsl => 
+  transactions.forEach(prpsl =>
     {
-      const tk = TOKENS.find((token) => 
-        token[config.crossToNetwork.networkId].hathorAddr === prpsl.originalTokenAddress || 
+      const tk = TOKENS.find((token) =>
+        token[config.crossToNetwork.networkId].hathorAddr === prpsl.originalTokenAddress ||
         token[config.networkId].address === prpsl.originalTokenAddress ||
         token[config.crossToNetwork.networkId].address === prpsl.originalTokenAddress
       );
@@ -212,8 +212,8 @@ async function getPendingHathorTxs(claims) {
 if (!hathorFederationContract) {
     const prvdr = new Web3(new Web3.providers.HttpProvider(hathorFederationHost));
     hathorFederationContract = new prvdr.eth.Contract(HATHOR_FEDERATION_ABI, config.crossToNetwork.federation);
-  } 
-  
+  }
+
   const events = await hathorFederationContract.getPastEvents("AllEvents", {
     fromBlock: "earliest",
   });
@@ -228,7 +228,7 @@ if (!hathorFederationContract) {
       evt.returnValues.receiver.toLowerCase() === walletAddress.toLowerCase() &&
       transactionTypes.includes(evt.returnValues.transactionType)
   );
-  
+
   const proposedTransactionsEvents = events.filter(
     (evt) =>
       evt.event === "TransactionProposed" &&
@@ -237,24 +237,24 @@ if (!hathorFederationContract) {
   );
 
   const approvedTransactionIds = approvedTransactionEvents.map((evt) => evt.returnValues.transactionId);
-  
+
   const proposedTransactions = proposedTransactionsEvents
-    .filter(evt => 
+    .filter(evt =>
       !approvedTransactionIds.includes(evt.returnValues.transactionId))
     .map(handleProposalEvents);
 
   const claimedTxHashes = claims.map(claim => claim.transactionHash);
 
   const approvedTransactions = approvedTransactionEvents
-      .filter(evt => 
-        evt.returnValues.processed && 
+      .filter(evt =>
+        evt.returnValues.processed &&
         !claimedTxHashes.includes(Web3.utils.keccak256(evt.returnValues.transactionHash))
       )
       .map(handleProposalEvents);
 
   const acceptedTransactions = approvedTransactionEvents
-      .filter(evt => 
-        evt.returnValues.processed && 
+      .filter(evt =>
+        evt.returnValues.processed &&
         claimedTxHashes.includes(Web3.utils.keccak256(evt.returnValues.transactionHash))
       )
       .map(handleProposalEvents)
@@ -270,7 +270,7 @@ if (!hathorFederationContract) {
   return [...evmOriginTokenTxs, ...htrOriginTokenTxs];
 }
 
-async function getPendingClaims() {    
+async function getPendingClaims() {
   const events = await federationContract.getPastEvents("AllEvents", {
     fromBlock: "7375385",
   });
@@ -304,13 +304,13 @@ function setStatusAction(status, tx) {
         action = "<p>Pending</p>"
       break;
     case "awaiting_claim":
-        action = `<button 
-                      class="btn btn-primary claim-button" 
+        action = `<button
+                      class="btn btn-primary claim-button"
                       data-token="${tx.originalTokenAddress}"
-                      data-to="${tx.receiver}" 
-                      data-amount="${tx.amount}" 
-                      data-blockhash="${tx.transactionHash}" 
-                      data-logindex="${tx.logIndex}" 
+                      data-to="${tx.receiver}"
+                      data-amount="${tx.amount}"
+                      data-blockhash="${tx.transactionHash}"
+                      data-logindex="${tx.logIndex}"
                       data-originchainid="${tx.originChainId}">
                       Claim
                   </button>`
@@ -325,27 +325,27 @@ function setStatusAction(status, tx) {
 
 function mergeClaimAndProposal(claim, proposal) {
   return {
-    originalTokenAddress: proposal.originalTokenAddress,    
+    originalTokenAddress: proposal.originalTokenAddress,
     transactionHash: proposal.transactionHash,
     amount: claim.amount,
-    value: proposal.value,    
+    value: proposal.value,
     sender: proposal.sender,
-    receiver: proposal.receiver,    
+    receiver: proposal.receiver,
     transactionType: proposal.transactionType,
-    transactionId: proposal.transactionId,    
+    transactionId: proposal.transactionId,
     logIndex: claim.logIndex,
     originChainId: claim.originChainId,
     status: claim.status
   }
 }
 
-function handleProposalEvents(event) {  
+function handleProposalEvents(event) {
   const {
-    originalTokenAddress,    
+    originalTokenAddress,
     transactionHash,
-    value,    
+    value,
     sender,
-    receiver,    
+    receiver,
     transactionType,
     transactionId
   } = event.returnValues;
@@ -355,11 +355,11 @@ function handleProposalEvents(event) {
   return {
     sender,
     originalTokenAddress,
-    receiver,    
+    receiver,
     transactionHash: hashedTx,
-    value,    
+    value,
     transactionType,
-    transactionId, 
+    transactionId,
     status: "processing_transfer"
   };
 }
@@ -487,7 +487,7 @@ async function setInfoTab(tokenAddress) {
   try {
 
     const {limit} = await allowTokensContract.methods.getInfoAndLimits(tokenAddress).call();
-    
+
 
     // Dinamically get the values, this is comented as the public node some times throws errors
     const federators = await federationContract.methods.getMembers().call();
@@ -1260,7 +1260,7 @@ async function updateCallback(chainId, accounts) {
     .then(() => updateAddress(accounts))
     .then((addr) => updateActiveAddressTXNs(addr))
     .then(fillHathorToEvmTxs)
-    .then(showActiveAddressTXNs)    
+    .then(showActiveAddressTXNs)
     ;
 }
 
@@ -1372,16 +1372,16 @@ function updateTokenListTab() {
   tabHtml += `\n    <div class="col-5">`;
   tabHtml += `\n        ${htrConfig.name}`;
   tabHtml += `\n    </div>`;
-  tabHtml += `\n    <div class="col-1"></div>`;
+  tabHtml += `\n    <div class="col-1" style="min-width:56px;"></div>`;
   tabHtml += `\n    <div class="col-5">`;
   tabHtml += `\n        ${htrConfig.crossToNetwork.name}`;
   tabHtml += `\n    </div>`;
   tabHtml += `\n</div>`;
   for (let aToken of TOKENS) {
     if (aToken[htrConfig.networkId] != undefined) {
-      tabHtml += `\n<div class="row mb-3 justify-content-center">`;
+      tabHtml += `\n<div class="row mb-3 justify-content-center text-center">`;
       tabHtml += `\n    <div class="col-5 row">`;
-      tabHtml += `\n      <div class="col-8 font-weight-bold">`;
+      tabHtml += `\n      <div class="col-12 font-weight-bold">`;
       tabHtml += `\n          <a href="${htrConfig.explorer}/address/${aToken[
         htrConfig.networkId
       ].address.toLowerCase()}" class="address" target="_blank">`;
@@ -1390,19 +1390,12 @@ function updateTokenListTab() {
       }" class="token-logo"></span>${aToken[htrConfig.networkId].symbol}`;
       tabHtml += `\n          </a>`;
       tabHtml += `\n       </div>`;
-      tabHtml += `\n       <div class="col-4">`;
-      tabHtml += `\n           <button class="copy btn btn-outline-secondary" type="button" data-clipboard-text="${aToken[
-        htrConfig.networkId
-      ].address.toLowerCase()}" data-toggle="tooltip" data-placement="bottom" title="Copy token address to clipboard">`;
-      tabHtml += `\n                <i class="far fa-copy"></i>`;
-      tabHtml += `\n           </button>`;
-      tabHtml += `\n       </div>`;
       tabHtml += `\n    </div>`;
       tabHtml += `\n    <div class="col-2 text-center">`;
       tabHtml += `\n        <i class="fas fa-arrows-alt-h"></i>`;
       tabHtml += `\n    </div>`;
       tabHtml += `\n    <div class="col-5 row">`;
-      tabHtml += `\n      <div class="col-8 font-weight-bold">`;
+      tabHtml += `\n      <div class="col-12 font-weight-bold">`;
       tabHtml += `\n          <a href="${
         htrConfig.crossToNetwork.explorer
       }/${htrConfig.crossToNetwork.explorerTokenTab}/${aToken[
@@ -1414,13 +1407,6 @@ function updateTokenListTab() {
         aToken[htrConfig.crossToNetwork.networkId].symbol
       }`;
       tabHtml += `\n          </a>`;
-      tabHtml += `\n      </div>`;
-      tabHtml += `\n      <div class="col-4">`;
-      tabHtml += `\n          <button class="copy btn btn-outline-secondary" type="button" data-clipboard-text="${aToken[
-        htrConfig.crossToNetwork.networkId
-      ].pureHtrAddress.toLowerCase()}" data-toggle="tooltip" data-placement="bottom" title="Copy the address">`;
-      tabHtml += `\n              <i class="far fa-copy"></i>`;
-      tabHtml += `\n          </button>`;
       tabHtml += `\n      </div>`;
       tabHtml += `\n    </div>`;
       tabHtml += `\n</div>`;
@@ -1492,7 +1478,7 @@ ETH_CONFIG.crossToNetwork = HTR_MAINNET_CONFIG;
 // --------- CONFIGS  END --------------
 
 // --------- ABI --------------
-let BRIDGE_ABI, ALLOW_TOKENS_ABI, ERC20_ABI, FEDERATION_ABI, HATHOR_FEDERATION_ABI; 
+let BRIDGE_ABI, ALLOW_TOKENS_ABI, ERC20_ABI, FEDERATION_ABI, HATHOR_FEDERATION_ABI;
 loadAbi('bridge', (abi) => { BRIDGE_ABI = abi; });
 loadAbi('allowtokens', (abi) => { ALLOW_TOKENS_ABI = abi; });
 loadAbi('erc20', (abi) => { ERC20_ABI = abi; });
@@ -1501,7 +1487,7 @@ loadAbi('hathorFederation', (abi) => { HATHOR_FEDERATION_ABI = abi; });
 
 function loadAbi(abi, callback) {
   fetch(`../abis/${abi}.json`)
-    .then(async (response) => 
+    .then(async (response) =>
     {
       const abi = await response.json()
       callback(abi);
