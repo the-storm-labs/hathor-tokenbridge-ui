@@ -14,13 +14,17 @@
         <link rel="stylesheet" href="./css/bootstrap.min.css" crossorigin="anonymous">
 
         <!-- Favicons -->
-        <link rel="apple-touch-icon" sizes="180x180" href="https://developers.rsk.co/assets/img/favicons/apple-touch-icon.png" crossorigin="anonymous">
-        <link rel="icon" type="image/png" sizes="32x32" href="./assets/img/favicons/favicon-16x16.png" crossorigin="anonymous">
-        <link rel="icon" type="image/png" sizes="16x16" href="./assets/img/favicons/favicon-16x16.png" crossorigin="anonymous">
-        <link rel="shortcut icon" href="./assets/img/favicons/favicon-16x16.png" crossorigin="anonymous">
+        <link rel="apple-touch-icon" sizes="180x180" href="./assets/img/favicons/favicon-16x16.png"
+            crossorigin="anonymous">
+        <link rel="icon" type="image/png" sizes="32x32" href="./assets/img/favicons/favicon-16x16.png"
+            crossorigin="anonymous">
+        <link rel="icon" type="image/png" sizes="16x16" href="./assets/img/favicons/favicon-16x16.png"
+            crossorigin="anonymous">
+        <link rel="shortcut icon" href="./assets/img/favicons/favicon-16x16.png"
+            crossorigin="anonymous">
 
         <!-- Google Fonts -->
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;700&family=Rubik&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
         <!-- Main Stylesheet File -->
         <link href="https://developers.rsk.co/assets/css/styles.css" rel="stylesheet">
@@ -28,20 +32,19 @@
         <link href="https://developers.rsk.co/assets/css/code.css" rel="stylesheet">
 
         <!-- SEO -->
-        <title>Token Bridge between Hathor and Arbitrum One</title>
-        <meta name=”description” content=”The Token Bridge between Hathor and Arbitrum One allows to cross ERC20 tokens back and forth between the two blockchains.”>
-        <meta name="keywords" content="Token, Bridge, Hathor, Ethereum, blockchain, token, crypto, ERC20, Arbitrum">
+        <title>Token Bridge between Hathor and Ethereum</title>
+        <meta name=”description” content=”The Token Bridge  between Hathor and Ethereum allows to cross ERC20 tokens back and forth between the two blockchains.”>
+        <meta name="keywords" content="Token, Bridge, Hathor, Ethereum, blockchain, token, crypto, ERC20">
         <meta name="author" content="The Storm Labs">
         <!-- Custom Styles -->
         <link href="./css/customStyles.css" rel="stylesheet">
-        <link href="./css/dark-theme.css" rel="stylesheet">
     </head>
     <body>
         <section id="main">
             <!-- Navigation -->
             <nav class="navbar navbar-expand-lg navbar-dark bg-dark align-items-center">
                 <div class="container d-flex  align-items-center" style="line-height: normal;">
-                    <a class="navbar-brand" href="/">
+                    <a class="navbar-brand" href="https://hathorbridge.xyz">
                         <img src="./assets/storm-labs-reduced-logo.png"
                             class="logo alt="">
                     </a>
@@ -61,7 +64,7 @@
                             </div>
                             <div class="wallet-status navbar-item badge-pill text-truncate" style="width: 170px; display: none;">
                                 <span id="address">0x123456789</span>
-                            </div>
+                            </div>                                                        
                         </div>
                     </div>
                 </div>
@@ -70,66 +73,128 @@
             <section id="home">
               <div class="container">
                 <div class="title">
-                    <h1 id="title">Hathor bridge with Arbitrum One</h1>
-                    <h5 class="subtitle">You can convert your tokens from Hathor to Arbitrum One and viceversa.</h5>
+                    <h1 id="title">Hathor Golf Testnet bridge with Sepolia</h1>
+                    <h5 class="subtitle">You can convert your tokens from Hathor to Ethereum and viceversa.</h5>
                     <h5 style="display: none;" class="subtitle">You can claim tokens you send from Hathor.</h5>
                 </div>
                 <!--Begin of transferTab-->
                 <div id="transferTab" class="align-center disabled">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="row justify-content-center network">
-                                <div class="col-5 text-center">
-                                    <span class="fromNetwork">From Network</span>
-                                </div>
-                                <div class="col-2 text-center">
-                                    <i class="fas fa-exchange-alt"></i>
-                                </div>
-                                <div class="col-5 text-center">
-                                    <span class="toNetwork">To Network</span>
-                                </div>
-                            </div>
-                            <form id="crossForm" name="crossForm">
-                                <div class="form-group">
-                                    <label for="tokenAddress">You own</label>
+                    <div class="row justify-content-center network">
+                        <div class="col-4 text-center">
+                            <span class="fromNetwork">From Network</span>
+                        </div>
+                        <div class="col-4 col-md-3 text-center">
+                            <!-- <span id="changeNetwork" class="outline-rounded" style="padding-left: 1.5rem; padding-right: 1.5rem;">
+                                <i class="fas fa-exchange-alt"></i>
+                            </span> -->
+                        </div>
+                        <div class="col-4 text-center">
+                            <span class="toNetwork">To Network</span>
+                        </div>
+                    </div>
+                    <form id="crossForm" name="crossForm">
+                        <div class="row justify-content-center inputs-area mb-3">
+                            <div class="col-4 text-center">
+                                <label class="tokenAddress-label" for="tokenAddress">You own</label>
+                                <div class="input-group">
                                     <select class="selectpicker" id="tokenAddress" name="tokenAddress" data-width="100%" title="Select token" disabled required>
                                         <!-- Dinamic content made with JS -->
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label for="amount">Amount</label>
-                                    <div class="input-group">
-                                        <input name="amount" id="amount" class="form-control" placeholder="0.0" required>
-                                        <div class="input-group-append">
-                                            <button id="max" class="btn btn-secondary" type="button">Max</button>
-                                        </div>
-                                    </div>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-4 col-md-3 text-center">
+                                <label class="amount-label" for="amount"><a id="max" class="max">Max</a></label>
+                                <div class="form-group amount">
+                                    <input name="amount" id="amount" class="outline form-control text-center align-center" placeholder="Amount" required>
+                                    <div class="invalid-feedback"></div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="willReceive">You will receive</label>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div class="form-group willReceive">
+                                    <label class="willReceive-label" for="willReceive">You will receive</label>
                                     <div class="input-group">
                                         <div class="form-control-plaintext" id="willReceive" name="willReceive">
                                             <span id="willReceiveToken" class="willReceiveToken" name="willReceiveToken"></span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="form-group willReceive">
-                                    <label class="hathorAddress-label" for="hathorAddress">Which Hathor Address do you want to send the tokens to:</label>
-                                    <div class="input-group">
-                                        <div class="form-control-plaintext" id="htrAddress" name="htrAddress">
-                                            <input name="hathorAddress" id="hathorAddress" class="outline form-control text-center align-center"
-                                                placeholder="Hathor Address" required>
-                                        </div>
+                            </div>
+                            <div class="form-group willReceive">
+                                <label class="hathorAddress-label" for="hathorAddress">Which Hathor Address do you want to send the tokens to:</label>
+                                <div class="input-group">
+                                    <div class="form-control-plaintext" id="htrAddress" name="htrAddress">
+                                        <input name="hathorAddress" id="hathorAddress" class="outline form-control text-center align-center"
+                                            placeholder="Hathor Address" required>
                                     </div>
                                 </div>
-                                <div class="text-center mt-3">
-                                    <button disabled id="approve" class="btn btn-primary btn-lg btn-block">Approve</button>
-                                    <button disbaled id="deposit" type="submit" class="btn btn-primary btn-lg btn-block mt-2">Convert tokens</button>
-                                </div>
-                            </form>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                        <div class="" style="min-height: 60px;">
+                            <div class="fees text-center mt-2" style="display:none">
+                                <p>Service fee: <span id="serviceFee"></span> <span class="selectedToken"></span></p>
+                                <p>Total cost: <span class="black"><span id="totalCost"></span> <span class="selectedToken"></span></span></p>
+                            </div>
+                        </div>
+
+                        <div class="row justify-content-center">
+                            <div class="mt-2">Estimated time to cross tokens <b id="timeToCross"></b></div>
+                        </div>
+                        <div class="row justify-content-center">
+                            <div class="approve-deposit">
+                                <button disabled id="approve" class="btn btn-primary mr-3 mt-3 mb-3">Approve</button>
+                                <div class="form-check">
+                                    <input disabled checked type="checkbox" class="form-check-input" id="doNotAskAgain">
+                                    <label class="form-check-label" for="doNotAskAgain">Do not ask me again</label>
+                                </div>
+                            </div>
+                            <button disbaled id="deposit" type="submit" class="btn btn-primary ml-3 mt-3 mb-3">Convert tokens</button>
+                        </div>
+
+                        <div id="wait" class="mt-3 align-center text-center" style="max-width:350px; line-height: 16px; display:none;">
+                            <!-- Spinner <div class="spinner-border mb-4" style="height:70px; width:70px"></div> -->
+                            <!-- https://tobiasahlin.com/spinkit/ -->
+                            <div class="sk-fading-circle">
+                                <div class="sk-circle1 sk-circle"></div>
+                                <div class="sk-circle2 sk-circle"></div>
+                                <div class="sk-circle3 sk-circle"></div>
+                                <div class="sk-circle4 sk-circle"></div>
+                                <div class="sk-circle5 sk-circle"></div>
+                                <div class="sk-circle6 sk-circle"></div>
+                                <div class="sk-circle7 sk-circle"></div>
+                                <div class="sk-circle8 sk-circle"></div>
+                                <div class="sk-circle9 sk-circle"></div>
+                                <div class="sk-circle10 sk-circle"></div>
+                                <div class="sk-circle11 sk-circle"></div>
+                                <div class="sk-circle12 sk-circle"></div>
+                            </div>
+                            <div class="mt-2">
+                                Wait for approximately <b><span id="secondsPerBlock">X</span> seconds:</b>
+                                the waiting period is required to confirm the transaction on the blockchain.
+                                Please <b>do not close this tab</b> until the process has finished.
+                            </div>
+                        </div>
+
+                        <div id="success" class="mt-3 align-center text-center alert alert-dismissible fade show" style="display:none;">
+                            <div class="outline-rounded">
+                                <div style="font-size: 32px;"><i class="fas fa-check"></i></div>
+                                <div>You will receive <span id="receive" class="black">126 rKovDAI</span> in your wallet in approximately <span id="confirmationTime">X minutes</span></div>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div id="alert-danger" class="alert alert-danger alert-dismissible fade show" role="alert" style="display:none">
+                                <h4 class="alert-heading">Ups! there was an error</h4>
+                                <p id="alert-danger-text"></p>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                  </button>
+                            </div>
+                        </div>
+                    </form>
+                </div> 
                 <!--End of transferTab-->
 
                 <!--Begin of claimTab-->
@@ -147,7 +212,7 @@
                                  <!-- Dinamic content made with JS -->
                             </tbody>
                         </table>
-                    </div>
+                    </div>  
                     <div id="wait_claim_nomessage" class="mt-3 align-center text-center" style="max-width:350px; line-height: 16px; display:none;">
                         <!-- Spinner <div class="spinner-border mb-4" style="height:70px; width:70px"></div> -->
                         <!-- https://tobiasahlin.com/spinkit/ -->
@@ -165,7 +230,7 @@
                             <div class="sk-circle11 sk-circle"></div>
                             <div class="sk-circle12 sk-circle"></div>
                         </div>
-                    </div>
+                    </div>                                  
                     <div id="wait_claim" class="mt-3 align-center text-center" style="max-width:350px; line-height: 16px; display:none;">
                         <!-- Spinner <div class="spinner-border mb-4" style="height:70px; width:70px"></div> -->
                         <!-- https://tobiasahlin.com/spinkit/ -->
@@ -189,7 +254,7 @@
                             Please <b>do not close this tab</b> until the process has finished.
                         </div>
                     </div>
-
+            
                     <div id="success_claim" class="mt-3 align-center text-center alert alert-dismissible fade show" style="display:none;">
                         <div class="outline-rounded">
                             <div style="font-size: 32px;"><i class="fas fa-check"></i></div>
@@ -224,8 +289,8 @@
                     <h5 class="subtitle">Active account transactions</h5>
                     <nav>
                         <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                            <a class="nav-item nav-link active" id="nav-htr-eth-tab" data-toggle="tab" href="#nav-htr-eth" role="tab" aria-controls="nav-htr-eth" aria-selected="true">ARB -> HTR</a>
-                            <a class="nav-item nav-link" id="nav-eth-htr-tab" data-toggle="tab" href="#nav-eth-htr" role="tab" aria-controls="nav-eth-htr" aria-selected="false">HTR -> ARB</a>
+                            <a class="nav-item nav-link active" id="nav-htr-eth-tab" data-toggle="tab" href="#nav-htr-eth" role="tab" aria-controls="nav-htr-eth" aria-selected="true">ETH -> HTR</a>
+                            <a class="nav-item nav-link" id="nav-eth-htr-tab" data-toggle="tab" href="#nav-eth-htr" role="tab" aria-controls="nav-eth-htr" aria-selected="false">HTR -> ETH</a>
                         </div>
                     </nav>
                         <div class="tab-content" id="nav-tabContent">
@@ -270,7 +335,7 @@
 
                 <div id="tokensTab">
                     <h5 class="subtitle">Token bridge list</h5>
-                    <p class="text-center">Hathor native tokens will transform into a(tokenName). Arbitrum One native tokens will transform into h(tokenName)</p>
+                    <p class="text-center">Hathor native tokens will transform into e(tokenName). Ethereum native tokens will transform into h(tokenName)</p>
                     <div id="tokenListTab" class="align-center">
                         <!-- Dinamic content made with JS -->
                     </div>
@@ -344,32 +409,61 @@
             </div>
         </div>
         <footer id="footer" class="section-bg">
+            <div class="footer-top">
             <div class="container">
-                <div class="row">
-                    <div class="col-lg-6 d-flex align-items-center">
-                        <div>
-                            <p class="powered mb-2">Powered by</p>
-                            <a href="https://hathor.network/" target="_blank" class="d-inline-block">
-                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/5552.png" class="hathor-logo" alt="Hathor Network">
-                            </a>
+               <div class="row">
+                  <div class="col-lg-12" style="color: #ff8200">
+                  </div>
+               </div>
+               <div class="row">
+                  <div class="col-lg-6">
+                     <div class="row">
+                        <div class="col-sm-7">
+                            <p class="powered">Powered by</p>
+                            <a class="navbar-brand" href="https://hathor.network/">
+                                <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/5552.png" class="hathor-logo alt="">
+                            </a>                             
                         </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="footer-links text-lg-right">
-                            <ul class="list-unstyled mb-0">
+                        <div class="col-sm-5"></div>
+                     </div>
+                  </div>
+                  <div class="col-lg-6">
+                     <div class="row">
+                        <div class="col-md-6">                           
+                        </div>
+                        <div class="col-md-6">
+                        <div class="footer-links">
+                            <ul>
                                 <li><a href="https://github.com/the-storm-labs/hathor-tokenbridge" target="_blank">Repository</a></li>
-                                <li><a id="network-navlink" href="./index.html?testnet">Use Testnet</a></li>
+                                <li><a id="network-navlink" href="https://hathorbridge.xyz/index.html">Use Mainnet</a></li>
                             </ul>
                         </div>
-                    </div>
-                </div>
-                <hr class="my-4">
-                <div class="row">
-                    <div class="col-12 text-center">
-                        <p class="copyright mb-0">Copyright © 2025 Storm Labs. All rights reserved.</p>
-                    </div>
-                </div>
+                        </div>
+                     </div>
+                     <div class="social-links">
+                        <!-- <a href="https://twitter.com" rel="nofollow noopener noreferrer" target="_blank" class="twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="https://www.youtube.com" rel="nofollow noopener noreferrer" target="_blank" class="facebook"><i class="fab fa-youtube"></i></a>
+                        <a href=" https://www.facebook.com/" rel="nofollow noopener noreferrer" target="_blank" class="linkedin"><i class="fab fa-facebook"></i></a>
+                        <a href="https://gitter.im/" rel="nofollow noopener noreferrer" target="_blank" class="instagram"><i class="fab fa-gitter"></i></a>
+                        <a href="https://www.reddit.com/r/" rel="nofollow noopener noreferrer" target="_blank" class="instagram"><i class="fab fa-reddit"></i></a>
+                        <a href="https://t.me" rel="nofollow noopener noreferrer" target="_blank" class="instagram"><i class="fab fa-telegram"></i></a>
+                        <a href="https://medium.com/" rel="nofollow noopener noreferrer" target="_blank" class="instagram"><i class="fab fa-medium"></i></a>
+                        <a href="https://www.instagram.com/" rel="nofollow noopener noreferrer" target="_blank" class=""><i class="fab fa-instagram"></i></a>
+                        <a href="https://bitcointalk.org/" rel="nofollow noopener noreferrer" target="_blank" class=""><i class="fab fa-btc"></i></a> -->
+                     </div>
+                  </div>
+               </div>
             </div>
+            <div class="container">
+               <div class="col-md-12" >
+                  <div class="row">
+                     <div class="col-md-12 col-xs-12 pl-0-mobile" style="text-align: center;">
+                        <p class="copyright">Copyright © 2025 Storm Labs. All rights reserved.</p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
         </footer>
         <div id="js">
             <!-- jQuery first, then Popper.js, then Bootstrap JS -->
