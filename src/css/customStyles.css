@@ -35,16 +35,15 @@ h5 {
 h1 {
   color: #1f1f1f;
   font-size: 36px;
-  line-height: 45px;
-  margin-top: 15px;
+  line-height: 48px;
+  margin-top: 16px;
+  margin-bottom: 16px;
   padding-bottom: 0;
   text-align: center;
 }
 
-.subtitle {
+h1, h2, h3, h4, h5, h6 {
   text-align: center;
-  margin-bottom: 20px;
-  font-size: 18px;
 }
 
 .align-center {
@@ -54,7 +53,7 @@ h1 {
 
 #transferTab {
   max-width: 500px;
-  margin-bottom: 30px;
+  margin-bottom: 64px;
 }
 
 #claimTab {
@@ -335,7 +334,6 @@ input::placeholder {
 }
 
 .subtitle {
-  text-align: center;
   margin-bottom: 5px;
 }
 
