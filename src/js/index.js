@@ -697,7 +697,6 @@ async function crossToken() {
       : amountBN.mul(new BN(feePercentage)).div(new BN(feePercentageDivider));
 
   disableInputs(true);
-  $(".fees").hide();
   $("#secondsPerBlock").text(config.secondsPerBlock);
   $("#wait").show();
   let gasPrice = "";
@@ -976,7 +975,6 @@ async function isAmountOk() {
     $(".amount .invalid-feedback").hide();
     $("#amount").removeClass("is-invalid");
     $("#amount").addClass("ok");
-    $(".fees").show();
   } catch (err) {
     disableApproveCross({
       approvalDisable: true,
@@ -995,7 +993,6 @@ function markInvalidAmount(errorDescription) {
   $("#amount").addClass("is-invalid");
   $("#amount").prop("disabled", false);
   $("#amount").removeClass("ok");
-  $(".fees").hide();
 }
 
 async function isInstalled() {
@@ -1093,7 +1090,7 @@ function truncateAddress(address) {
   return `${address.slice(0, 7)}...${address.slice(-5)}`;
 }
 
-function updateAddress(newAddresses) {
+async function updateAddress(newAddresses) {
   address = newAddresses[0];
   const truncatedAddress = truncateAddress(address);
   $(".indicator span").text(truncatedAddress);
@@ -1102,6 +1099,10 @@ function updateAddress(newAddresses) {
   $("#claimTab").removeClass("disabled");
   $(".wallet-status.indicator").show();
   $(".wallet-status.text-truncate").hide();
+
+  if (config) {
+    await updateTokenAddressDropdown(config.networkId);
+  }
 
   return Promise.resolve(address);
 }
@@ -1271,7 +1272,7 @@ async function updateCallback(chainId, accounts) {
     ;
 }
 
-function updateNetworkConfig(config) {
+async function updateNetworkConfig(config) {
   $(".fromNetwork").text(config.name);
   // $(".indicator span").html(config.name);
   $(".indicator").removeClass("btn-outline-danger");
@@ -1279,7 +1280,7 @@ function updateNetworkConfig(config) {
   $(".toNetwork").text(config.crossToNetwork.name);
   $("#confirmations").html(config.confirmations);
   $("#timeToCross").html(config.crossToNetwork.confirmationTime);
-  updateTokenAddressDropdown(config.networkId);
+  await updateTokenAddressDropdown(config.networkId);
 }
 
 async function updateNetwork(newNetwork) {
@@ -1326,8 +1327,7 @@ async function updateNetwork(newNetwork) {
     );
 
     $("#myModal").modal("hide");
-    updateNetworkConfig(config);
-    updateTokenAddressDropdown(config.networkId);
+    await updateNetworkConfig(config);
 
     // setInfoTab();
     onMetaMaskConnectionSuccess();
@@ -1356,10 +1356,25 @@ async function startPoolingTxs() {
     });
 }
 
-function updateTokenAddressDropdown(networkId) {
+async function updateTokenAddressDropdown(networkId) {
   let selectHtml = "";
   for (let aToken of TOKENS) {
-    if (aToken[networkId] != undefined) {
+    if (aToken[networkId] != undefined && address) {
+      try {
+        const tokenContract = new web3.eth.Contract(ERC20_ABI, aToken[networkId].address);
+        const balance = await tokenContract.methods.balanceOf(address).call();
+        const formattedBalance = new BigNumber(balance).shiftedBy(-aToken[networkId].decimals).toFormat(4, BigNumber.ROUND_DOWN);
+
+        selectHtml += `\n<option value="${aToken.token}" `;
+        selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol} <small class='text-muted'>(${formattedBalance})</small>">`;
+        selectHtml += `\n</option>`;
+      } catch (e) {
+        console.error(`Could not fetch balance for ${aToken[networkId].symbol}`, e);
+        selectHtml += `\n<option value="${aToken.token}" `;
+        selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol}">`;
+        selectHtml += `\n</option>`;
+      }
+    } else if (aToken[networkId] != undefined) {
       selectHtml += `\n<option value="${aToken.token}" `;
       selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol}">`;
       selectHtml += `\n</option>`;
@@ -1368,7 +1383,6 @@ function updateTokenAddressDropdown(networkId) {
   $("#tokenAddress").html(selectHtml);
   $("#tokenAddress").prop("disabled", false);
   $("#tokenAddress").selectpicker("refresh");
-  $("#willReceiveToken").html("");
 }
 
 function updateTokenListTab() {

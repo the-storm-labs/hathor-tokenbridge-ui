@@ -78,20 +78,9 @@
                 <div id="transferTab" class="align-center disabled">
                     <div class="card">
                         <div class="card-body">
-                            <div class="row justify-content-center network">
-                                <div class="col-5 text-center">
-                                    <span class="fromNetwork">From Network</span>
-                                </div>
-                                <div class="col-2 text-center">
-                                    <i class="fas fa-exchange-alt"></i>
-                                </div>
-                                <div class="col-5 text-center">
-                                    <span class="toNetwork">To Network</span>
-                                </div>
-                            </div>
                             <form id="crossForm" name="crossForm">
                                 <div class="form-group">
-                                    <label for="tokenAddress">You own</label>
+                                    <label for="tokenAddress">Select token</label>
                                     <select class="selectpicker" id="tokenAddress" name="tokenAddress" data-width="100%" title="Select token" disabled required>
                                         <!-- Dinamic content made with JS -->
                                     </select>
@@ -106,11 +95,9 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="willReceive">You will receive</label>
-                                    <div class="input-group">
-                                        <div class="form-control-plaintext" id="willReceive" name="willReceive">
-                                            <span id="willReceiveToken" class="willReceiveToken" name="willReceiveToken"></span>
-                                        </div>
+                                    <div class="fees mt-2">
+                                        <p>Service fee: <span id="serviceFee"></span> <span class="selectedToken"></span></p>
+                                        <p>Total cost: <span id="totalCost"></span> <span class="selectedToken"></span></p>
                                     </div>
                                 </div>
                                 <div class="form-group willReceive">
