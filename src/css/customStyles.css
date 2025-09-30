@@ -1,3 +1,20 @@
+/* Styles for the connected wallet button */
+.wallet-status.indicator.badge-outline {
+  background-color: #1f1f1f;
+  color: white;
+  border-color: #1f1f1f;
+}
+
+.wallet-status.indicator.badge-outline:hover {
+  background-color: #1f1f1f;
+  color: white;
+  border-color: #1f1f1f;
+}
+
+.indicator span:before {
+  background-color: #444;
+}
+
 body {
   font-family: "Poppins", sans-serif !important;
   font-size: 16px !important;

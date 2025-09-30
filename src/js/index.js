@@ -1088,13 +1088,20 @@ function onMetaMaskConnectionSuccess() {
   });
 }
 
+function truncateAddress(address) {
+  if (!address) return "";
+  return `${address.slice(0, 7)}...${address.slice(-5)}`;
+}
+
 function updateAddress(newAddresses) {
   address = newAddresses[0];
-  $("#address").text(address);
+  const truncatedAddress = truncateAddress(address);
+  $(".indicator span").text(truncatedAddress);
   $("#logIn").hide();
   $("#transferTab").removeClass("disabled");
   $("#claimTab").removeClass("disabled");
-  $(".wallet-status").show();
+  $(".wallet-status.indicator").show();
+  $(".wallet-status.text-truncate").hide();
 
   return Promise.resolve(address);
 }
@@ -1266,7 +1273,7 @@ async function updateCallback(chainId, accounts) {
 
 function updateNetworkConfig(config) {
   $(".fromNetwork").text(config.name);
-  $(".indicator span").html(config.name);
+  // $(".indicator span").html(config.name);
   $(".indicator").removeClass("btn-outline-danger");
   $(".indicator").addClass("btn-outline-success");
   $(".toNetwork").text(config.crossToNetwork.name);
