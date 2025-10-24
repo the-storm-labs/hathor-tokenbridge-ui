@@ -45,7 +45,7 @@ textarea.form-control {
 }
 
 h5 {
-  font-size: 25px;
+  font-size: 22px;
   line-height: 31px;
 }
 
@@ -181,7 +181,7 @@ label {
 }
 
 .black {
-  color: #000;
+  color: #fff;
   font-weight: 300;
 }
 
@@ -310,11 +310,6 @@ input::placeholder {
   font-weight: normal;
 }
 
-#home {
-  padding-top: 20px;
-  padding-bottom: 20px;
-}
-
 #footer {
   margin-top: 0;
   background-color: #1f1f1f;
@@ -391,12 +386,20 @@ a:hover {
 }
 
 .nav-tabs .nav-link {
-  font-weight: 300;
-  color: #1f1f1f;
+  font-weight: 400;
+  color: #6c757d;
 }
 
 .nav-tabs .nav-link:hover {
-  color: black;
+  color: inherit;
+}
+
+#nav-eth-htr-tab {
+  border-radius: 0 5px 0 0;
+}
+
+#nav-htr-eth-tab {
+  border-radius: 5px 0 0 0;
 }
 
 .config-section {
@@ -555,14 +558,6 @@ a:hover {
 #success {
   padding: 0px;
   max-width: 222px;
-}
-
-.confirmed {
-  color: #1f1f1f;
-}
-
-.pending {
-  color: #1f1f1f;
 }
 
 /*Spinner*/
@@ -746,4 +741,28 @@ a:hover {
 table.table tr th:last-child,
 table.table tr td:last-child {
   text-align: center;
+}
+
+.nav-tabs .nav-link {
+  border-radius: 0;
+}
+
+table.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 0 5px 5px 5px;
+  background-color: #1f1f1f;
+  border: 1px solid #333;
+  border-top: none;
+}
+
+table.table th {
+  padding: 15px;
+  border-bottom: none;
+  font-weight: 400;
+}
+
+table.table td {
+  padding: 15px;
+  border-bottom: none;
 }

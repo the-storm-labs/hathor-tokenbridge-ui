@@ -1171,8 +1171,8 @@ function showActiveAddressTXNs() {
     let remainingBlocks2Confirmation = confirmations - elapsedBlocks;
     let status = isConfig4CurrentNetwork
       ? elapsedBlocks >= confirmations
-        ? `<span class="confirmed"> Confirmed</span>`
-        : `<span class="pending"> Pending</span>`
+        ? `<span> Confirmed</span>`
+        : `<span> Pending</span>`
       : `Info Not Available`;
 
     let confirmationTime = confirmations * secondsPerBlock;
@@ -1199,7 +1199,7 @@ function showActiveAddressTXNs() {
     )}...${txn.transactionHash.slice(-8)}`;
 
     let htmlRow = `<tr class="black">
-            <th scope="row"><a class="confirmed" href="${txnExplorerLink}">${shortTxnHash}</a></th>
+            <th scope="row"><a href="${txnExplorerLink}">${shortTxnHash}</a></th>
             <td>${txn.blockNumber}</td>
             <td>${txn.amount} ${txn.tokenFrom}</td>
             <td>${status} ${humanTimeToConfirmation}</td>

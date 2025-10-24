@@ -123,7 +123,7 @@ body {
 }
 
 .nav-tabs {
-    border-bottom: 1px solid #333;
+    border-bottom: none;
 }
 
 .alert-danger {
@@ -192,15 +192,24 @@ color: #1f1f1f;
 }
 
 .nav-tabs .nav-link.active {
-    color: #71258f;
+    color: #fff;
+    background-color: #1f1f1f;
 }
 
 .navbar a {
     color: #fff;
 }
 
-.navbar a:hover {
+a {
     color: #71258f;
+}
+
+a:hover {
+    color: #451c55;
+}
+
+.footer-links ul li a:hover {
+  color: #71258f;
 }
 
 .footer-links ul li a {
@@ -270,9 +279,9 @@ input::placeholder {
 }
 
 .confirmed {
-    color: #71258f;
+    color: #ab88d1;
 }
 
 .pending {
-    color: #531b69;
+    color: #ffc107;
 }
