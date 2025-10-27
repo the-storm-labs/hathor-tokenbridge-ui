@@ -3,6 +3,8 @@
   background-color: #1f1f1f;
   color: white;
   border-color: #1f1f1f;
+  display: flex;
+  align-items: center;
 }
 
 .wallet-status.indicator.badge-outline:hover {
@@ -496,19 +498,7 @@ a:hover {
   background-color: #dc3545;
 }
 
-.indicator span:before {
-  position: absolute;
-  right: 98%;
-  top: 50%;
-  -webkit-transform: translate(-5px, -50%);
-  transform: translate(-5px, -50%);
-  content: "";
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #40d512;
-}
+
 
 .token-logo {
   width: 1.2rem;
