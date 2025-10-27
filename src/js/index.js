@@ -159,6 +159,10 @@ $(document).ready(function () {
     approveSpend();
   });
 
+  $("#hathorAddress").keyup(function (event) {
+    validateHathorAddress();
+  });
+
   $("#changeNetwork").on("click", function () {
     showModal(
       "Operation not Available",
@@ -168,6 +172,22 @@ $(document).ready(function () {
   updateTokenListTab();
   isInstalled();
 });
+
+function validateHathorAddress() {
+  const hathorAddress = $("#hathorAddress").val();
+  if (hathorAddress) {
+    if (HathorWallet.validateAddress(hathorAddress)) {
+      $("#hathorAddress").removeClass("is-invalid");
+      $("#hathorAddress").addClass("is-valid");
+    } else {
+      $("#hathorAddress").removeClass("is-valid");
+      $("#hathorAddress").addClass("is-invalid");
+    }
+  } else {
+    $("#hathorAddress").removeClass("is-valid");
+    $("#hathorAddress").removeClass("is-invalid");
+  }
+}
 
 // CLAIMS
 
