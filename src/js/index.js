@@ -160,7 +160,7 @@ $(document).ready(function () {
   });
 
   $("#hathorAddress").keyup(function (event) {
-    validateHathorAddress();
+    handleHathorAddressChange();
   });
 
   $("#changeNetwork").on("click", function () {
@@ -173,11 +173,10 @@ $(document).ready(function () {
   isInstalled();
 });
 
-function validateHathorAddress() {
+function handleHathorAddressChange() {
   const hathorAddress = $("#hathorAddress").val();
-  console.log('111111');
   if (hathorAddress) {
-    if (HathorWallet.validateAddress(hathorAddress)) {
+    if (validateHathorAddress(hathorAddress)) {
       $("#hathorAddress").removeClass("is-invalid");
       $("#hathorAddress").addClass("is-valid");
     } else {
@@ -674,8 +673,7 @@ async function crossToken() {
     return;
   }
 
-  console.log('22222');
-  if (!HathorWallet.validateAddress(hathorAddress)) {
+  if (!validateHathorAddress(hathorAddress)) {
     crossTokenError("Invalid Hathor address!");
     return;
   }
