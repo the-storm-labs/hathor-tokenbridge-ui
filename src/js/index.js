@@ -1394,7 +1394,7 @@ function updateTokenListTab() {
       tabHtml += `\n        <i class="fas fa-arrows-alt-h"></i>`;
       tabHtml += `\n    </div>`;
       tabHtml += `\n    <div class="col-5 row">`;
-      tabHtml += `\n      <div class="col-8 font-weight-bold">`;
+      tabHtml += `\n      <div class="col-12 font-weight-bold">`;
       tabHtml += `\n          <a href="${htrConfig.crossToNetwork.explorer
         }/${htrConfig.crossToNetwork.explorerTokenTab}/${aToken[
           htrConfig.crossToNetwork.networkId
