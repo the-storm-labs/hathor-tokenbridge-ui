@@ -653,6 +653,11 @@ async function crossToken() {
     return;
   }
 
+  if (!HathorWallet.validateAddress(hathorAddress)) {
+    crossTokenError("Invalid Hathor address!");
+    return;
+  }
+
   const decimals = token[config.networkId].decimals;
   const splittedAmount = amount.split(".");
   var amountWithDecimals = splittedAmount[0];
