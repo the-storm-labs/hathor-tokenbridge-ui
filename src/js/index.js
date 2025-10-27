@@ -175,6 +175,7 @@ $(document).ready(function () {
 
 function validateHathorAddress() {
   const hathorAddress = $("#hathorAddress").val();
+  console.log('111111');
   if (hathorAddress) {
     if (HathorWallet.validateAddress(hathorAddress)) {
       $("#hathorAddress").removeClass("is-invalid");
@@ -673,6 +674,7 @@ async function crossToken() {
     return;
   }
 
+  console.log('22222');
   if (!HathorWallet.validateAddress(hathorAddress)) {
     crossTokenError("Invalid Hathor address!");
     return;

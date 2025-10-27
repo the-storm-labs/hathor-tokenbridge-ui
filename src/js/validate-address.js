@@ -1,8 +1,10 @@
 const HathorWallet = {
   validateAddress(address) {
+    console.log('dsdsds')
     try {
       const addressBytes = bs58.decode(address);
 
+      console.log('address size', addressBytes.length);
       if (addressBytes.length !== 25) {
         return false;
       }
@@ -26,6 +28,7 @@ const HathorWallet = {
 
       return true;
     } catch (e) {
+      console.log('error', e)
       return false;
     }
   }
