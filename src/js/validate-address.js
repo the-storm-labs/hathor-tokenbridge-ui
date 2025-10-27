@@ -1,10 +1,24 @@
 const HathorWallet = {
+  getChecksum(bytes) {
+    const wordArray = CryptoJS.lib.WordArray.create(bytes);
+    const hash1 = CryptoJS.SHA256(wordArray);
+    const hash2 = CryptoJS.SHA256(hash1);
+
+    // The checksum is the first 4 bytes of the final hash.
+    // We need to convert the first word of the hash back to a byte array.
+    const firstWord = hash2.words[0];
+    return [
+      (firstWord >> 24) & 0xff,
+      (firstWord >> 16) & 0xff,
+      (firstWord >> 8) & 0xff,
+      firstWord & 0xff
+    ];
+  },
+
   validateAddress(address) {
-    console.log('dsdsds')
     try {
       const addressBytes = bs58.decode(address);
 
-      console.log('address size', addressBytes.length);
       if (addressBytes.length !== 25) {
         return false;
       }
@@ -12,14 +26,9 @@ const HathorWallet = {
       const checksum = addressBytes.slice(-4);
       const addressSlice = addressBytes.slice(0, -4);
 
-      const hash = CryptoJS.SHA256(CryptoJS.SHA256(CryptoJS.lib.WordArray.create(addressSlice)));
-      const correctChecksum = new Uint8Array(hash.words.slice(0, 1).map(word => [
-        (word >> 24) & 0xff,
-        (word >> 16) & 0xff,
-        (word >> 8) & 0xff,
-        word & 0xff
-      ]).flat());
+      const correctChecksum = this.getChecksum(addressSlice);
 
+      // Compare checksums
       for (let i = 0; i < 4; i++) {
         if (checksum[i] !== correctChecksum[i]) {
           return false;
@@ -28,7 +37,8 @@ const HathorWallet = {
 
       return true;
     } catch (e) {
-      console.log('error', e)
+      // This will catch errors from bs58.decode for invalid characters
+      // or other issues.
       return false;
     }
   }
