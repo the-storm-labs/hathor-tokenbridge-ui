@@ -1146,14 +1146,14 @@ function showActiveAddressTXNs() {
   eth2HtrPaginationObj = Paginator(
     activeAddresseth2HtrTxns,
     eth2HtrTablePage,
-    3
+    6
   );
   let { data: eth2HtrTxns } = eth2HtrPaginationObj;
 
   htr2EthPaginationObj = Paginator(
     activeAddresshtr2EthTxns,
     htr2EthTablePage,
-    3
+    6
   );
   let { data: htr2EthTxns } = htr2EthPaginationObj;
 
