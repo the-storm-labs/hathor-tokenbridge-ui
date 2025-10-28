@@ -206,7 +206,7 @@ function handleHathorAddressChange() {
 // CLAIMS
 
 async function fillHathorToEvmTxs() {
-  const walletAddress = $("#address").text();
+  const walletAddress = address;
 
   if (!walletAddress || walletAddress === "0x123456789") {
     return;
@@ -264,7 +264,7 @@ async function fillHathorToEvmTxs() {
 
 async function getPendingClaims() {
 
-  const walletAddress = $("#address").text();
+  const walletAddress = address;
   if (!walletAddress) {
     return [];
   }
@@ -1248,6 +1248,7 @@ function setClaimButtons() {
 }
 
 async function updateCallback(chainId, accounts) {
+  await startPoolingTxs();
   return updateNetwork(chainId)
     .then(() => updateAddress(accounts))
     .then((addr) => updateActiveAddressTXNs(addr))
@@ -1315,6 +1316,9 @@ async function updateNetwork(newNetwork) {
     // setInfoTab();
     onMetaMaskConnectionSuccess();
 
+    if (poolingIntervalId) {
+      clearInterval(poolingIntervalId);
+    }
     await startPoolingTxs();
 
     if (TXN_Storage.isStorageAvailable("localStorage")) {
