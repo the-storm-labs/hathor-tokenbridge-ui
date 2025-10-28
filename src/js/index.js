@@ -66,29 +66,6 @@ $(document).ready(function () {
 
   $("#logIn").attr("onclick", "onLogInClick()");
 
-  let rpc = {
-    42161: evmHost,
-  };
-  supportedChains = [42161];
-  if (isTestnet) {
-    rpc = {
-      11155111: evmHost,
-    };
-    supportedChains = [11155111];
-  }
-  rLogin = new window.RLogin.default({
-    cacheProvider: false,
-    providerOptions: {
-      walletconnect: {
-        package: window.WalletConnectProvider.default,
-        options: {
-          rpc: rpc,
-        },
-      },
-    },
-    supportedChains: supportedChains,
-  });
-
   $("#claimTab").hide();
 
   $("#claimTokens").click(function () {
@@ -170,7 +147,6 @@ $(document).ready(function () {
     );
   });
   updateTokenListTab();
-  isInstalled();
 });
 
 function handleHathorAddressChange() {
@@ -997,27 +973,29 @@ function markInvalidAmount(errorDescription) {
 async function isInstalled() {
   if (window.ethereum) {
     window.ethereum.autoRefreshOnNetworkChange = false;
+    try {
+      window.web3 = new Web3(window.ethereum);
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const chainId = await web3.eth.net.getId();
+      await updateCallback(chainId, accounts);
+
+      window.ethereum.on("chainChanged", function (newChain) {
+        updateNetwork(newChain);
+        showActiveTxnsTab();
+      });
+      window.ethereum.on("accountsChanged", function (newAddresses) {
+        checkAllowance();
+        updateAddress(newAddresses)
+          .then((addr) => updateActiveAddressTXNs(addr))
+          .then(() => showActiveAddressTXNs());
+      });
+      return chainId;
+    } catch (error) {
+      throw new Error("Login failed. Please try again.");
+    }
+  } else {
+    throw new Error("MetaMask is not installed. Please install it to use this application.");
   }
-
-  const provider = await rLogin.connect().catch(() => {
-    throw new Error("Login failed. Please try again.");
-  });
-  window.web3 = new Web3(provider);
-  let accounts = await getAccounts();
-  let chainId = await web3.eth.net.getId();
-  await updateCallback(chainId, accounts);
-
-  provider.on("chainChanged", function (newChain) {
-    updateNetwork(newChain);
-    showActiveTxnsTab();
-  });
-  provider.on("accountsChanged", function (newAddresses) {
-    checkAllowance();
-    updateAddress(newAddresses)
-      .then((addr) => updateActiveAddressTXNs(addr))
-      .then(() => showActiveAddressTXNs());
-  });
-  return chainId;
 }
 
 function onMetaMaskConnectionError(err) {
