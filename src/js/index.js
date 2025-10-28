@@ -74,19 +74,16 @@ $(document).ready(function () {
     location.hash = `#nav-eth-htr-tab`;
   });
 
-  $("#tokenAddress").change(async function (event) {
+  $("#tokenAddress").change(function (event) {
     cleanAlertSuccess();
     let token = TOKENS.find(
       (element) => element.token == event.currentTarget.value
     );
     if (token) {
-
       tokenContract = new web3.eth.Contract(ERC20_ABI, token[config.networkId].address);
-
-      const balance = await tokenContract.methods.balanceOf(address).call();
-
-      $(".tokenAddress-label").text(`You own ${balance / Math.pow(10, token[config.networkId].decimals)}`)
-
+      tokenContract.methods.balanceOf(address).call().then(balance => {
+        $(".tokenAddress-label").text(`You own ${balance / Math.pow(10, token[config.networkId].decimals)}`);
+      });
 
       $(".selectedToken").html(token[config.networkId].symbol);
       let html = `<a target="_blank" href="${config.crossToNetwork.explorer
@@ -102,17 +99,26 @@ $(document).ready(function () {
         "data-clipboard-text",
         token[config.crossToNetwork.networkId].address
       );
-      if ($("#amount").val()) {
+
+      setInfoTab(token[config.networkId].address).then(() => {
         isAmountOk();
-        checkAllowance();
-      }
+        if ($("#amount").val()) {
+          checkAllowance();
+        }
+      });
     } else {
       $(".selectedToken").html("");
       $("#willReceive").html("");
       $("#willReceive-copy").hide();
+      fee = 0;
+      feePercentage = 0;
+      if ($("#amount").val()) {
+        isAmountOk();
+      } else {
+        $("#serviceFee").html("0.000000");
+        $("#totalCost").html("0.000000");
+      }
     }
-
-    setInfoTab(token[config.networkId].address);
   });
 
   $("#amount").keyup(function (event) {
@@ -906,35 +912,27 @@ async function checkAllowance() {
 async function isAmountOk() {
   cleanAlertSuccess();
   let amount = $("#amount").val();
-  if (amount == "") {
-    markInvalidAmount("Invalid amount");
+  let parsedAmount = new BigNumber(amount || 0);
 
-    disableApproveCross({
-      approvalDisable: true,
-      doNotAskDisabled: true,
-      crossDisabled: true,
-    });
-
-    return;
-  }
-  let parsedAmount = new BigNumber(amount);
-  if (parsedAmount <= 0) {
-    markInvalidAmount("Must be bigger than 0");
-
-    disableApproveCross({
-      approvalDisable: true,
-      doNotAskDisabled: true,
-      crossDisabled: true,
-    });
-
-    return;
-  }
-  $("#amount").removeClass("ok");
+  // Always calculate and display the fee and total cost
   let totalCost = fee == 0 ? parsedAmount : parsedAmount.dividedBy(1 - fee);
   let serviceFee = totalCost.times(fee);
-
   $("#serviceFee").html(serviceFee.toFormat(6, BigNumber.ROUND_DOWN));
   $("#totalCost").html(totalCost.toFormat(6, BigNumber.ROUND_DOWN));
+
+  // Now, perform validation if an amount is actually entered
+  if (amount === "") {
+    markInvalidAmount("Invalid amount");
+    disableApproveCross({ approvalDisable: true, doNotAskDisabled: true, crossDisabled: true });
+    return;
+  }
+  
+  if (parsedAmount <= 0) {
+    markInvalidAmount("Must be bigger than 0");
+    disableApproveCross({ approvalDisable: true, doNotAskDisabled: true, crossDisabled: true });
+    return;
+  }
+
   try {
     if (totalCost < minTokensAllowed) {
       throw new Error(
@@ -974,6 +972,12 @@ async function isInstalled() {
   if (window.ethereum) {
     window.ethereum.autoRefreshOnNetworkChange = false;
     try {
+      const targetNetworkId = isTestnet ? SEPOLIA_CONFIG.networkId : ETH_CONFIG.networkId;
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x' + targetNetworkId.toString(16) }],
+      });
+
       window.web3 = new Web3(window.ethereum);
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const chainId = await web3.eth.net.getId();
@@ -1365,6 +1369,7 @@ async function updateTokenAddressDropdown(networkId) {
   $("#tokenAddress").html(selectHtml);
   $("#tokenAddress").prop("disabled", false);
   $("#tokenAddress").selectpicker("refresh");
+  $("#tokenAddress").trigger('change');
 }
 
 function updateTokenListTab() {
