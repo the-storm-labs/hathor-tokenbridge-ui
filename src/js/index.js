@@ -1521,7 +1521,7 @@ function loadAbi(abi, callback) {
 const USDC_TOKEN = {
   token: "USDC",
   name: "USDC",
-  icon: "https://assets.coingecko.com/coins/images/6319/standard/usdc.png?1696506694",
+  icon: "./assets/img/usdc.png",
   42161: {
     symbol: "USDC",
     address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
@@ -1575,7 +1575,7 @@ const EVM_NATIVE_TOKEN = {
 HATHOR_NATIVE_TOKEN = {
   token: "aHTR",
   name: "Hathor Token",
-  icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/5552.png",
+  icon: "./assets/img/hathor.png",
   42161: {
     symbol: "aHTR",
     address: "0x87ca1aC7697c1240518b464B02E92A856D81Aee1",
@@ -1604,7 +1604,7 @@ HATHOR_NATIVE_TOKEN = {
 TOGGER_TOKEN = {
   token: "HTOG3",
   name: "Hathor Togger 3",
-  icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/5552.png",
+  icon: "./assets/img/hathor.png",
   11155111: {
     symbol: "hTOG3",
     address: "0x245028F6D4C2F2527309EcaE5e82F0f9fb793b7b",
