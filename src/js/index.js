@@ -35,6 +35,9 @@ const evmHost = !isTestnet ?
 const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
 // const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getExecutedEvents'; // for testing locally
 
+// pagination of active txs table
+const numberOfLines = 6;
+
 $(document).ready(function () {
   new ClipboardJS(".copy");
   $('[data-toggle="tooltip"]').tooltip();
@@ -454,36 +457,19 @@ function onLogInClick() {
 
 function onPreviousTxnClick() {
   if ($("#nav-eth-htr-tab").attr("class").includes("active")) {
-    if (eth2HtrPaginationObj != {} && eth2HtrPaginationObj.pre_page == null) {
-      // no decrement applied
-    } else {
-      eth2HtrTablePage -= 1;
-    }
+    eth2HtrTablePage -= 1;
   } else {
-    if (htr2EthPaginationObj != {} && htr2EthPaginationObj.pre_page == null) {
-      // no decrement applied
-    } else {
-      htr2EthTablePage -= 1;
-    }
+    htr2EthTablePage -= 1;
   }
   showActiveAddressTXNs();
 }
 
 function onNextTxnClick() {
   if ($("#nav-eth-htr-tab").attr("class").includes("active")) {
-    if (eth2HtrPaginationObj != {} && eth2HtrPaginationObj.next_page == null) {
-      // no increment applied
-    } else {
-      eth2HtrTablePage += 1;
-    }
+    eth2HtrTablePage += 1;
   } else {
-    if (htr2EthPaginationObj != {} && htr2EthPaginationObj.next_page == null) {
-      // no increment applied
-    } else {
-      htr2EthTablePage += 1;
-    }
+    htr2EthTablePage += 1;
   }
-
   showActiveAddressTXNs();
 }
 
@@ -926,7 +912,7 @@ async function isAmountOk() {
     disableApproveCross({ approvalDisable: true, doNotAskDisabled: true, crossDisabled: true });
     return;
   }
-  
+
   if (parsedAmount <= 0) {
     markInvalidAmount("Must be bigger than 0");
     disableApproveCross({ approvalDisable: true, doNotAskDisabled: true, crossDisabled: true });
@@ -1146,16 +1132,27 @@ function showActiveAddressTXNs() {
   eth2HtrPaginationObj = Paginator(
     activeAddresseth2HtrTxns,
     eth2HtrTablePage,
-    6
+    numberOfLines
   );
   let { data: eth2HtrTxns } = eth2HtrPaginationObj;
 
   htr2EthPaginationObj = Paginator(
     activeAddresshtr2EthTxns,
     htr2EthTablePage,
-    6
+    numberOfLines
   );
   let { data: htr2EthTxns } = htr2EthPaginationObj;
+
+  const isEthToHtrTabActive = $("#nav-eth-htr-tab").hasClass("active");
+  const activePaginationObj = isEthToHtrTabActive ? eth2HtrPaginationObj : htr2EthPaginationObj;
+
+  if (activePaginationObj.total_pages > 1) {
+    $(".btn-toolbar").show();
+    $("#txn-previous").prop('disabled', activePaginationObj.pre_page === null);
+    $("#txn-next").prop('disabled', activePaginationObj.next_page === null);
+  } else {
+    $(".btn-toolbar").hide();
+  }
 
   let currentNetwork = $(".indicator span").text();
 
