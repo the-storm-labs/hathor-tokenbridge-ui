@@ -525,261 +525,232 @@ async function getMaxBalance(event) {
 }
 
 async function approveSpend() {
-  var tokenToCross = $("#tokenAddress").val();
-  var token = TOKENS.find((element) => element.token == tokenToCross);
-  if (!token) {
-    crossTokenError("Choose a token to cross");
-    return;
-  }
-  const isUnlimitedApproval = $("#doNotAskAgain").prop("checked");
-  const BN = web3.utils.BN;
-  const amount = $("#amount").val();
+  const approveButton = $("#approve");
+  const originalButtonText = approveButton.html();
+  approveButton.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Approving...');
 
-  if (!amount) {
-    crossTokenError("Complete the Amount field");
-    return;
-  }
-  if ($("#amount").hasClass("is-invalid")) {
-    crossTokenError("Invalid Amount");
-    return;
-  }
-
-  const decimals = token[config.networkId].decimals;
-  const splittedAmount = amount.split(".");
-  var amountWithDecimals = splittedAmount[0];
-  for (i = 0; i < decimals; i++) {
-    if (splittedAmount[1] && i < splittedAmount[1].length) {
-      amountWithDecimals += splittedAmount[1][i];
-    } else {
-      amountWithDecimals += "0";
+  try {
+    var tokenToCross = $("#tokenAddress").val();
+    var token = TOKENS.find((element) => element.token == tokenToCross);
+    if (!token) {
+      crossTokenError("Choose a token to cross");
+      return;
     }
-  }
+    const isUnlimitedApproval = $("#doNotAskAgain").prop("checked");
+    const BN = web3.utils.BN;
+    const amount = $("#amount").val();
 
-  const amountBN = isUnlimitedApproval
-    ? new BN(web3.utils.toWei(Number.MAX_SAFE_INTEGER.toString(), "ether"))
-    : new BN(amountWithDecimals)
-      .mul(new BN(feePercentageDivider))
-      .div(new BN(feePercentageDivider - feePercentage));
+    if (!amount) {
+      crossTokenError("Complete the Amount field");
+      return;
+    }
+    if ($("#amount").hasClass("is-invalid")) {
+      crossTokenError("Invalid Amount");
+      return;
+    }
 
-  var gasPriceParsed = 0;
-  if (config.networkId >= 30 && config.networkId <= 33) {
-    let block = await web3.eth.getBlock("latest");
-    gasPriceParsed = parseInt(block.minimumGasPrice);
-    gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
-  } else {
-    let gasPriceAvg = await web3.eth.getGasPrice();
-    gasPriceParsed = parseInt(gasPriceAvg);
-    gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
-  }
-  gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
+    const decimals = token[config.networkId].decimals;
+    const splittedAmount = amount.split(".");
+    var amountWithDecimals = splittedAmount[0];
+    for (i = 0; i < decimals; i++) {
+      if (splittedAmount[1] && i < splittedAmount[1].length) {
+        amountWithDecimals += splittedAmount[1][i];
+      } else {
+        amountWithDecimals += "0";
+      }
+    }
 
-  $("#wait").show();
+    const amountBN = isUnlimitedApproval
+      ? new BN(web3.utils.toWei(Number.MAX_SAFE_INTEGER.toString(), "ether"))
+      : new BN(amountWithDecimals)
+        .mul(new BN(feePercentageDivider))
+        .div(new BN(feePercentageDivider - feePercentage));
 
-  return new Promise((resolve, reject) => {
-    tokenContract.methods
-      .approve(
-        bridgeContract.options.address,
-        amountBN.mul(new BN(101)).div(new BN(100)).toString()
-      )
-      .send(
-        { from: address, gasPrice: gasPrice, gas: 400_000 },
-        async (err, txHash) => {
-          if (err) return reject(err);
-          try {
-            let receipt = await waitForReceipt(txHash);
-            if (receipt.status) {
-              resolve(receipt);
+    var gasPriceParsed = 0;
+    if (config.networkId >= 30 && config.networkId <= 33) {
+      let block = await web3.eth.getBlock("latest");
+      gasPriceParsed = parseInt(block.minimumGasPrice);
+      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
+    } else {
+      let gasPriceAvg = await web3.eth.getGasPrice();
+      gasPriceParsed = parseInt(gasPriceAvg);
+      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
+    }
+    gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
+
+    await new Promise((resolve, reject) => {
+      tokenContract.methods
+        .approve(
+          bridgeContract.options.address,
+          amountBN.mul(new BN(101)).div(new BN(100)).toString()
+        )
+        .send(
+          { from: address, gasPrice: gasPrice, gas: 400_000 },
+          async (err, txHash) => {
+            if (err) return reject(err);
+            try {
+              let receipt = await waitForReceipt(txHash);
+              if (receipt.status) {
+                resolve(receipt);
+              } else {
+                reject(new Error(`Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`));
+              }
+            } catch (err) {
+              reject(err);
             }
-          } catch (err) {
-            console.log(err);
-            reject(err);
           }
-          reject(
-            new Error(
-              `Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`
-            )
-          );
-        }
-      );
-  })
-    .then(() => {
-      $("#wait").hide();
-
-      // approve disabled, cross tokens enabled
-      disableApproveCross({
-        approvalDisable: true,
-        doNotAskDisabled: true,
-        crossDisabled: false,
-      });
-    })
-    .catch((err) => {
-      $("#wait").hide();
-      console.error(err);
-      crossTokenError(`Couldn't approve amount. ${err.message}`);
-
-      // all options disabled:
-      disableApproveCross({
-        approvalDisable: true,
-        doNotAskDisabled: true,
-        crossDisabled: true,
-      });
+        );
     });
+
+    disableApproveCross({
+      approvalDisable: true,
+      doNotAskDisabled: true,
+      crossDisabled: false,
+    });
+    approveButton.html(originalButtonText);
+  } catch (err) {
+    console.error(err);
+    crossTokenError(`Couldn't approve amount. ${err.message}`);
+    disableApproveCross({
+      approvalDisable: false, // Re-enable on error
+      doNotAskDisabled: false,
+      crossDisabled: true,
+    });
+    approveButton.html(originalButtonText); // Restore button text only on error
+  }
 }
 
 async function crossToken() {
-  cleanAlertError();
-  cleanAlertSuccess();
-  var tokenToCross = $("#tokenAddress").val();
-  var token = TOKENS.find((element) => element.token == tokenToCross);
-  if (!token) {
-    crossTokenError("Choose a token to cross");
-    return;
-  }
-  const tokenAddress = token[config.networkId].address;
-  tokenContract = new web3.eth.Contract(ERC20_ABI, tokenAddress);
-  const BN = web3.utils.BN;
+  const convertButton = $("#deposit");
+  const originalButtonText = convertButton.html();
+  convertButton.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Converting...');
 
-  const amount = $("#amount").val();
-  if (!amount) {
-    crossTokenError("Complete the Amount field");
-    return;
-  }
-  if ($("#amount").hasClass("is-invalid")) {
-    crossTokenError("Invalid Amount");
-    return;
-  }
-
-  const hathorAddress = $("#hathorAddress").val();
-  if (!hathorAddress) {
-    crossTokenError("Inform the hathor address!");
-    return;
-  }
-
-  if (!validateHathorAddress(hathorAddress)) {
-    crossTokenError("Invalid Hathor address!");
-    return;
-  }
-
-  const decimals = token[config.networkId].decimals;
-  const splittedAmount = amount.split(".");
-  var amountWithDecimals = splittedAmount[0];
-  for (i = 0; i < decimals; i++) {
-    if (splittedAmount[1] && i < splittedAmount[1].length) {
-      amountWithDecimals += splittedAmount[1][i];
-    } else {
-      amountWithDecimals += "0";
+  try {
+    cleanAlertError();
+    cleanAlertSuccess();
+    var tokenToCross = $("#tokenAddress").val();
+    var token = TOKENS.find((element) => element.token == tokenToCross);
+    if (!token) {
+      throw new Error("Choose a token to cross");
     }
-  }
-  const amountBN = new BN(amountWithDecimals)
-    .mul(new BN(feePercentageDivider))
-    .div(new BN(feePercentageDivider - feePercentage));
-  const amountFeesBN =
-    fee == 0
-      ? amountBN
-      : amountBN.mul(new BN(feePercentage)).div(new BN(feePercentageDivider));
+    const tokenAddress = token[config.networkId].address;
+    tokenContract = new web3.eth.Contract(ERC20_ABI, tokenAddress);
+    const BN = web3.utils.BN;
 
-  disableInputs(true);
-  $("#secondsPerBlock").text(config.secondsPerBlock);
-  $("#wait").show();
-  let gasPrice = "";
+    const amount = $("#amount").val();
+    if (!amount) {
+      throw new Error("Complete the Amount field");
+    }
+    if ($("#amount").hasClass("is-invalid")) {
+      throw new Error("Invalid Amount");
+    }
 
-  console.log(`Amount sending: ${amountBN}`);
+    const hathorAddress = $("#hathorAddress").val();
+    if (!hathorAddress) {
+      throw new Error("Inform the hathor address!");
+    }
 
-  return retry3Times(tokenContract.methods.balanceOf(address).call)
-    .then(async (balance) => {
-      const balanceBN = new BN(balance);
-      if (balanceBN.lt(amountBN)) {
-        const showBalance = new BigNumber(balance);
-        throw new Error(
-          `Insuficient Balance in your account, your current balance is ${showBalance.shiftedBy(
-            -decimals
-          )} ${token[config.networkId].symbol}`
-        );
-      }
+    if (!validateHathorAddress(hathorAddress)) {
+      throw new Error("Invalid Hathor address!");
+    }
 
-      let maxWithdrawInWei = await retry3Times(allowTokensContract.methods.calcMaxWithdraw(tokenAddress).call);
-      const maxWithdraw = new BN(maxWithdrawInWei);
-      if (amountBN.gt(maxWithdraw)) {
-        throw new Error(`Amount bigger than the daily limit. Daily limit left ${web3.utils.fromWei(maxWithdrawInWei, 'ether')} tokens`);
-      }
-
-      var gasPriceParsed = 0;
-      if (config.networkId >= 30 && config.networkId <= 33) {
-        let block = await web3.eth.getBlock("latest");
-        gasPriceParsed = parseInt(block.minimumGasPrice);
-        gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
+    const decimals = token[config.networkId].decimals;
+    const splittedAmount = amount.split(".");
+    var amountWithDecimals = splittedAmount[0];
+    for (i = 0; i < decimals; i++) {
+      if (splittedAmount[1] && i < splittedAmount[1].length) {
+        amountWithDecimals += splittedAmount[1][i];
       } else {
-        let gasPriceAvg = await web3.eth.getGasPrice();
-        gasPriceParsed = parseInt(gasPriceAvg);
-        gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
+        amountWithDecimals += "0";
       }
-      gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
-    })
-    .then(async () => {
-      return new Promise((resolve, reject) => {
-        bridgeContract.methods
-          .receiveTokensTo(31, tokenAddress, hathorAddress, amountBN.toString())
-          .send(
-            { from: address, gasPrice: gasPrice, gas: 600_000 },
-            async (err, txHash) => {
-              console.log(err);
-              console.log(txHash);
-              if (err) return reject(err);
-              try {
-                let receipt = await waitForReceipt(txHash);
-                console.log(receipt);
+    }
+    const amountBN = new BN(amountWithDecimals)
+      .mul(new BN(feePercentageDivider))
+      .div(new BN(feePercentageDivider - feePercentage));
 
-                disableApproveCross({
-                  approvalDisable: true,
-                  doNotAskDisabled: true,
-                  crossDisabled: true,
-                });
+    disableInputs(true);
 
-                if (receipt.status) {
-                  resolve(receipt);
-                }
-              } catch (err) {
-                reject(err);
-              }
-              reject(
-                new Error(
-                  `Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`
-                )
-              );
-            }
-          );
-      });
-    })
-    .then(async (receipt) => {
-      $("#wait").hide();
-      $("#confirmationTime").text(config.confirmationTime);
-      $("#receive").text(
-        `${amount} ${token[config.crossToNetwork.networkId].symbol}`
+    const balance = await retry3Times(tokenContract.methods.balanceOf(address).call);
+    const balanceBN = new BN(balance);
+    if (balanceBN.lt(amountBN)) {
+      const showBalance = new BigNumber(balance);
+      throw new Error(
+        `Insuficient Balance in your account, your current balance is ${showBalance.shiftedBy(
+          -decimals
+        )} ${token[config.networkId].symbol}`
       );
-      $("#success").show();
-      disableInputs(false);
+    }
 
-      console.log("Before adding reciept to storage", TXN_Storage);
+    let maxWithdrawInWei = await retry3Times(allowTokensContract.methods.calcMaxWithdraw(tokenAddress).call);
+    const maxWithdraw = new BN(maxWithdrawInWei);
+    if (amountBN.gt(maxWithdraw)) {
+      throw new Error(`Amount bigger than the daily limit. Daily limit left ${web3.utils.fromWei(maxWithdrawInWei, 'ether')} tokens`);
+    }
 
-      // save transaction to local storage...
-      TXN_Storage.addTxn(address, config.name, {
-        networkId: config.networkId,
-        tokenFrom: token[config.networkId].symbol,
-        tokenTo: token[config.crossToNetwork.networkId].symbol,
-        amount,
-        ...receipt,
-      });
+    var gasPriceParsed = 0;
+    if (config.networkId >= 30 && config.networkId <= 33) {
+      let block = await web3.eth.getBlock("latest");
+      gasPriceParsed = parseInt(block.minimumGasPrice);
+      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
+    } else {
+      let gasPriceAvg = await web3.eth.getGasPrice();
+      gasPriceParsed = parseInt(gasPriceAvg);
+      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
+    }
+    const gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
 
-      console.log("After adding receipt to storage", TXN_Storage);
-      updateActiveAddressTXNs(address);
-      showActiveTxnsTab();
-      showActiveAddressTXNs();
-    })
-    .catch((err) => {
-      $("#wait").hide();
-      console.error(err);
-      crossTokenError(`Couln't cross the tokens. ${err.message}`);
+    const receipt = await new Promise((resolve, reject) => {
+      bridgeContract.methods
+        .receiveTokensTo(31, tokenAddress, hathorAddress, amountBN.toString())
+        .send(
+          { from: address, gasPrice: gasPrice, gas: 600_000 },
+          async (err, txHash) => {
+            if (err) return reject(err);
+            try {
+              let receipt = await waitForReceipt(txHash);
+              if (receipt.status) {
+                resolve(receipt);
+              } else {
+                reject(new Error(`Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`));
+              }
+            } catch (err) {
+              reject(err);
+            }
+          }
+        );
     });
+
+    $("#confirmationTime").text(config.confirmationTime);
+    $("#receive").text(
+      `${amount} ${token[config.crossToNetwork.networkId].symbol}`
+    );
+    $("#success").show();
+    disableInputs(false);
+
+    TXN_Storage.addTxn(address, config.name, {
+      networkId: config.networkId,
+      tokenFrom: token[config.networkId].symbol,
+      tokenTo: token[config.crossToNetwork.networkId].symbol,
+      amount,
+      ...receipt,
+    });
+
+    updateActiveAddressTXNs(address);
+    showActiveTxnsTab();
+    showActiveAddressTXNs();
+    disableApproveCross({
+      approvalDisable: true,
+      doNotAskDisabled: true,
+      crossDisabled: true,
+    });
+
+  } catch (err) {
+    console.error(err);
+    crossTokenError(`Couldn't cross the tokens. ${err.message}`);
+  } finally {
+    convertButton.prop("disabled", false).html(originalButtonText);
+    disableInputs(false);
+  }
 }
 
 function errorClaim(error) {
