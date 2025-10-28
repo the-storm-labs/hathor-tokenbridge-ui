@@ -153,7 +153,36 @@ $(document).ready(function () {
     );
   });
   updateTokenListTab();
+  checkExistingConnection();
 });
+
+async function checkExistingConnection() {
+  if (window.ethereum) {
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        // Wallet is connected
+        window.web3 = new Web3(window.ethereum);
+        const chainId = await web3.eth.net.getId();
+        await updateCallback(chainId, accounts);
+
+        window.ethereum.on("chainChanged", (newChain) => {
+          updateNetwork(newChain);
+          showActiveTxnsTab();
+        });
+        window.ethereum.on("accountsChanged", (newAddresses) => {
+          checkAllowance();
+          updateAddress(newAddresses)
+            .then((addr) => updateActiveAddressTXNs(addr))
+            .then(() => showActiveAddressTXNs());
+        });
+      }
+    } catch (error) {
+      console.error("Could not check for existing connection:", error);
+      onMetaMaskConnectionError(error);
+    }
+  }
+}
 
 function handleHathorAddressChange() {
   const hathorAddress = $("#hathorAddress").val();
