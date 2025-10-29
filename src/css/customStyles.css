@@ -274,7 +274,7 @@ label {
 
 #txn-previous,
 #txn-next {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
   font-size: 1rem;
 }
 
@@ -503,8 +503,6 @@ a:hover {
 .indicator.btn-outline-danger span:before {
   background-color: #dc3545;
 }
-
-
 
 .token-logo {
   width: 1.2rem;
@@ -761,4 +759,17 @@ table.table th {
 table.table td {
   padding: 15px;
   border-bottom: none;
+}
+
+#eth-htr-tbody button {
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+#eth-htr-tbody p {
+    margin: 0;
+}
+
+#eth-htr-tbody tr {
+    height: 67px;
 }

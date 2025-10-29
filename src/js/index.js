@@ -1158,9 +1158,9 @@ function showActiveAddressTXNs() {
 
   const processHtrTxn = (txn, config = {}) => {
     let htmlRow = `<tr class="black">
-        <td>${txn.sender}</td>
-        <td>${txn.amount} ${txn.token}</td>
-        <td>${txn.action}</td>
+        <td  class="align-middle">${txn.sender}</td>
+        <td class="align-middle">${txn.amount} ${txn.token}</td>
+        <td class="align-middle">${txn.action}</td>
     </tr>`;
 
     return htmlRow;
@@ -1185,7 +1185,7 @@ function showActiveAddressTXNs() {
     let hoursToConfirmationStr =
       hoursToConfirmation > 0 ? `${hoursToConfirmation}hs ` : ``;
     let minutesToConfirmation =
-      Math.floor(seconds2Confirmation / 60) - hoursToConfirmation * 60;
+      Math.ceil(seconds2Confirmation / 60) - hoursToConfirmation * 60;
     let humanTimeToConfirmation = elapsedBlocks >= confirmations
         ? ``
         : `| ~ ${hoursToConfirmationStr} ${minutesToConfirmation}mins`;
