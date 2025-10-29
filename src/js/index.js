@@ -1169,15 +1169,11 @@ function showActiveAddressTXNs() {
   const processTxn = (txn, config = {}) => {
     const { confirmations, secondsPerBlock, explorer } = config;
 
-    let isConfig4CurrentNetwork = config.name === currentNetwork;
-
     let elapsedBlocks = currentBlockNumber - txn.blockNumber;
     let remainingBlocks2Confirmation = confirmations - elapsedBlocks;
-    let status = isConfig4CurrentNetwork
-      ? elapsedBlocks >= confirmations
+    let status = elapsedBlocks >= confirmations
         ? `<span> Confirmed</span>`
-        : `<span> Pending</span>`
-      : `Info Not Available`;
+        : `<span> Pending</span>`;
 
     let confirmationTime = confirmations * secondsPerBlock;
     let seconds2Confirmation =
@@ -1190,11 +1186,9 @@ function showActiveAddressTXNs() {
       hoursToConfirmation > 0 ? `${hoursToConfirmation}hs ` : ``;
     let minutesToConfirmation =
       Math.floor(seconds2Confirmation / 60) - hoursToConfirmation * 60;
-    let humanTimeToConfirmation = isConfig4CurrentNetwork
-      ? elapsedBlocks >= confirmations
+    let humanTimeToConfirmation = elapsedBlocks >= confirmations
         ? ``
-        : `| ~ ${hoursToConfirmationStr} ${minutesToConfirmation}mins`
-      : ``;
+        : `| ~ ${hoursToConfirmationStr} ${minutesToConfirmation}mins`;
 
     let txnExplorerLink = `${explorer}/tx/${txn.transactionHash}`;
     let shortTxnHash = `${txn.transactionHash.substring(
@@ -1466,7 +1460,7 @@ let ETH_CONFIG = {
   explorerTokenTab: "#tokentxns",
   confirmations: 900,
   confirmationTime: "30 minutes",
-  secondsPerBlock: 1,
+  secondsPerBlock: 0.25,
 };
 let HTR_MAINNET_CONFIG = {
   networkId: 31,
