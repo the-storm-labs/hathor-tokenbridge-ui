@@ -1158,7 +1158,7 @@ function showActiveAddressTXNs() {
 
   const processHtrTxn = (txn, config = {}) => {
     let htmlRow = `<tr class="black">
-        <td  class="align-middle">${txn.sender}</td>
+        <td  class="align-middle">-</td>
         <td class="align-middle">${txn.amount} ${txn.token}</td>
         <td class="align-middle">${txn.action}</td>
     </tr>`;
@@ -1433,7 +1433,7 @@ let SEPOLIA_CONFIG = {
   explorer: "https://sepolia.etherscan.io",
   explorerTokenTab: "#tokentxns",
   confirmations: 10,
-  confirmationTime: "30 minutes",
+  confirmationTime: "10 minutes",
   secondsPerBlock: 5,
 };
 let HTR_TESTNET_CONFIG = {
@@ -1443,7 +1443,7 @@ let HTR_TESTNET_CONFIG = {
   explorer: "https://explorer.testnet.hathor.network",
   explorerTokenTab: "token_detail",
   confirmations: 2,
-  confirmationTime: "30 minutes",
+  confirmationTime: "10 minutes",
   secondsPerBlock: 30,
   crossToNetwork: SEPOLIA_CONFIG,
 };
@@ -1459,7 +1459,7 @@ let ETH_CONFIG = {
   explorer: "https://arbiscan.io",
   explorerTokenTab: "#tokentxns",
   confirmations: 900,
-  confirmationTime: "30 minutes",
+  confirmationTime: "10 minutes",
   secondsPerBlock: 0.25,
 };
 let HTR_MAINNET_CONFIG = {
@@ -1469,7 +1469,7 @@ let HTR_MAINNET_CONFIG = {
   explorer: "https://explorer.hathor.network",
   explorerTokenTab: "token_detail",
   confirmations: 2,
-  confirmationTime: "30 minutes",
+  confirmationTime: "10 minutes",
   secondsPerBlock: 30,
   crossToNetwork: ETH_CONFIG,
 };
