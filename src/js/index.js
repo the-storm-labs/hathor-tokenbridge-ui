@@ -18,7 +18,7 @@ let minTokensAllowed = 1;
 let maxTokensAllowed = 100_000;
 let maxDailyLimit = 1_000_000;
 let currentBlockNumber = null;
-// Selected Token To Cross  
+// Selected Token To Cross
 let tokenContract = null;
 let isSideToken = false;
 let sideTokenAddress = null;
@@ -35,6 +35,9 @@ const evmHost = !isTestnet ?
 const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
 // const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getExecutedEvents'; // for testing locally
 
+// pagination of active txs table
+const numberOfLines = 6;
+
 $(document).ready(function () {
   new ClipboardJS(".copy");
   $('[data-toggle="tooltip"]').tooltip();
@@ -42,6 +45,11 @@ $(document).ready(function () {
 
   if (isTestnet) {
     $("#title").text("Hathor Golf Testnet bridge with Sepolia");
+    $("#network-navlink").text("Use Mainnet");
+    $("#network-navlink").attr("href", "./index.html");
+  } else {
+    $("#network-navlink").text("Use Testnet");
+    $("#network-navlink").attr("href", "./index.html?testnet");
   }
   if (
     !/chrom(e|ium)/.test(navigator.userAgent.toLowerCase()) &&
@@ -61,29 +69,6 @@ $(document).ready(function () {
 
   $("#logIn").attr("onclick", "onLogInClick()");
 
-  let rpc = {
-    42161: evmHost,
-  };
-  supportedChains = [42161];
-  if (isTestnet) {
-    rpc = {
-      11155111: evmHost,
-    };
-    supportedChains = [11155111];
-  }
-  rLogin = new window.RLogin.default({
-    cacheProvider: false,
-    providerOptions: {
-      walletconnect: {
-        package: window.WalletConnectProvider.default,
-        options: {
-          rpc: rpc,
-        },
-      },
-    },
-    supportedChains: supportedChains,
-  });
-
   $("#claimTab").hide();
 
   $("#claimTokens").click(function () {
@@ -92,19 +77,16 @@ $(document).ready(function () {
     location.hash = `#nav-eth-htr-tab`;
   });
 
-  $("#tokenAddress").change(async function (event) {
+  $("#tokenAddress").change(function (event) {
     cleanAlertSuccess();
     let token = TOKENS.find(
       (element) => element.token == event.currentTarget.value
     );
     if (token) {
-
       tokenContract = new web3.eth.Contract(ERC20_ABI, token[config.networkId].address);
-
-      const balance = await tokenContract.methods.balanceOf(address).call();
-
-      $(".tokenAddress-label").text(`You own ${balance / Math.pow(10, token[config.networkId].decimals)}`)
-
+      tokenContract.methods.balanceOf(address).call().then(balance => {
+        $(".tokenAddress-label").text(`You own ${balance / Math.pow(10, token[config.networkId].decimals)}`);
+      });
 
       $(".selectedToken").html(token[config.networkId].symbol);
       let html = `<a target="_blank" href="${config.crossToNetwork.explorer
@@ -120,17 +102,26 @@ $(document).ready(function () {
         "data-clipboard-text",
         token[config.crossToNetwork.networkId].address
       );
-      if ($("#amount").val()) {
+
+      setInfoTab(token[config.networkId].address).then(() => {
         isAmountOk();
-        checkAllowance();
-      }
+        if ($("#amount").val()) {
+          checkAllowance();
+        }
+      });
     } else {
       $(".selectedToken").html("");
       $("#willReceive").html("");
       $("#willReceive-copy").hide();
+      fee = 0;
+      feePercentage = 0;
+      if ($("#amount").val()) {
+        isAmountOk();
+      } else {
+        $("#serviceFee").html("0.000000");
+        $("#totalCost").html("0.000000");
+      }
     }
-
-    setInfoTab(token[config.networkId].address);
   });
 
   $("#amount").keyup(function (event) {
@@ -154,6 +145,10 @@ $(document).ready(function () {
     approveSpend();
   });
 
+  $("#hathorAddress").keyup(function (event) {
+    handleHathorAddressChange();
+  });
+
   $("#changeNetwork").on("click", function () {
     showModal(
       "Operation not Available",
@@ -161,13 +156,57 @@ $(document).ready(function () {
     );
   });
   updateTokenListTab();
-  isInstalled();
+  checkExistingConnection();
 });
+
+async function checkExistingConnection() {
+  if (window.ethereum) {
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        // Wallet is connected
+        window.web3 = new Web3(window.ethereum);
+        const chainId = await web3.eth.net.getId();
+        await updateCallback(chainId, accounts);
+
+        window.ethereum.on("chainChanged", (newChain) => {
+          updateNetwork(newChain);
+          showActiveTxnsTab();
+        });
+        window.ethereum.on("accountsChanged", (newAddresses) => {
+          checkAllowance();
+          updateAddress(newAddresses)
+            .then((addr) => updateActiveAddressTXNs(addr))
+            .then(() => showActiveAddressTXNs());
+        });
+      }
+    } catch (error) {
+      console.error("Could not check for existing connection:", error);
+      onMetaMaskConnectionError(error);
+    }
+  }
+}
+
+function handleHathorAddressChange() {
+  const hathorAddress = $("#hathorAddress").val();
+  if (hathorAddress) {
+    if (validateHathorAddress(hathorAddress)) {
+      $("#hathorAddress").removeClass("is-invalid");
+      $("#hathorAddress").addClass("is-valid");
+    } else {
+      $("#hathorAddress").removeClass("is-valid");
+      $("#hathorAddress").addClass("is-invalid");
+    }
+  } else {
+    $("#hathorAddress").removeClass("is-valid");
+    $("#hathorAddress").removeClass("is-invalid");
+  }
+}
 
 // CLAIMS
 
 async function fillHathorToEvmTxs() {
-  const walletAddress = $("#address").text();
+  const walletAddress = address;
 
   if (!walletAddress || walletAddress === "0x123456789") {
     return;
@@ -225,7 +264,7 @@ async function fillHathorToEvmTxs() {
 
 async function getPendingClaims() {
 
-  const walletAddress = $("#address").text();
+  const walletAddress = address;
   if (!walletAddress) {
     return [];
   }
@@ -266,13 +305,13 @@ function setStatusAction(status, tx) {
       action = "<p>Pending</p>"
       break;
     case "awaiting_claim":
-      action = `<button 
-                      class="btn btn-primary claim-button" 
+      action = `<button
+                      class="btn btn-primary claim-button"
                       data-token="${tx.originalTokenAddress}"
-                      data-to="${tx.receiver}" 
-                      data-amount="${tx.amount}" 
-                      data-blockhash="${tx.transactionHash}" 
-                      data-logindex="${tx.logIndex}" 
+                      data-to="${tx.receiver}"
+                      data-amount="${tx.amount}"
+                      data-blockhash="${tx.transactionHash}"
+                      data-logindex="${tx.logIndex}"
                       data-originchainid="${tx.originChainId}">
                       Claim
                   </button>`
@@ -418,36 +457,19 @@ function onLogInClick() {
 
 function onPreviousTxnClick() {
   if ($("#nav-eth-htr-tab").attr("class").includes("active")) {
-    if (eth2HtrPaginationObj != {} && eth2HtrPaginationObj.pre_page == null) {
-      // no decrement applied
-    } else {
-      eth2HtrTablePage -= 1;
-    }
+    eth2HtrTablePage -= 1;
   } else {
-    if (htr2EthPaginationObj != {} && htr2EthPaginationObj.pre_page == null) {
-      // no decrement applied
-    } else {
-      htr2EthTablePage -= 1;
-    }
+    htr2EthTablePage -= 1;
   }
   showActiveAddressTXNs();
 }
 
 function onNextTxnClick() {
   if ($("#nav-eth-htr-tab").attr("class").includes("active")) {
-    if (eth2HtrPaginationObj != {} && eth2HtrPaginationObj.next_page == null) {
-      // no increment applied
-    } else {
-      eth2HtrTablePage += 1;
-    }
+    eth2HtrTablePage += 1;
   } else {
-    if (htr2EthPaginationObj != {} && htr2EthPaginationObj.next_page == null) {
-      // no increment applied
-    } else {
-      htr2EthTablePage += 1;
-    }
+    htr2EthTablePage += 1;
   }
-
   showActiveAddressTXNs();
 }
 
@@ -518,257 +540,232 @@ async function getMaxBalance(event) {
 }
 
 async function approveSpend() {
-  var tokenToCross = $("#tokenAddress").val();
-  var token = TOKENS.find((element) => element.token == tokenToCross);
-  if (!token) {
-    crossTokenError("Choose a token to cross");
-    return;
-  }
-  const isUnlimitedApproval = $("#doNotAskAgain").prop("checked");
-  const BN = web3.utils.BN;
-  const amount = $("#amount").val();
+  const approveButton = $("#approve");
+  const originalButtonText = approveButton.html();
+  approveButton.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Approving...');
 
-  if (!amount) {
-    crossTokenError("Complete the Amount field");
-    return;
-  }
-  if ($("#amount").hasClass("is-invalid")) {
-    crossTokenError("Invalid Amount");
-    return;
-  }
-
-  const decimals = token[config.networkId].decimals;
-  const splittedAmount = amount.split(".");
-  var amountWithDecimals = splittedAmount[0];
-  for (i = 0; i < decimals; i++) {
-    if (splittedAmount[1] && i < splittedAmount[1].length) {
-      amountWithDecimals += splittedAmount[1][i];
-    } else {
-      amountWithDecimals += "0";
+  try {
+    var tokenToCross = $("#tokenAddress").val();
+    var token = TOKENS.find((element) => element.token == tokenToCross);
+    if (!token) {
+      crossTokenError("Choose a token to cross");
+      return;
     }
-  }
+    const isUnlimitedApproval = $("#doNotAskAgain").prop("checked");
+    const BN = web3.utils.BN;
+    const amount = $("#amount").val();
 
-  const amountBN = isUnlimitedApproval
-    ? new BN(web3.utils.toWei(Number.MAX_SAFE_INTEGER.toString(), "ether"))
-    : new BN(amountWithDecimals)
-      .mul(new BN(feePercentageDivider))
-      .div(new BN(feePercentageDivider - feePercentage));
+    if (!amount) {
+      crossTokenError("Complete the Amount field");
+      return;
+    }
+    if ($("#amount").hasClass("is-invalid")) {
+      crossTokenError("Invalid Amount");
+      return;
+    }
 
-  var gasPriceParsed = 0;
-  if (config.networkId >= 30 && config.networkId <= 33) {
-    let block = await web3.eth.getBlock("latest");
-    gasPriceParsed = parseInt(block.minimumGasPrice);
-    gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
-  } else {
-    let gasPriceAvg = await web3.eth.getGasPrice();
-    gasPriceParsed = parseInt(gasPriceAvg);
-    gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
-  }
-  gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
+    const decimals = token[config.networkId].decimals;
+    const splittedAmount = amount.split(".");
+    var amountWithDecimals = splittedAmount[0];
+    for (i = 0; i < decimals; i++) {
+      if (splittedAmount[1] && i < splittedAmount[1].length) {
+        amountWithDecimals += splittedAmount[1][i];
+      } else {
+        amountWithDecimals += "0";
+      }
+    }
 
-  $("#wait").show();
+    const amountBN = isUnlimitedApproval
+      ? new BN(web3.utils.toWei(Number.MAX_SAFE_INTEGER.toString(), "ether"))
+      : new BN(amountWithDecimals)
+        .mul(new BN(feePercentageDivider))
+        .div(new BN(feePercentageDivider - feePercentage));
 
-  return new Promise((resolve, reject) => {
-    tokenContract.methods
-      .approve(
-        bridgeContract.options.address,
-        amountBN.mul(new BN(101)).div(new BN(100)).toString()
-      )
-      .send(
-        { from: address, gasPrice: gasPrice, gas: 400_000 },
-        async (err, txHash) => {
-          if (err) return reject(err);
-          try {
-            let receipt = await waitForReceipt(txHash);
-            if (receipt.status) {
-              resolve(receipt);
+    var gasPriceParsed = 0;
+    if (config.networkId >= 30 && config.networkId <= 33) {
+      let block = await web3.eth.getBlock("latest");
+      gasPriceParsed = parseInt(block.minimumGasPrice);
+      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
+    } else {
+      let gasPriceAvg = await web3.eth.getGasPrice();
+      gasPriceParsed = parseInt(gasPriceAvg);
+      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
+    }
+    gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
+
+    await new Promise((resolve, reject) => {
+      tokenContract.methods
+        .approve(
+          bridgeContract.options.address,
+          amountBN.mul(new BN(101)).div(new BN(100)).toString()
+        )
+        .send(
+          { from: address, gasPrice: gasPrice, gas: 400_000 },
+          async (err, txHash) => {
+            if (err) return reject(err);
+            try {
+              let receipt = await waitForReceipt(txHash);
+              if (receipt.status) {
+                resolve(receipt);
+              } else {
+                reject(new Error(`Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`));
+              }
+            } catch (err) {
+              reject(err);
             }
-          } catch (err) {
-            console.log(err);
-            reject(err);
           }
-          reject(
-            new Error(
-              `Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`
-            )
-          );
-        }
-      );
-  })
-    .then(() => {
-      $("#wait").hide();
-
-      // approve disabled, cross tokens enabled
-      disableApproveCross({
-        approvalDisable: true,
-        doNotAskDisabled: true,
-        crossDisabled: false,
-      });
-    })
-    .catch((err) => {
-      $("#wait").hide();
-      console.error(err);
-      crossTokenError(`Couldn't approve amount. ${err.message}`);
-
-      // all options disabled:
-      disableApproveCross({
-        approvalDisable: true,
-        doNotAskDisabled: true,
-        crossDisabled: true,
-      });
+        );
     });
+
+    disableApproveCross({
+      approvalDisable: true,
+      doNotAskDisabled: true,
+      crossDisabled: false,
+    });
+    approveButton.html(originalButtonText);
+  } catch (err) {
+    console.error(err);
+    crossTokenError(`Couldn't approve amount. ${err.message}`);
+    disableApproveCross({
+      approvalDisable: false, // Re-enable on error
+      doNotAskDisabled: false,
+      crossDisabled: true,
+    });
+    approveButton.html(originalButtonText); // Restore button text only on error
+  }
 }
 
 async function crossToken() {
-  cleanAlertError();
-  cleanAlertSuccess();
-  var tokenToCross = $("#tokenAddress").val();
-  var token = TOKENS.find((element) => element.token == tokenToCross);
-  if (!token) {
-    crossTokenError("Choose a token to cross");
-    return;
-  }
-  const tokenAddress = token[config.networkId].address;
-  tokenContract = new web3.eth.Contract(ERC20_ABI, tokenAddress);
-  const BN = web3.utils.BN;
+  const convertButton = $("#deposit");
+  const originalButtonText = convertButton.html();
+  convertButton.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Converting...');
 
-  const amount = $("#amount").val();
-  if (!amount) {
-    crossTokenError("Complete the Amount field");
-    return;
-  }
-  if ($("#amount").hasClass("is-invalid")) {
-    crossTokenError("Invalid Amount");
-    return;
-  }
-
-  const hathorAddress = $("#hathorAddress").val();
-  if (!hathorAddress) {
-    crossTokenError("Inform the hathor address!");
-    return;
-  }
-
-  const decimals = token[config.networkId].decimals;
-  const splittedAmount = amount.split(".");
-  var amountWithDecimals = splittedAmount[0];
-  for (i = 0; i < decimals; i++) {
-    if (splittedAmount[1] && i < splittedAmount[1].length) {
-      amountWithDecimals += splittedAmount[1][i];
-    } else {
-      amountWithDecimals += "0";
+  try {
+    cleanAlertError();
+    cleanAlertSuccess();
+    var tokenToCross = $("#tokenAddress").val();
+    var token = TOKENS.find((element) => element.token == tokenToCross);
+    if (!token) {
+      throw new Error("Choose a token to cross");
     }
-  }
-  const amountBN = new BN(amountWithDecimals)
-    .mul(new BN(feePercentageDivider))
-    .div(new BN(feePercentageDivider - feePercentage));
-  const amountFeesBN =
-    fee == 0
-      ? amountBN
-      : amountBN.mul(new BN(feePercentage)).div(new BN(feePercentageDivider));
+    const tokenAddress = token[config.networkId].address;
+    tokenContract = new web3.eth.Contract(ERC20_ABI, tokenAddress);
+    const BN = web3.utils.BN;
 
-  disableInputs(true);
-  $(".fees").hide();
-  $("#secondsPerBlock").text(config.secondsPerBlock);
-  $("#wait").show();
-  let gasPrice = "";
+    const amount = $("#amount").val();
+    if (!amount) {
+      throw new Error("Complete the Amount field");
+    }
+    if ($("#amount").hasClass("is-invalid")) {
+      throw new Error("Invalid Amount");
+    }
 
-  console.log(`Amount sending: ${amountBN}`);
+    const hathorAddress = $("#hathorAddress").val();
+    if (!hathorAddress) {
+      throw new Error("Inform the hathor address!");
+    }
 
-  return retry3Times(tokenContract.methods.balanceOf(address).call)
-    .then(async (balance) => {
-      const balanceBN = new BN(balance);
-      if (balanceBN.lt(amountBN)) {
-        const showBalance = new BigNumber(balance);
-        throw new Error(
-          `Insuficient Balance in your account, your current balance is ${showBalance.shiftedBy(
-            -decimals
-          )} ${token[config.networkId].symbol}`
-        );
-      }
+    if (!validateHathorAddress(hathorAddress)) {
+      throw new Error("Invalid Hathor address!");
+    }
 
-      let maxWithdrawInWei = await retry3Times(allowTokensContract.methods.calcMaxWithdraw(tokenAddress).call);
-      const maxWithdraw = new BN(maxWithdrawInWei);
-      if (amountBN.gt(maxWithdraw)) {
-        throw new Error(`Amount bigger than the daily limit. Daily limit left ${web3.utils.fromWei(maxWithdrawInWei, 'ether')} tokens`);
-      }
-
-      var gasPriceParsed = 0;
-      if (config.networkId >= 30 && config.networkId <= 33) {
-        let block = await web3.eth.getBlock("latest");
-        gasPriceParsed = parseInt(block.minimumGasPrice);
-        gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
+    const decimals = token[config.networkId].decimals;
+    const splittedAmount = amount.split(".");
+    var amountWithDecimals = splittedAmount[0];
+    for (i = 0; i < decimals; i++) {
+      if (splittedAmount[1] && i < splittedAmount[1].length) {
+        amountWithDecimals += splittedAmount[1][i];
       } else {
-        let gasPriceAvg = await web3.eth.getGasPrice();
-        gasPriceParsed = parseInt(gasPriceAvg);
-        gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
+        amountWithDecimals += "0";
       }
-      gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
-    })
-    .then(async () => {
-      return new Promise((resolve, reject) => {
-        bridgeContract.methods
-          .receiveTokensTo(31, tokenAddress, hathorAddress, amountBN.toString())
-          .send(
-            { from: address, gasPrice: gasPrice, gas: 600_000 },
-            async (err, txHash) => {
-              console.log(err);
-              console.log(txHash);
-              if (err) return reject(err);
-              try {
-                let receipt = await waitForReceipt(txHash);
-                console.log(receipt);
+    }
+    const amountBN = new BN(amountWithDecimals)
+      .mul(new BN(feePercentageDivider))
+      .div(new BN(feePercentageDivider - feePercentage));
 
-                disableApproveCross({
-                  approvalDisable: true,
-                  doNotAskDisabled: true,
-                  crossDisabled: true,
-                });
+    disableInputs(true);
 
-                if (receipt.status) {
-                  resolve(receipt);
-                }
-              } catch (err) {
-                reject(err);
-              }
-              reject(
-                new Error(
-                  `Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`
-                )
-              );
-            }
-          );
-      });
-    })
-    .then(async (receipt) => {
-      $("#wait").hide();
-      $("#confirmationTime").text(config.confirmationTime);
-      $("#receive").text(
-        `${amount} ${token[config.crossToNetwork.networkId].symbol}`
+    const balance = await retry3Times(tokenContract.methods.balanceOf(address).call);
+    const balanceBN = new BN(balance);
+    if (balanceBN.lt(amountBN)) {
+      const showBalance = new BigNumber(balance);
+      throw new Error(
+        `Insuficient Balance in your account, your current balance is ${showBalance.shiftedBy(
+          -decimals
+        )} ${token[config.networkId].symbol}`
       );
-      $("#success").show();
-      disableInputs(false);
+    }
 
-      console.log("Before adding reciept to storage", TXN_Storage);
+    let maxWithdrawInWei = await retry3Times(allowTokensContract.methods.calcMaxWithdraw(tokenAddress).call);
+    const maxWithdraw = new BN(maxWithdrawInWei);
+    if (amountBN.gt(maxWithdraw)) {
+      throw new Error(`Amount bigger than the daily limit. Daily limit left ${web3.utils.fromWei(maxWithdrawInWei, 'ether')} tokens`);
+    }
 
-      // save transaction to local storage...
-      TXN_Storage.addTxn(address, config.name, {
-        networkId: config.networkId,
-        tokenFrom: token[config.networkId].symbol,
-        tokenTo: token[config.crossToNetwork.networkId].symbol,
-        amount,
-        ...receipt,
-      });
+    var gasPriceParsed = 0;
+    if (config.networkId >= 30 && config.networkId <= 33) {
+      let block = await web3.eth.getBlock("latest");
+      gasPriceParsed = parseInt(block.minimumGasPrice);
+      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
+    } else {
+      let gasPriceAvg = await web3.eth.getGasPrice();
+      gasPriceParsed = parseInt(gasPriceAvg);
+      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
+    }
+    const gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
 
-      console.log("After adding receipt to storage", TXN_Storage);
-      updateActiveAddressTXNs(address);
-      showActiveTxnsTab();
-      showActiveAddressTXNs();
-    })
-    .catch((err) => {
-      $("#wait").hide();
-      console.error(err);
-      crossTokenError(`Couln't cross the tokens. ${err.message}`);
+    const receipt = await new Promise((resolve, reject) => {
+      bridgeContract.methods
+        .receiveTokensTo(31, tokenAddress, hathorAddress, amountBN.toString())
+        .send(
+          { from: address, gasPrice: gasPrice, gas: 600_000 },
+          async (err, txHash) => {
+            if (err) return reject(err);
+            try {
+              let receipt = await waitForReceipt(txHash);
+              if (receipt.status) {
+                resolve(receipt);
+              } else {
+                reject(new Error(`Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`));
+              }
+            } catch (err) {
+              reject(err);
+            }
+          }
+        );
     });
+
+    $("#confirmationTime").text(config.confirmationTime);
+    $("#receive").text(
+      `${amount} ${token[config.crossToNetwork.networkId].symbol}`
+    );
+    $("#success").show();
+    disableInputs(false);
+
+    TXN_Storage.addTxn(address, config.name, {
+      networkId: config.networkId,
+      tokenFrom: token[config.networkId].symbol,
+      tokenTo: token[config.crossToNetwork.networkId].symbol,
+      amount,
+      ...receipt,
+    });
+
+    updateActiveAddressTXNs(address);
+    showActiveTxnsTab();
+    showActiveAddressTXNs();
+    disableApproveCross({
+      approvalDisable: true,
+      doNotAskDisabled: true,
+      crossDisabled: true,
+    });
+
+  } catch (err) {
+    console.error(err);
+    crossTokenError(`Couldn't cross the tokens. ${err.message}`);
+  } finally {
+    convertButton.prop("disabled", false).html(originalButtonText);
+    disableInputs(false);
+  }
 }
 
 function errorClaim(error) {
@@ -901,35 +898,27 @@ async function checkAllowance() {
 async function isAmountOk() {
   cleanAlertSuccess();
   let amount = $("#amount").val();
-  if (amount == "") {
-    markInvalidAmount("Invalid amount");
+  let parsedAmount = new BigNumber(amount || 0);
 
-    disableApproveCross({
-      approvalDisable: true,
-      doNotAskDisabled: true,
-      crossDisabled: true,
-    });
-
-    return;
-  }
-  let parsedAmount = new BigNumber(amount);
-  if (parsedAmount <= 0) {
-    markInvalidAmount("Must be bigger than 0");
-
-    disableApproveCross({
-      approvalDisable: true,
-      doNotAskDisabled: true,
-      crossDisabled: true,
-    });
-
-    return;
-  }
-  $("#amount").removeClass("ok");
+  // Always calculate and display the fee and total cost
   let totalCost = fee == 0 ? parsedAmount : parsedAmount.dividedBy(1 - fee);
   let serviceFee = totalCost.times(fee);
-
   $("#serviceFee").html(serviceFee.toFormat(6, BigNumber.ROUND_DOWN));
   $("#totalCost").html(totalCost.toFormat(6, BigNumber.ROUND_DOWN));
+
+  // Now, perform validation if an amount is actually entered
+  if (amount === "") {
+    markInvalidAmount("Invalid amount");
+    disableApproveCross({ approvalDisable: true, doNotAskDisabled: true, crossDisabled: true });
+    return;
+  }
+
+  if (parsedAmount <= 0) {
+    markInvalidAmount("Must be bigger than 0");
+    disableApproveCross({ approvalDisable: true, doNotAskDisabled: true, crossDisabled: true });
+    return;
+  }
+
   try {
     if (totalCost < minTokensAllowed) {
       throw new Error(
@@ -945,7 +934,6 @@ async function isAmountOk() {
     $(".amount .invalid-feedback").hide();
     $("#amount").removeClass("is-invalid");
     $("#amount").addClass("ok");
-    $(".fees").show();
   } catch (err) {
     disableApproveCross({
       approvalDisable: true,
@@ -964,33 +952,40 @@ function markInvalidAmount(errorDescription) {
   $("#amount").addClass("is-invalid");
   $("#amount").prop("disabled", false);
   $("#amount").removeClass("ok");
-  $(".fees").hide();
 }
 
 async function isInstalled() {
   if (window.ethereum) {
     window.ethereum.autoRefreshOnNetworkChange = false;
+    try {
+      const targetNetworkId = isTestnet ? SEPOLIA_CONFIG.networkId : ETH_CONFIG.networkId;
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x' + targetNetworkId.toString(16) }],
+      });
+
+      window.web3 = new Web3(window.ethereum);
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const chainId = await web3.eth.net.getId();
+      await updateCallback(chainId, accounts);
+
+      window.ethereum.on("chainChanged", function (newChain) {
+        updateNetwork(newChain);
+        showActiveTxnsTab();
+      });
+      window.ethereum.on("accountsChanged", function (newAddresses) {
+        checkAllowance();
+        updateAddress(newAddresses)
+          .then((addr) => updateActiveAddressTXNs(addr))
+          .then(() => showActiveAddressTXNs());
+      });
+      return chainId;
+    } catch (error) {
+      throw new Error("Login failed. Please try again.");
+    }
+  } else {
+    throw new Error("MetaMask is not installed. Please install it to use this application.");
   }
-
-  const provider = await rLogin.connect().catch(() => {
-    throw new Error("Login failed. Please try again.");
-  });
-  window.web3 = new Web3(provider);
-  let accounts = await getAccounts();
-  let chainId = await web3.eth.net.getId();
-  await updateCallback(chainId, accounts);
-
-  provider.on("chainChanged", function (newChain) {
-    updateNetwork(newChain);
-    showActiveTxnsTab();
-  });
-  provider.on("accountsChanged", function (newAddresses) {
-    checkAllowance();
-    updateAddress(newAddresses)
-      .then((addr) => updateActiveAddressTXNs(addr))
-      .then(() => showActiveAddressTXNs());
-  });
-  return chainId;
 }
 
 function onMetaMaskConnectionError(err) {
@@ -1057,13 +1052,24 @@ function onMetaMaskConnectionSuccess() {
   });
 }
 
-function updateAddress(newAddresses) {
+function truncateAddress(address) {
+  if (!address) return "";
+  return `${address.slice(0, 7)}...${address.slice(-5)}`;
+}
+
+async function updateAddress(newAddresses) {
   address = newAddresses[0];
-  $("#address").text(address);
+  const truncatedAddress = truncateAddress(address);
+  $(".indicator span").text(truncatedAddress);
   $("#logIn").hide();
   $("#transferTab").removeClass("disabled");
   $("#claimTab").removeClass("disabled");
-  $(".wallet-status").show();
+  $(".wallet-status.indicator").show();
+  $(".wallet-status.text-truncate").hide();
+
+  if (config) {
+    await updateTokenAddressDropdown(config.networkId);
+  }
 
   return Promise.resolve(address);
 }
@@ -1126,24 +1132,35 @@ function showActiveAddressTXNs() {
   eth2HtrPaginationObj = Paginator(
     activeAddresseth2HtrTxns,
     eth2HtrTablePage,
-    3
+    numberOfLines
   );
   let { data: eth2HtrTxns } = eth2HtrPaginationObj;
 
   htr2EthPaginationObj = Paginator(
     activeAddresshtr2EthTxns,
     htr2EthTablePage,
-    3
+    numberOfLines
   );
   let { data: htr2EthTxns } = htr2EthPaginationObj;
+
+  const isEthToHtrTabActive = $("#nav-eth-htr-tab").hasClass("active");
+  const activePaginationObj = isEthToHtrTabActive ? eth2HtrPaginationObj : htr2EthPaginationObj;
+
+  if (activePaginationObj.total_pages > 1) {
+    $(".btn-toolbar").show();
+    $("#txn-previous").prop('disabled', activePaginationObj.pre_page === null);
+    $("#txn-next").prop('disabled', activePaginationObj.next_page === null);
+  } else {
+    $(".btn-toolbar").hide();
+  }
 
   let currentNetwork = $(".indicator span").text();
 
   const processHtrTxn = (txn, config = {}) => {
     let htmlRow = `<tr class="black">
-        <td>${txn.sender}</td>
-        <td>${txn.amount} ${txn.token}</td>
-        <td>${txn.action}</td>
+        <td  class="align-middle">-</td>
+        <td class="align-middle">${txn.amount} ${txn.token}</td>
+        <td class="align-middle">${txn.action}</td>
     </tr>`;
 
     return htmlRow;
@@ -1152,15 +1169,11 @@ function showActiveAddressTXNs() {
   const processTxn = (txn, config = {}) => {
     const { confirmations, secondsPerBlock, explorer } = config;
 
-    let isConfig4CurrentNetwork = config.name === currentNetwork;
-
     let elapsedBlocks = currentBlockNumber - txn.blockNumber;
     let remainingBlocks2Confirmation = confirmations - elapsedBlocks;
-    let status = isConfig4CurrentNetwork
-      ? elapsedBlocks >= confirmations
-        ? `<span class="confirmed"> Confirmed</span>`
-        : `<span class="pending"> Pending</span>`
-      : `Info Not Available`;
+    let status = elapsedBlocks >= confirmations
+        ? `<span> Confirmed</span>`
+        : `<span> Pending</span>`;
 
     let confirmationTime = confirmations * secondsPerBlock;
     let seconds2Confirmation =
@@ -1172,12 +1185,10 @@ function showActiveAddressTXNs() {
     let hoursToConfirmationStr =
       hoursToConfirmation > 0 ? `${hoursToConfirmation}hs ` : ``;
     let minutesToConfirmation =
-      Math.floor(seconds2Confirmation / 60) - hoursToConfirmation * 60;
-    let humanTimeToConfirmation = isConfig4CurrentNetwork
-      ? elapsedBlocks >= confirmations
+      Math.ceil(seconds2Confirmation / 60) - hoursToConfirmation * 60;
+    let humanTimeToConfirmation = elapsedBlocks >= confirmations
         ? ``
-        : `| ~ ${hoursToConfirmationStr} ${minutesToConfirmation}mins`
-      : ``;
+        : `| ~ ${hoursToConfirmationStr} ${minutesToConfirmation}mins`;
 
     let txnExplorerLink = `${explorer}/tx/${txn.transactionHash}`;
     let shortTxnHash = `${txn.transactionHash.substring(
@@ -1186,7 +1197,7 @@ function showActiveAddressTXNs() {
     )}...${txn.transactionHash.slice(-8)}`;
 
     let htmlRow = `<tr class="black">
-            <th scope="row"><a class="confirmed" href="${txnExplorerLink}">${shortTxnHash}</a></th>
+            <th scope="row"><a href="${txnExplorerLink}">${shortTxnHash}</a></th>
             <td>${txn.blockNumber}</td>
             <td>${txn.amount} ${txn.tokenFrom}</td>
             <td>${status} ${humanTimeToConfirmation}</td>
@@ -1231,6 +1242,7 @@ function setClaimButtons() {
 }
 
 async function updateCallback(chainId, accounts) {
+  await startPoolingTxs();
   return updateNetwork(chainId)
     .then(() => updateAddress(accounts))
     .then((addr) => updateActiveAddressTXNs(addr))
@@ -1239,15 +1251,15 @@ async function updateCallback(chainId, accounts) {
     ;
 }
 
-function updateNetworkConfig(config) {
+async function updateNetworkConfig(config) {
   $(".fromNetwork").text(config.name);
-  $(".indicator span").html(config.name);
+  // $(".indicator span").html(config.name);
   $(".indicator").removeClass("btn-outline-danger");
   $(".indicator").addClass("btn-outline-success");
   $(".toNetwork").text(config.crossToNetwork.name);
   $("#confirmations").html(config.confirmations);
   $("#timeToCross").html(config.crossToNetwork.confirmationTime);
-  updateTokenAddressDropdown(config.networkId);
+  await updateTokenAddressDropdown(config.networkId);
 }
 
 async function updateNetwork(newNetwork) {
@@ -1293,12 +1305,14 @@ async function updateNetwork(newNetwork) {
     );
 
     $("#myModal").modal("hide");
-    updateNetworkConfig(config);
-    updateTokenAddressDropdown(config.networkId);
+    await updateNetworkConfig(config);
 
     // setInfoTab();
     onMetaMaskConnectionSuccess();
 
+    if (poolingIntervalId) {
+      clearInterval(poolingIntervalId);
+    }
     await startPoolingTxs();
 
     if (TXN_Storage.isStorageAvailable("localStorage")) {
@@ -1323,10 +1337,25 @@ async function startPoolingTxs() {
   });
 }
 
-function updateTokenAddressDropdown(networkId) {
+async function updateTokenAddressDropdown(networkId) {
   let selectHtml = "";
   for (let aToken of TOKENS) {
-    if (aToken[networkId] != undefined) {
+    if (aToken[networkId] != undefined && address) {
+      try {
+        const tokenContract = new web3.eth.Contract(ERC20_ABI, aToken[networkId].address);
+        const balance = await tokenContract.methods.balanceOf(address).call();
+        const formattedBalance = new BigNumber(balance).shiftedBy(-aToken[networkId].decimals).toFormat(4, BigNumber.ROUND_DOWN);
+
+        selectHtml += `\n<option value="${aToken.token}" `;
+        selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol} <small class='text-muted'>(${formattedBalance})</small>">`;
+        selectHtml += `\n</option>`;
+      } catch (e) {
+        console.error(`Could not fetch balance for ${aToken[networkId].symbol}`, e);
+        selectHtml += `\n<option value="${aToken.token}" `;
+        selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol}">`;
+        selectHtml += `\n</option>`;
+      }
+    } else if (aToken[networkId] != undefined) {
       selectHtml += `\n<option value="${aToken.token}" `;
       selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol}">`;
       selectHtml += `\n</option>`;
@@ -1335,7 +1364,7 @@ function updateTokenAddressDropdown(networkId) {
   $("#tokenAddress").html(selectHtml);
   $("#tokenAddress").prop("disabled", false);
   $("#tokenAddress").selectpicker("refresh");
-  $("#willReceiveToken").html("");
+  $("#tokenAddress").trigger('change');
 }
 
 function updateTokenListTab() {
@@ -1346,16 +1375,16 @@ function updateTokenListTab() {
   tabHtml += `\n    <div class="col-5">`;
   tabHtml += `\n        ${htrConfig.name}`;
   tabHtml += `\n    </div>`;
-  tabHtml += `\n    <div class="col-1"></div>`;
+  tabHtml += `\n    <div class="col-1" style="min-width:56px;"></div>`;
   tabHtml += `\n    <div class="col-5">`;
   tabHtml += `\n        ${htrConfig.crossToNetwork.name}`;
   tabHtml += `\n    </div>`;
   tabHtml += `\n</div>`;
   for (let aToken of TOKENS) {
     if (aToken[htrConfig.networkId] != undefined) {
-      tabHtml += `\n<div class="row mb-3 justify-content-center">`;
+      tabHtml += `\n<div class="row mb-3 justify-content-center text-center">`;
       tabHtml += `\n    <div class="col-5 row">`;
-      tabHtml += `\n      <div class="col-8 font-weight-bold">`;
+      tabHtml += `\n      <div class="col-12 font-weight-bold">`;
       tabHtml += `\n          <a href="${htrConfig.explorer}/address/${aToken[
         htrConfig.networkId
       ].address.toLowerCase()}" class="address" target="_blank">`;
@@ -1363,19 +1392,12 @@ function updateTokenListTab() {
         }" class="token-logo"></span>${aToken[htrConfig.networkId].symbol}`;
       tabHtml += `\n          </a>`;
       tabHtml += `\n       </div>`;
-      tabHtml += `\n       <div class="col-4">`;
-      tabHtml += `\n           <button class="copy btn btn-outline-secondary" type="button" data-clipboard-text="${aToken[
-        htrConfig.networkId
-      ].address.toLowerCase()}" data-toggle="tooltip" data-placement="bottom" title="Copy token address to clipboard">`;
-      tabHtml += `\n                <i class="far fa-copy"></i>`;
-      tabHtml += `\n           </button>`;
-      tabHtml += `\n       </div>`;
       tabHtml += `\n    </div>`;
       tabHtml += `\n    <div class="col-2 text-center">`;
       tabHtml += `\n        <i class="fas fa-arrows-alt-h"></i>`;
       tabHtml += `\n    </div>`;
       tabHtml += `\n    <div class="col-5 row">`;
-      tabHtml += `\n      <div class="col-8 font-weight-bold">`;
+      tabHtml += `\n      <div class="col-12 font-weight-bold">`;
       tabHtml += `\n          <a href="${htrConfig.crossToNetwork.explorer
         }/${htrConfig.crossToNetwork.explorerTokenTab}/${aToken[
           htrConfig.crossToNetwork.networkId
@@ -1384,13 +1406,6 @@ function updateTokenListTab() {
         }" class="token-logo"></span>${aToken[htrConfig.crossToNetwork.networkId].symbol
         }`;
       tabHtml += `\n          </a>`;
-      tabHtml += `\n      </div>`;
-      tabHtml += `\n      <div class="col-4">`;
-      tabHtml += `\n          <button class="copy btn btn-outline-secondary" type="button" data-clipboard-text="${aToken[
-        htrConfig.crossToNetwork.networkId
-      ].pureHtrAddress.toLowerCase()}" data-toggle="tooltip" data-placement="bottom" title="Copy the address">`;
-      tabHtml += `\n              <i class="far fa-copy"></i>`;
-      tabHtml += `\n          </button>`;
       tabHtml += `\n      </div>`;
       tabHtml += `\n    </div>`;
       tabHtml += `\n</div>`;
@@ -1418,7 +1433,7 @@ let SEPOLIA_CONFIG = {
   explorer: "https://sepolia.etherscan.io",
   explorerTokenTab: "#tokentxns",
   confirmations: 10,
-  confirmationTime: "30 minutes",
+  confirmationTime: "10 minutes",
   secondsPerBlock: 5,
 };
 let HTR_TESTNET_CONFIG = {
@@ -1428,7 +1443,7 @@ let HTR_TESTNET_CONFIG = {
   explorer: "https://explorer.testnet.hathor.network",
   explorerTokenTab: "token_detail",
   confirmations: 2,
-  confirmationTime: "30 minutes",
+  confirmationTime: "10 minutes",
   secondsPerBlock: 30,
   crossToNetwork: SEPOLIA_CONFIG,
 };
@@ -1444,8 +1459,8 @@ let ETH_CONFIG = {
   explorer: "https://arbiscan.io",
   explorerTokenTab: "#tokentxns",
   confirmations: 900,
-  confirmationTime: "30 minutes",
-  secondsPerBlock: 1,
+  confirmationTime: "10 minutes",
+  secondsPerBlock: 0.25,
 };
 let HTR_MAINNET_CONFIG = {
   networkId: 31,
@@ -1454,7 +1469,7 @@ let HTR_MAINNET_CONFIG = {
   explorer: "https://explorer.hathor.network",
   explorerTokenTab: "token_detail",
   confirmations: 2,
-  confirmationTime: "30 minutes",
+  confirmationTime: "10 minutes",
   secondsPerBlock: 30,
   crossToNetwork: ETH_CONFIG,
 };
@@ -1484,7 +1499,7 @@ function loadAbi(abi, callback) {
 const USDC_TOKEN = {
   token: "USDC",
   name: "USDC",
-  icon: "https://assets.coingecko.com/coins/images/6319/standard/usdc.png?1696506694",
+  icon: "./assets/img/usdc.png",
   42161: {
     symbol: "USDC",
     address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
@@ -1538,7 +1553,7 @@ const EVM_NATIVE_TOKEN = {
 HATHOR_NATIVE_TOKEN = {
   token: "aHTR",
   name: "Hathor Token",
-  icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/5552.png",
+  icon: "./assets/img/hathor.png",
   42161: {
     symbol: "aHTR",
     address: "0x87ca1aC7697c1240518b464B02E92A856D81Aee1",
@@ -1567,7 +1582,7 @@ HATHOR_NATIVE_TOKEN = {
 TOGGER_TOKEN = {
   token: "HTOG3",
   name: "Hathor Togger 3",
-  icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/5552.png",
+  icon: "./assets/img/hathor.png",
   11155111: {
     symbol: "hTOG3",
     address: "0x245028F6D4C2F2527309EcaE5e82F0f9fb793b7b",
