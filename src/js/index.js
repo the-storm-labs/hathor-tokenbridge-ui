@@ -32,8 +32,8 @@ const evmHost = !isTestnet ?
   "https://arbitrum-mainnet.infura.io/v3/399500b5679b442eb991fefee1c5bfdc" :
   "https://sepolia.infura.io/v3/399500b5679b442eb991fefee1c5bfdc";
 
-// const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
-const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getExecutedEvents'; // for testing locally
+const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
+// const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getExecutedEvents'; // for testing locally
 
 // pagination of active txs table
 const numberOfLines = 6;
