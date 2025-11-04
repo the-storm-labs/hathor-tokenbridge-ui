@@ -61,7 +61,12 @@ h1 {
   text-align: center;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   text-align: center;
 }
 
@@ -250,7 +255,7 @@ label {
 .btn-light,
 .btn-light.disabled,
 .btn-light.disabled,
-.show > .btn-light.dropdown-toggle {
+.show>.btn-light.dropdown-toggle {
   background-color: transparent;
   border-color: transparent;
 }
@@ -259,12 +264,12 @@ label {
   background-color: transparent;
 }
 
-.bootstrap-select > .dropdown-toggle.bs-placeholder:hover,
-.bootstrap-select > .dropdown-toggle.bs-placeholder {
+.bootstrap-select>.dropdown-toggle.bs-placeholder:hover,
+.bootstrap-select>.dropdown-toggle.bs-placeholder {
   color: #000;
 }
 
-.dropdown.bootstrap-select.disabled > .disabled {
+.dropdown.bootstrap-select.disabled>.disabled {
   color: #bfbdbd;
 }
 
@@ -310,7 +315,6 @@ label {
 
 .logo {
   width: 150px;
-  filter: invert(1);
 }
 
 input::placeholder {
@@ -344,9 +348,7 @@ input::placeholder {
   color: #aaa;
 }
 
-.hathor-logo {
-  filter: invert(1);
-}
+.hathor-logo {}
 
 .title {
   text-align: center;
@@ -475,6 +477,7 @@ a:hover {
 }
 
 @keyframes lds-circle {
+
   0%,
   100% {
     animation-timing-function: cubic-bezier(0.5, 0, 1, 0.5);
@@ -526,7 +529,7 @@ a:hover {
   vertical-align: 0.255em;
 }
 
-.bootstrap-select > .dropdown-toggle:after {
+.bootstrap-select>.dropdown-toggle:after {
   margin-top: 0px;
   font-size: 20px;
   vertical-align: middle;
@@ -709,6 +712,7 @@ a:hover {
 }
 
 @-webkit-keyframes sk-circleFadeDelay {
+
   0%,
   39%,
   100% {
@@ -721,6 +725,7 @@ a:hover {
 }
 
 @keyframes sk-circleFadeDelay {
+
   0%,
   39%,
   100% {
@@ -767,9 +772,9 @@ table.table td {
 }
 
 #eth-htr-tbody p {
-    margin: 0;
+  margin: 0;
 }
 
 #eth-htr-tbody tr {
-    height: 67px;
+  height: 67px;
 }

@@ -32,8 +32,8 @@ const evmHost = !isTestnet ?
   "https://arbitrum-mainnet.infura.io/v3/399500b5679b442eb991fefee1c5bfdc" :
   "https://sepolia.infura.io/v3/399500b5679b442eb991fefee1c5bfdc";
 
-const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
-// const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getExecutedEvents'; // for testing locally
+// const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
+const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getExecutedEvents'; // for testing locally
 
 // pagination of active txs table
 const numberOfLines = 6;
@@ -44,7 +44,7 @@ $(document).ready(function () {
   $(".selectpicker").selectpicker();
 
   if (isTestnet) {
-    $("#title").text("Hathor Golf Testnet bridge with Sepolia");
+    $("#title").text("Hathor Testnet bridge with Ethereum Sepolia");
     $("#network-navlink").text("Use Mainnet");
     $("#network-navlink").attr("href", "./index.html");
   } else {
@@ -1172,8 +1172,8 @@ function showActiveAddressTXNs() {
     let elapsedBlocks = currentBlockNumber - txn.blockNumber;
     let remainingBlocks2Confirmation = confirmations - elapsedBlocks;
     let status = elapsedBlocks >= confirmations
-        ? `<span> Confirmed</span>`
-        : `<span> Pending</span>`;
+      ? `<span> Confirmed</span>`
+      : `<span> Pending</span>`;
 
     let confirmationTime = confirmations * secondsPerBlock;
     let seconds2Confirmation =
@@ -1187,8 +1187,8 @@ function showActiveAddressTXNs() {
     let minutesToConfirmation =
       Math.ceil(seconds2Confirmation / 60) - hoursToConfirmation * 60;
     let humanTimeToConfirmation = elapsedBlocks >= confirmations
-        ? ``
-        : `| ~ ${hoursToConfirmationStr} ${minutesToConfirmation}mins`;
+      ? ``
+      : `| ~ ${hoursToConfirmationStr} ${minutesToConfirmation}mins`;
 
     let txnExplorerLink = `${explorer}/tx/${txn.transactionHash}`;
     let shortTxnHash = `${txn.transactionHash.substring(
