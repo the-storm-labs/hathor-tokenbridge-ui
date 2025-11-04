@@ -1,24 +1,73 @@
+/* Styles for the connected wallet button */
+.wallet-status.indicator.badge-outline {
+  background-color: #1f1f1f;
+  color: white;
+  border-color: #1f1f1f;
+  display: flex;
+  align-items: center;
+}
+
+.wallet-status.indicator.badge-outline:hover {
+  background-color: #1f1f1f;
+  color: white;
+  border-color: #1f1f1f;
+}
+
+.indicator span:before {
+  background-color: #444;
+}
+
 body {
-  font-family: "Quicksand", sans-serif !important;
-  font-size: 12px !important;
+  font-family: "Poppins", sans-serif !important;
+  font-size: 16px !important;
+}
+
+.card {
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.card-body {
+  padding: 0;
 }
 
 body .btn {
-  font-size: 14px;
+  font-size: 18px;
+  padding: 12px 24px;
+}
+
+.form-control {
+  font-size: 18px;
+  padding: 12px 24px;
+  height: auto;
+}
+
+textarea.form-control {
+  min-height: 120px;
 }
 
 h5 {
-  font-size: 25px;
+  font-size: 22px;
   line-height: 31px;
 }
 
 h1 {
-  color: #71258f;
-  font-weight: 700;
+  color: #1f1f1f;
   font-size: 36px;
-  line-height: 45px;
-  margin-top: 15px;
+  line-height: 48px;
+  margin-top: 16px;
+  margin-bottom: 16px;
   padding-bottom: 0;
+  text-align: center;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  text-align: center;
 }
 
 .align-center {
@@ -27,18 +76,18 @@ h1 {
 }
 
 #transferTab {
-  max-width: 660px;
-  margin-bottom: 30px;
-  padding: 40px 20px;
+  max-width: 500px;
+  margin-bottom: 64px;
 }
 
 #claimTab {
+  max-width: 500px;
   margin-bottom: 150px;
 }
 
 .claim-title {
   text-align: center;
-  font-weight: bold;
+  font-weight: 300;
 }
 
 .claim-table {
@@ -74,30 +123,6 @@ h1 {
   display: none;
 }
 
-.approve-deposit {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.form-check {
-  margin-top: -1em;
-}
-
-.form-check label {
-  position: relative;
-  bottom: 1px;
-  color: black;
-}
-
-#approve {
-  min-width: 10em;
-}
-
-#deposit {
-  align-self: flex-start;
-  min-width: 10em;
-}
 
 .form-control:disabled {
   background-color: transparent;
@@ -105,7 +130,7 @@ h1 {
 }
 
 label {
-  font-weight: 500;
+  font-weight: 300;
   font-size: 12px;
   line-height: 15px;
   color: #bfbdbd;
@@ -113,19 +138,32 @@ label {
 }
 
 .max {
-  color: #71258f;
+  color: #1f1f1f;
 }
 
 .network {
-  color: #71258f;
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 25px;
+  color: #1f1f1f;
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 30px;
   margin-bottom: 20px;
 }
 
+.amount {
+  position: relative;
+}
+
+.amount .max {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  color: #71258f;
+  cursor: pointer;
+}
+
 .bootstrap-select .dropdown-toggle .filter-option {
-  font-family: "Quicksand";
+  font-family: "Poppins";
   font-size: 20px;
   line-height: 25px;
   text-align: center;
@@ -133,25 +171,25 @@ label {
 
 .dropdown-item,
 .form-control-plaintext {
-  font-family: "Quicksand";
+  font-family: "Poppins";
   font-size: 20px;
   line-height: 25px;
 }
 
 .fees {
-  font-family: "Roboto";
+  font-family: "Poppins", sans-serif;
   font-size: 14px;
-  line-height: 30px;
-  color: #919191;
+  line-height: 1.5;
+  color: #6c757d;
 }
 
 .fees p {
-  margin-bottom: -10px;
+  margin-bottom: 0.5rem;
 }
 
 .black {
-  color: #000;
-  font-weight: bold;
+  color: #fff;
+  font-weight: 300;
 }
 
 #amount {
@@ -160,22 +198,13 @@ label {
 }
 
 #amount.ok {
-  border-color: #71258f;
+  border-color: #1f1f1f;
 }
 
 .invalid-feedback {
   font-size: 12px;
 }
 
-.inputs-area {
-  font-family: "Quicksand";
-  font-size: 20px;
-  line-height: 25px;
-  border: 1px solid #000000;
-  box-sizing: border-box;
-  border-radius: 10px;
-  padding: 2px;
-}
 
 .outline {
   border: 1px solid #000;
@@ -192,7 +221,7 @@ label {
 
 .outline-rounded,
 .badge-outline {
-  border: 1px solid #71258f;
+  border: 1px solid #1f1f1f;
 }
 
 .disabled,
@@ -226,7 +255,7 @@ label {
 .btn-light,
 .btn-light.disabled,
 .btn-light.disabled,
-.show > .btn-light.dropdown-toggle {
+.show>.btn-light.dropdown-toggle {
   background-color: transparent;
   border-color: transparent;
 }
@@ -235,12 +264,12 @@ label {
   background-color: transparent;
 }
 
-.bootstrap-select > .dropdown-toggle.bs-placeholder:hover,
-.bootstrap-select > .dropdown-toggle.bs-placeholder {
+.bootstrap-select>.dropdown-toggle.bs-placeholder:hover,
+.bootstrap-select>.dropdown-toggle.bs-placeholder {
   color: #000;
 }
 
-.dropdown.bootstrap-select.disabled > .disabled {
+.dropdown.bootstrap-select.disabled>.disabled {
   color: #bfbdbd;
 }
 
@@ -248,11 +277,17 @@ label {
   justify-content: center;
 }
 
+#txn-previous,
+#txn-next {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
 .btn-primary {
-  font-family: "Quicksand";
+  font-family: "Poppins";
   color: #fff;
-  background-color: #71258f;
-  border-color: #71258f;
+  background-color: #1f1f1f;
+  border-color: #1f1f1f;
   border-radius: 10px;
 }
 
@@ -271,7 +306,15 @@ label {
 }
 
 .navbar-dark.bg-dark {
-  background-color: white !important;
+  padding: 16px 0;
+}
+
+.navbar-brand {
+  margin-right: 0;
+}
+
+.logo {
+  width: 150px;
 }
 
 input::placeholder {
@@ -279,14 +322,33 @@ input::placeholder {
   font-weight: normal;
 }
 
-#home {
-  padding-top: 20px;
-  padding-bottom: 20px;
-}
-
 #footer {
   margin-top: 0;
+  background-color: #1f1f1f;
+  padding: 30px 0;
 }
+
+.footer-top {
+  background-color: transparent;
+}
+
+.footer-links ul li a {
+  color: #fff;
+}
+
+.footer-links ul li a:hover {
+  color: #71258f;
+}
+
+.copyright {
+  color: #aaa;
+}
+
+.powered {
+  color: #aaa;
+}
+
+.hathor-logo {}
 
 .title {
   text-align: center;
@@ -294,12 +356,10 @@ input::placeholder {
 }
 
 .subtitle {
-  text-align: center;
   margin-bottom: 5px;
 }
 
 .logo {
-  width: 150px;
   height: auto;
   transition: all 0.5s ease;
 }
@@ -316,12 +376,13 @@ input::placeholder {
 }
 
 .navbar {
-  margin-top: 15px;
+  margin-top: 0;
+  background-color: transparent !important;
 }
 
 .navbar a {
-  font-family: "Rubik";
-  color: #71258f;
+  font-family: "Poppins";
+  color: #1f1f1f;
   font-size: 14px;
 }
 
@@ -335,12 +396,20 @@ a:hover {
 }
 
 .nav-tabs .nav-link {
-  font-weight: bold;
-  color: #71258f;
+  font-weight: 400;
+  color: #6c757d;
 }
 
 .nav-tabs .nav-link:hover {
-  color: black;
+  color: inherit;
+}
+
+#nav-eth-htr-tab {
+  border-radius: 0 5px 0 0;
+}
+
+#nav-htr-eth-tab {
+  border-radius: 5px 0 0 0;
 }
 
 .config-section {
@@ -352,18 +421,18 @@ a:hover {
 
 .config-section .config-value {
   font-size: 36px;
-  font-weight: bold;
-  color: #71258f;
+  font-weight: 300;
+  color: #1f1f1f;
 }
 
 .config-section .config-title {
-  font-weight: bold;
+  font-weight: 300;
 }
 
 .config-section .config-address {
   font-size: 13px;
-  color: #71258f;
-  font-weight: bold;
+  color: #1f1f1f;
+  font-weight: 300;
 }
 
 .fed-addresses {
@@ -408,6 +477,7 @@ a:hover {
 }
 
 @keyframes lds-circle {
+
   0%,
   100% {
     animation-timing-function: cubic-bezier(0.5, 0, 1, 0.5);
@@ -437,20 +507,6 @@ a:hover {
   background-color: #dc3545;
 }
 
-.indicator span:before {
-  position: absolute;
-  right: 98%;
-  top: 50%;
-  -webkit-transform: translate(-5px, -50%);
-  transform: translate(-5px, -50%);
-  content: "";
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #40d512;
-}
-
 .token-logo {
   width: 1.2rem;
   height: 1.2rem;
@@ -460,20 +516,20 @@ a:hover {
 .dropup .dropdown-toggle::after {
   content: "\f106";
   font-family: "Font Awesome 5 Free";
-  font-weight: 900;
+  font-weight: 300;
   border: 0;
 }
 
 .dropdown-toggle::after {
   content: "\f107";
   font-family: "Font Awesome 5 Free";
-  font-weight: 900;
+  font-weight: 300;
   border: 0;
   display: inline-block;
   vertical-align: 0.255em;
 }
 
-.bootstrap-select > .dropdown-toggle:after {
+.bootstrap-select>.dropdown-toggle:after {
   margin-top: 0px;
   font-size: 20px;
   vertical-align: middle;
@@ -499,14 +555,6 @@ a:hover {
 #success {
   padding: 0px;
   max-width: 222px;
-}
-
-.confirmed {
-  color: #71258f;
-}
-
-.pending {
-  color: #531b69;
 }
 
 /*Spinner*/
@@ -664,6 +712,7 @@ a:hover {
 }
 
 @-webkit-keyframes sk-circleFadeDelay {
+
   0%,
   39%,
   100% {
@@ -676,6 +725,7 @@ a:hover {
 }
 
 @keyframes sk-circleFadeDelay {
+
   0%,
   39%,
   100% {
@@ -690,4 +740,41 @@ a:hover {
 table.table tr th:last-child,
 table.table tr td:last-child {
   text-align: center;
+}
+
+.nav-tabs .nav-link {
+  border-radius: 0;
+}
+
+table.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 0 5px 5px 5px;
+  background-color: #1f1f1f;
+  border: 1px solid #333;
+  border-top: none;
+}
+
+table.table th {
+  padding: 15px;
+  border-bottom: none;
+  font-weight: 400;
+}
+
+table.table td {
+  padding: 15px;
+  border-bottom: none;
+}
+
+#eth-htr-tbody button {
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+#eth-htr-tbody p {
+  margin: 0;
+}
+
+#eth-htr-tbody tr {
+  height: 67px;
 }

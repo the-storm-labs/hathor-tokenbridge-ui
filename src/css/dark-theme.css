@@ -1,0 +1,291 @@
+body {
+    background-color: #121212;
+    color: #ffffff;
+}
+
+.card {
+    background-color: #1f1f1f;
+    border: 1px solid #333;
+}
+
+.form-control {
+    background-color: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #333;
+}
+
+.btn-primary {
+    background-color: #71258f;
+    border-color: #71258f;
+}
+
+.btn-primary:hover {
+    background-color: #451c55;
+    border-color: #451c55;
+}
+
+.btn-secondary {
+    background-color: #333;
+    border-color: #444;
+}
+
+.btn-secondary:hover {
+    background-color: #444;
+    border-color: #555;
+}
+
+.table {
+    color: #ffffff;
+}
+
+.table th,
+.table td {
+    border-top: 1px solid #333;
+}
+
+.modal-content {
+    background-color: #1f1f1f;
+    color: #ffffff;
+}
+
+.modal-header {
+    border-bottom: 1px solid #333;
+}
+
+.modal-footer {
+    border-top: 1px solid #333;
+}
+
+.dropdown-menu {
+    background-color: #1f1f1f;
+}
+
+.dropdown-item {
+    color: #ffffff;
+}
+
+.dropdown-item:hover {
+    background-color: #333;
+}
+
+.form-control:disabled,
+.form-control[readonly] {
+    background-color: #2a2a2a;
+    opacity: 1;
+}
+
+.bootstrap-select .dropdown-toggle {
+    background-color: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #333;
+}
+
+.bootstrap-select .dropdown-toggle .filter-option {
+    color: #ffffff;
+}
+
+.bootstrap-select .dropdown-menu {
+    background-color: #1f1f1f;
+}
+
+.bootstrap-select .dropdown-item {
+    color: #ffffff;
+}
+
+.bootstrap-select .dropdown-item:hover {
+    background-color: #333;
+}
+
+.bootstrap-select .dropdown-item.active,
+.bootstrap-select .dropdown-item:active {
+    background-color: #1f1f1f;
+}
+
+.text-muted {
+    color: #aaa !important;
+}
+
+.border-top {
+    border-top: 1px solid #333 !important;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #333 !important;
+}
+
+.nav-tabs .nav-link {
+    border-color: #333;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: #1f1f1f;
+    border-color: #333 #333 #1f1f1f;
+}
+
+.nav-tabs {
+    border-bottom: none;
+}
+
+.alert-danger {
+    background-color: #dc354520;
+    color: #dc3545;
+    border-color: #dc354540;
+}
+
+.alert-success {
+    background-color: #28a74520;
+    color: #28a745;
+    border-color: #28a74540;
+}
+
+.outline-rounded {
+    border: 1px solid #1f1f1f;
+    color: #1f1f1f;
+}
+
+.badge-outline {
+    border: 1px solid #1f1f1f;
+    color: #1f1f1f;
+}
+
+.subtitle {
+    color: #aaa;
+}
+
+h1 {
+    color: #fff;
+}
+
+.network {
+    color: #fff;
+}
+
+color: #1f1f1f;
+}
+
+.black {
+    color: #fff;
+}
+
+.fees {
+    color: #aaa;
+}
+
+.config-section .config-value {
+    color: #71258f;
+}
+
+.config-section .config-title {
+    color: #fff;
+}
+
+.config-section p {
+    color: #aaa;
+}
+
+#tokenListTab a {
+    color: #fff;
+}
+
+.nav-tabs .nav-link {
+    color: #fff;
+}
+
+.nav-tabs .nav-link.active {
+    color: #fff;
+    background-color: #1f1f1f;
+}
+
+.navbar a {
+    color: #fff;
+}
+
+a {
+    color: #71258f;
+}
+
+a:hover {
+    color: #451c55;
+}
+
+.footer-links ul li a:hover {
+    color: #71258f;
+}
+
+.footer-links ul li a {
+    color: #fff;
+}
+
+.footer-links ul li a:hover {
+    color: #71258f;
+}
+
+.copyright {
+    color: #aaa;
+}
+
+.powered {
+    color: #aaa;
+}
+
+.hathor-logo {}
+
+.logo {}
+
+.sk-fading-circle .sk-circle:before {
+    background-color: #fff;
+}
+
+.form-check label {
+    color: #fff;
+}
+
+.disabled,
+.disabled .network,
+.max:disabled {
+    color: #555;
+}
+
+.disabled .outline,
+.disabled .outline-rounded,
+.disabled .badge-outline,
+.outline:disabled,
+.outline-rounded:disabled,
+.badge-outline:disabled {
+    color: #555;
+    border: 1px solid #555;
+}
+
+.btn-primary.disabled,
+.btn-primary:disabled {
+    background-color: #555;
+    border-color: #555;
+}
+
+input::placeholder {
+    color: #555 !important;
+}
+
+.dropdown.bootstrap-select.disabled>.disabled {
+    color: #555;
+}
+
+.form-control:disabled {
+    color: #555;
+}
+
+.indicator.btn-outline-danger span:before {
+    background-color: #dc3545;
+}
+
+.indicator span:before {
+    background: #40d512;
+}
+
+.confirmed {
+    color: #ab88d1;
+}
+
+.pending {
+    color: #ffc107;
+}
