@@ -204,10 +204,18 @@ async function connectWallet(providerDetail) {
       showActiveTxnsTab();
     });
     provider.on("accountsChanged", (newAddresses) => {
-      checkAllowance();
-      updateAddress(newAddresses)
-        .then((addr) => updateActiveAddressTXNs(addr))
-        .then(() => showActiveAddressTXNs());
+      if (newAddresses.length === 0) {
+        onMetaMaskConnectionError({ message: "Wallet disconnected. Please connect again." });
+      } else {
+        checkAllowance();
+        updateAddress(newAddresses)
+          .then((addr) => updateActiveAddressTXNs(addr))
+          .then(() => showActiveAddressTXNs());
+      }
+    });
+    provider.on("disconnect", (error) => {
+      console.error("Wallet disconnected:", error);
+      onMetaMaskConnectionError({ message: "Wallet connection lost. Please reload the page and connect again." });
     });
     $('#myModal').modal('hide');
   } catch (error) {
@@ -217,30 +225,33 @@ async function connectWallet(providerDetail) {
 }
 
 function onLogInClick() {
+  showModal("Select a Wallet"); // Prepares the modal by showing the wallet list container
   const walletList = $("#wallet-list");
-  walletList.empty(); // Clear previous list
+  walletList.empty();
 
-  if (wallets.length === 0) {
-    showModal("No Wallets Found", "Please install a wallet extension like MetaMask.");
-    return;
-  }
+  // Give a brief moment for EIP-6963 wallets to announce themselves.
+  setTimeout(() => {
+    if (wallets.length === 0) {
+      // If no wallets are found, display a message within the list container.
+      $("#myModal .modal-title").html("No Wallets Found");
+      walletList.html('<li class="list-group-item">Please install a wallet extension like MetaMask.</li>');
+      return;
+    }
 
-  wallets.forEach(wallet => {
-    const walletItem = $(`
-      <li class="list-group-item d-flex justify-content-between align-items-center">
-        <div>
-          <img src="${wallet.info.icon}" alt="${wallet.info.name}" width="30" height="30" class="mr-2">
-          ${wallet.info.name}
-        </div>
-        <button class="btn btn-primary btn-sm">Connect</button>
-      </li>
-    `);
-    walletItem.find('button').on('click', () => connectWallet(wallet));
-    walletList.append(walletItem);
-  });
-
-  showModal("Select a Wallet", "");
-  $('#myModal .modal-body').show(); // Make sure the body is visible
+    wallets.forEach(wallet => {
+      const walletItem = $(`
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <img src="${wallet.info.icon}" alt="${wallet.info.name}" width="30" height="30" class="mr-2">
+            ${wallet.info.name}
+          </div>
+          <button class="btn btn-primary btn-sm">Connect</button>
+        </li>
+      `);
+      walletItem.find('button').on('click', () => connectWallet(wallet));
+      walletList.append(walletItem);
+    });
+  }, 150); // A small delay to ensure wallet discovery.
 }
 
 function handleHathorAddressChange() {
@@ -1061,7 +1072,8 @@ async function isInstalled() {
 
 function onMetaMaskConnectionError(err) {
   console.log(err);
-  showModal("Connect wallet", err.message);
+  localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
+  showModal("Connect wallet", `<p>${err.message}</p>`);
   $("#logIn").attr("onclick", "onLogInClick()");
   $("#logIn").text("Connect wallet");
   $("#logIn").show();
@@ -1078,8 +1090,15 @@ function onMetaMaskConnectionError(err) {
 
 function showModal(title, message) {
   $("#myModal .modal-title").html(title);
+  const messageContent = $("#modal-message-content");
+  const walletList = $("#wallet-list");
+
   if (message) {
-    $("#myModal .modal-body").html(`<p>${message}</p>`);
+    messageContent.html(message).show();
+    walletList.hide();
+  } else {
+    messageContent.empty().hide();
+    walletList.show();
   }
   $("#myModal").modal("show");
 }
