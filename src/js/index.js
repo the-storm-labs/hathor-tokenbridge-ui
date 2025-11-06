@@ -28,6 +28,7 @@ let feePercentageDivider = 10_000;
 let rLogin;
 let pollingLastBlockIntervalId = 0;
 let DateTime = luxon.DateTime;
+const wallets = [];
 const evmHost = !isTestnet ?
   "https://arbitrum-mainnet.infura.io/v3/399500b5679b442eb991fefee1c5bfdc" :
   "https://sepolia.infura.io/v3/399500b5679b442eb991fefee1c5bfdc";
@@ -156,35 +157,65 @@ $(document).ready(function () {
     );
   });
   updateTokenListTab();
-  checkExistingConnection();
+  // EIP-6963 Wallet Discovery
+  function onAnnouncement(event) {
+    wallets.push(event.detail);
+  }
+  window.addEventListener('eip6963:announceProvider', onAnnouncement);
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
 });
 
-async function checkExistingConnection() {
-  if (window.ethereum) {
-    try {
-      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-      if (accounts.length > 0) {
-        // Wallet is connected
-        window.web3 = new Web3(window.ethereum);
-        const chainId = await web3.eth.net.getId();
-        await updateCallback(chainId, accounts);
+async function connectWallet(providerDetail) {
+  const provider = providerDetail.provider;
+  try {
+    // Use the specific provider object to request accounts
+    const accounts = await provider.request({ method: 'eth_requestAccounts' });
+    window.web3 = new Web3(provider);
+    const chainId = await web3.eth.net.getId();
+    await updateCallback(chainId, accounts);
 
-        window.ethereum.on("chainChanged", (newChain) => {
-          updateNetwork(newChain);
-          showActiveTxnsTab();
-        });
-        window.ethereum.on("accountsChanged", (newAddresses) => {
-          checkAllowance();
-          updateAddress(newAddresses)
-            .then((addr) => updateActiveAddressTXNs(addr))
-            .then(() => showActiveAddressTXNs());
-        });
-      }
-    } catch (error) {
-      console.error("Could not check for existing connection:", error);
-      onMetaMaskConnectionError(error);
-    }
+    provider.on("chainChanged", (newChain) => {
+      updateNetwork(newChain);
+      showActiveTxnsTab();
+    });
+    provider.on("accountsChanged", (newAddresses) => {
+      checkAllowance();
+      updateAddress(newAddresses)
+        .then((addr) => updateActiveAddressTXNs(addr))
+        .then(() => showActiveAddressTXNs());
+    });
+    $('#myModal').modal('hide');
+  } catch (error) {
+    console.error(`Connection failed for ${providerDetail.info.name}:`, error);
+    onMetaMaskConnectionError({ message: `Connection failed: ${error.message}` });
   }
+}
+
+function onLogInClick() {
+  const walletList = $("#wallet-list");
+  walletList.empty(); // Clear previous list
+
+  if (wallets.length === 0) {
+    showModal("No Wallets Found", "Please install a wallet extension like MetaMask.");
+    return;
+  }
+
+  wallets.forEach(wallet => {
+    const walletItem = $(`
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <img src="${wallet.info.icon}" alt="${wallet.info.name}" width="30" height="30" class="mr-2">
+          ${wallet.info.name}
+        </div>
+        <button class="btn btn-primary btn-sm">Connect</button>
+      </li>
+    `);
+    walletItem.find('button').on('click', () => connectWallet(wallet));
+    walletList.append(walletItem);
+  });
+
+  showModal("Select a Wallet", "");
+  $('#myModal .modal-body').show(); // Make sure the body is visible
 }
 
 function handleHathorAddressChange() {
@@ -444,15 +475,30 @@ async function waitForReceipt(txHash) {
 }
 
 function onLogInClick() {
-  if (!config) {
-    $("#logIn").html('<i class="fas fa-sync fa-spin">');
-    $("#logIn").attr("onclick", "");
-    isInstalled().catch((err) => {
-      onMetaMaskConnectionError(
-        typeof err === "string" ? { message: err } : err
-      );
-    });
+  const walletList = $("#wallet-list");
+  walletList.empty(); // Clear previous list
+
+  if (wallets.length === 0) {
+    showModal("No Wallets Found", "Please install a wallet extension like MetaMask.");
+    return;
   }
+
+  wallets.forEach(wallet => {
+    const walletItem = $(`
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <img src="${wallet.info.icon}" alt="${wallet.info.name}" width="30" height="30" class="mr-2">
+          ${wallet.info.name}
+        </div>
+        <button class="btn btn-primary btn-sm">Connect</button>
+      </li>
+    `);
+    walletItem.find('button').on('click', () => connectWallet(wallet));
+    walletList.append(walletItem);
+  });
+
+  showModal("Select a Wallet", "");
+  $('#myModal .modal-body').show(); // Make sure the body is visible
 }
 
 function onPreviousTxnClick() {
@@ -1007,7 +1053,9 @@ function onMetaMaskConnectionError(err) {
 
 function showModal(title, message) {
   $("#myModal .modal-title").html(title);
-  $("#myModal .modal-body").html(`<p>${message}</p>`);
+  if (message) {
+    $("#myModal .modal-body").html(`<p>${message}</p>`);
+  }
   $("#myModal").modal("show");
 }
 
