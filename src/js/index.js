@@ -29,6 +29,7 @@ let rLogin;
 let pollingLastBlockIntervalId = 0;
 let DateTime = luxon.DateTime;
 const wallets = [];
+const LAST_CONNECTED_WALLET_KEY = 'lastConnectedWallet';
 const evmHost = !isTestnet ?
   "https://arbitrum-mainnet.infura.io/v3/399500b5679b442eb991fefee1c5bfdc" :
   "https://sepolia.infura.io/v3/399500b5679b442eb991fefee1c5bfdc";
@@ -163,7 +164,29 @@ $(document).ready(function () {
   }
   window.addEventListener('eip6963:announceProvider', onAnnouncement);
   window.dispatchEvent(new Event("eip6963:requestProvider"));
+  autoConnectWallet();
 });
+
+function autoConnectWallet() {
+  const lastConnectedWalletName = localStorage.getItem(LAST_CONNECTED_WALLET_KEY);
+  if (lastConnectedWalletName) {
+    let attempts = 0;
+    const maxAttempts = 10; // Try for 1 second (10 * 100ms)
+    const intervalId = setInterval(() => {
+      const providerDetail = wallets.find(w => w.info.name === lastConnectedWalletName);
+      if (providerDetail) {
+        clearInterval(intervalId);
+        connectWallet(providerDetail);
+      } else {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          clearInterval(intervalId);
+          console.log("Auto-connect failed: wallet not found.");
+        }
+      }
+    }, 100);
+  }
+}
 
 async function connectWallet(providerDetail) {
   const provider = providerDetail.provider;
@@ -173,6 +196,8 @@ async function connectWallet(providerDetail) {
     window.web3 = new Web3(provider);
     const chainId = await web3.eth.net.getId();
     await updateCallback(chainId, accounts);
+
+    localStorage.setItem(LAST_CONNECTED_WALLET_KEY, providerDetail.info.name);
 
     provider.on("chainChanged", (newChain) => {
       updateNetwork(newChain);
