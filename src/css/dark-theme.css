@@ -289,3 +289,23 @@ input::placeholder {
 .pending {
     color: #ffc107;
 }
+/* Wallet Modal Dark Theme */
+#myModal .modal-content {
+    background-color: #212529;
+    color: #fff;
+}
+#wallet-list .list-group-item {
+    background-color: #343a40;
+    border-color: #454d55;
+    color: #fff;
+}
+#wallet-list .list-group-item:hover {
+    background-color: #454d55;
+}
+#myModal .modal-header {
+    border-bottom: 1px solid #454d55;
+}
+#myModal .close {
+    color: #fff;
+}
+
