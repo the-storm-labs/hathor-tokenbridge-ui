@@ -34,11 +34,14 @@ const evmHost = !isTestnet ?
   "https://arbitrum-mainnet.infura.io/v3/399500b5679b442eb991fefee1c5bfdc" :
   "https://sepolia.infura.io/v3/399500b5679b442eb991fefee1c5bfdc";
 
-const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
-// const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getExecutedEvents'; // for testing locally
+// const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
+// const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getTransactionsByReceiver'; // for testing locally
+const backendUrl = 'https://gettransactionsbyreceiver-pddhyxmhxa-uc.a.run.app';
 
 // pagination of active txs table
 const numberOfLines = 6;
+
+const requiredVotesToClaim = 4;
 
 $(document).ready(function () {
   new ClipboardJS(".copy");
@@ -321,6 +324,7 @@ async function fillHathorToEvmTxs() {
       sender: prpsl.sender,
       status: prpsl.status,
       action: setStatusAction(prpsl.status, prpsl),
+      votes: prpsl.votes || 0,
     });
   }
   );
@@ -342,7 +346,7 @@ async function getPendingClaims() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ receiver: walletAddress })
+      body: JSON.stringify({ receiver: walletAddress, limit: 1000 })
     });
 
     if (!resp.ok) {
@@ -369,7 +373,7 @@ function setStatusAction(status, tx) {
 
   switch (status) {
     case "processing_transfer":
-      action = "<p>Pending</p>"
+      action = `<span class="badge badge-warning"><i class="fas fa-hourglass-half mr-1"></i>Voting — in progress</span>`
       break;
     case "awaiting_claim":
       action = `<button
@@ -384,7 +388,7 @@ function setStatusAction(status, tx) {
                   </button>`
       break;
     case "claimed":
-      action = "<p>Claimed</p>"
+      action = `<span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>Claimed</span>`
       break;
   }
 
@@ -441,7 +445,8 @@ async function handleTransferEvents(event) {
     blockHash,
     logIndex,
     originChainId,
-    destinationChainId
+    destinationChainId,
+    votes,
   } = event;
 
   // Ensure amount is always a string for contract calls (avoid numbers causing ABI parsing errors)
@@ -463,7 +468,11 @@ async function handleTransferEvents(event) {
     transactionHash: blockHash,
     logIndex,
     originChainId,
+    votes,
+    status: "processing_transfer"
   };
+
+  if (votes < requiredVotesToClaim) { return transaction; }
 
   const txDataHash = await bridgeContract.methods
     .getTransactionDataHash(
@@ -1171,6 +1180,7 @@ function updateActiveAddressTXNs() {
     address,
     config.crossToNetwork.name
   );
+  console.log("activeAddresseth2HtrTxns", activeAddresseth2HtrTxns);
   activeAddresshtr2EthTxns = TXN_Storage.getAllTxns4Address(
     address,
     config.name
@@ -1249,9 +1259,32 @@ function showActiveAddressTXNs() {
   let currentNetwork = $(".indicator span").text();
 
   const processHtrTxn = (txn, config = {}) => {
+    const requiredVotes = 4;
+    const votesCount = Number(txn.votes) || 0;
+
+    // build 4 small segments, painting as many as votesCount
+    let segments = '';
+    for (let i = 1; i <= requiredVotes; i++) {
+      const filled = i <= votesCount;
+      // separator after the requiredVotes to emphasize threshold
+      if (i === requiredVotes + 1) {
+        segments += `<div style="width:6px; height:14px; margin:0 6px; border-left:2px solid rgba(0,0,0,0.12);"></div>`;
+      }
+      const bg = filled ? '#28a745' : '#e9ecef';
+      segments += `<div role="img" aria-label="vote ${i} ${filled ? 'filled' : 'empty'}" style="width:14px; height:14px; background:${bg}; border-radius:3px; margin-right:6px;"></div>`;
+    }
+
+    const votesHtml = `
+        <div class="d-flex align-items-center justify-content-end" style="gap:8px;">
+          <div style="display:flex; align-items:center">${segments}</div>
+          <small style="margin-left:8px;color:#6c757d; font-size:12px;">${votesCount}/${requiredVotes}</small>
+        </div>
+      `;
+
     let htmlRow = `<tr class="black">
         <td  class="align-middle">-</td>
         <td class="align-middle">${txn.amount} ${txn.token}</td>
+        <td class="align-middle">${votesHtml}</td>
         <td class="align-middle">${txn.action}</td>
     </tr>`;
 

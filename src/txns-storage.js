@@ -1,9 +1,9 @@
 class TXN_Storage {
-    
+
     static Storage;
 
     static isStorageAvailable(type) {
-        
+
         try {
             this.Storage = window[type];
             let x = '__storage_test__';
@@ -11,7 +11,7 @@ class TXN_Storage {
             this.Storage.removeItem(x);
             return true;
         }
-        catch(e) {
+        catch (e) {
             return e instanceof DOMException && (
                 // everything except Firefox
                 e.code === 22 ||
@@ -34,7 +34,7 @@ class TXN_Storage {
             return txn1.blockNumber <= txn2.blockNumber ? 1 : -1;
         });
     }
- 
+
     static addTxn(accountAddress, networkName = "", data = {}) {
         delete data.transactionIndex;
         delete data.cumulativeGasUsed;
@@ -56,13 +56,13 @@ class TXN_Storage {
 
         const tx = txns.find(tx => tx?.transactionHash === data.transactionHash);
 
-        if (!tx || tx != null){
+        if (!tx || tx != null) {
 
-            if (data.status === tx?.status) return;
+            if (data.status === tx?.status && data.votes === tx?.votes) return;
 
             txns = txns.filter(tx => data.transactionHash != tx.transactionHash);
         }
-        
+
         this.serializeTxns(key, [...txns, data]);
     }
 
