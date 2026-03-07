@@ -1,4 +1,8 @@
 //User
+function truncateMiddle(str, start = 8, end = 6) {
+  if (!str || str.length <= start + end + 3) return str;
+  return str.slice(0, start) + '...' + str.slice(-end);
+}
 let address = "";
 let activeAddresseth2HtrTxns = [];
 let eth2HtrTablePage = 1;
@@ -168,6 +172,47 @@ $(document).ready(function () {
   window.addEventListener('eip6963:announceProvider', onAnnouncement);
   window.dispatchEvent(new Event("eip6963:requestProvider"));
   autoConnectWallet();
+
+  // ---- HTR→ARB direction: event wiring ----
+  $('#directionToggle').on('change', 'input[type=radio]', function () {
+    const dir = $(this).val();
+    if (dir === 'arb-to-htr') {
+      $('#crossForm').show();
+      $('#htrToArbForm').hide();
+    } else {
+      $('#crossForm').hide();
+      $('#htrToArbForm').show();
+      if (address) $('#htrDestAddress').val(address);
+      populateHtrTokenDropdown();
+    }
+  });
+
+  $('#connectHathorWallet').on('click', onConnectHathorWalletClick);
+  $('#htrSendBtn').on('click', onHtrSendClick);
+
+  $('#htrTokenSelect').on('change', function () {
+    refreshHtrBalance();
+    validateHtrAmountInput();
+  });
+
+  $('#htrAmount').on('input', validateHtrAmountInput);
+
+  $('#htrMax').on('click', async function () {
+    const selectedKey = $('#htrTokenSelect').val();
+    if (!selectedKey || !window.HathorWallet || !window.HathorWallet.isConnected()) return;
+    const token = TOKENS.find(t => t.token === selectedKey);
+    if (!token || !token[31] || !token[31].pureHtrAddress) return;
+    try {
+      const tokenUid = token[31].pureHtrAddress;
+      const balanceData = await window.HathorWallet.getBalance(tokenUid, isTestnet);
+      const available = (balanceData[tokenUid]?.available ?? 0);
+      const decimals = token[31].decimals;
+      $('#htrAmount').val((available / Math.pow(10, decimals)).toFixed(decimals));
+      validateHtrAmountInput();
+    } catch (e) {
+      console.error('Could not fetch max balance', e);
+    }
+  });
 });
 
 function autoConnectWallet() {
@@ -288,8 +333,6 @@ async function fillHathorToEvmTxs() {
 
     let tk = null;
 
-    console.log(TOKENS);
-
     for (let i = 0; i < TOKENS.length; i++) {
 
       const tokenByNetwork = TOKENS[i][config.networkId];
@@ -314,8 +357,6 @@ async function fillHathorToEvmTxs() {
     if (!tk) {
       return
     };
-
-    console.log("Adding TX", { prpsl, tk });
 
     TXN_Storage.addHathorTxn(address, config.crossToNetwork.name, {
       transactionHash: prpsl.transactionHash,
@@ -357,8 +398,6 @@ async function getPendingClaims() {
 
     // accept either an array response or an object with an `events` array
     const events = Array.isArray(payload) ? payload : (Array.isArray(payload.events) ? payload.events : []);
-
-    console.log(`Fetched ${events.length} executed events for ${walletAddress}`);
 
     // call existing handleTransferEvents for each event (keeps existing behavior)
     return await Promise.all(events.map(handleTransferEvents));
@@ -489,8 +528,6 @@ async function handleTransferEvents(event) {
   const isClaimed = await bridgeContract.methods
     .isClaimed(txDataHash, txDataHash)
     .call();
-
-  console.log(`Transaction ${transactionHash}, amount ${amount} isClaimed: ${isClaimed}`);
 
   transaction.status = isClaimed ? "claimed" : "awaiting_claim";
 
@@ -1079,6 +1116,19 @@ async function isInstalled() {
   }
 }
 
+function onDisconnectEvmClick() {
+  localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
+  $("#logIn").show();
+  $("#transferTab").addClass("disabled");
+  $(".wallet-status").hide();
+  disableInputs(true);
+  tokenContract = null;
+  allowTokensContract = null;
+  bridgeContract = null;
+  config = null;
+  address = "";
+}
+
 function onMetaMaskConnectionError(err) {
   console.log(err);
   localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
@@ -1088,7 +1138,7 @@ function onMetaMaskConnectionError(err) {
   $("#logIn").show();
   $("#transferTab").addClass("disabled");
   $(".wallet-status").hide();
-  $("#address").text("0x00000..");
+  $("#address").text("0x00000...");
   disableInputs(true);
   tokenContract = null;
   allowTokensContract = null;
@@ -1160,13 +1210,12 @@ function truncateAddress(address) {
 
 async function updateAddress(newAddresses) {
   address = newAddresses[0];
-  const truncatedAddress = truncateAddress(address);
-  $(".indicator span").text(truncatedAddress);
+  $('#address').text(truncateMiddle(address));
+  $("#evmNetwork").text(isTestnet ? "Sepolia" : "Arbitrum One");
   $("#logIn").hide();
   $("#transferTab").removeClass("disabled");
   $("#claimTab").removeClass("disabled");
-  $(".wallet-status.indicator").show();
-  $(".wallet-status.text-truncate").hide();
+  $(".wallet-status.indicator").css('display', 'flex');
 
   if (config) {
     await updateTokenAddressDropdown(config.networkId);
@@ -1180,7 +1229,6 @@ function updateActiveAddressTXNs() {
     address,
     config.crossToNetwork.name
   );
-  console.log("activeAddresseth2HtrTxns", activeAddresseth2HtrTxns);
   activeAddresshtr2EthTxns = TXN_Storage.getAllTxns4Address(
     address,
     config.name
@@ -1548,6 +1596,188 @@ async function getAccounts() {
   return accounts;
 }
 
+// --------- HTR→ARB FUNCTIONS ----------
+
+function populateHtrTokenDropdown() {
+  let html = '';
+  for (const token of TOKENS) {
+    const htrData = token[31];
+    if (!htrData || !htrData.pureHtrAddress) continue;
+    html += `<option value="${token.token}">${htrData.symbol || token.name}</option>`;
+  }
+  $('#htrTokenSelect').html(html).selectpicker('refresh');
+}
+
+async function refreshHtrBalance() {
+  const selectedKey = $('#htrTokenSelect').val();
+  if (!selectedKey || !window.HathorWallet || !window.HathorWallet.isConnected()) {
+    $('#htrTokenBalance').text('—');
+    return;
+  }
+  const token = TOKENS.find(t => t.token === selectedKey);
+  if (!token || !token[31] || !token[31].pureHtrAddress) return;
+  try {
+    const tokenUid = token[31].pureHtrAddress;
+    const balanceData = await window.HathorWallet.getBalance(tokenUid, isTestnet);
+    const available = balanceData[tokenUid]?.available ?? 0;
+    const decimals = token[31].decimals;
+    const formatted = (available / Math.pow(10, decimals)).toFixed(decimals);
+    $('#htrTokenBalance').text(`${formatted} ${token[31].symbol || token.token}`);
+  } catch (e) {
+    console.error('refreshHtrBalance error', e);
+    $('#htrTokenBalance').text('—');
+  }
+}
+
+function validateHtrAmountInput() {
+  const val = parseFloat($('#htrAmount').val());
+  const ready = window.HathorWallet && window.HathorWallet.isConnected() &&
+    $('#htrTokenSelect').val() && !isNaN(val) && val > 0;
+  if (isNaN(val) || val <= 0) {
+    $('#htrAmount').addClass('is-invalid');
+  } else {
+    $('#htrAmount').removeClass('is-invalid');
+  }
+  $('#htrSendBtn').prop('disabled', !ready);
+}
+
+function enableHtrSendForm() {
+  $('#htrTokenSelect').prop('disabled', false).selectpicker('refresh');
+  $('#htrAmount').prop('disabled', false);
+  $('#htrMax').prop('disabled', false);
+  $('#htrDestAddress').prop('disabled', false);
+  if (address) $('#htrDestAddress').val(address);
+}
+
+function disableHtrSendForm() {
+  $('#htrTokenSelect').prop('disabled', true).selectpicker('refresh');
+  $('#htrAmount').prop('disabled', true);
+  $('#htrMax').prop('disabled', true);
+  $('#htrDestAddress').prop('disabled', true);
+  $('#htrSendBtn').prop('disabled', true);
+}
+
+async function onConnectHathorWalletClick() {
+  if (!window.HathorWallet) {
+    alert('Hathor wallet connector is still loading. Please wait a moment and try again.');
+    return;
+  }
+  if (window.HathorWallet.isConnected()) {
+    // Disconnect
+    await window.HathorWallet.disconnect();
+    $('#hathorWalletInfo').hide();
+    $('#connectHathorWallet').show();
+    disableHtrSendForm();
+    return;
+  }
+  const btn = $('#connectHathorWallet');
+  btn.prop('disabled', true).text('Connecting...');
+  try {
+    const { address: htrAddr } = await window.HathorWallet.connect(isTestnet);
+    $('#hathorWalletAddress').text(htrAddr ? truncateMiddle(htrAddr) : 'Connected');
+    $('#hathorWalletInfo').css('display', 'flex');
+    btn.hide();
+    enableHtrSendForm();
+    populateHtrTokenDropdown();
+    refreshHtrBalance();
+  } catch (err) {
+    btn.text('Connect Hathor').prop('disabled', false).show();
+    console.error('Hathor wallet connect failed', err);
+    $('#htrSendErrorMsg').text(`Could not connect Hathor wallet: ${err.message}`);
+    $('#htrSendError').show();
+  }
+}
+
+async function onHtrSendClick() {
+  $('#htrSendSuccess').hide();
+  $('#htrSendError').hide();
+
+  const selectedKey = $('#htrTokenSelect').val();
+  if (!selectedKey) {
+    $('#htrSendErrorMsg').text('Please select a token.');
+    $('#htrSendError').show();
+    return;
+  }
+  const token = TOKENS.find(t => t.token === selectedKey);
+  if (!token || !token[31] || !token[31].pureHtrAddress) {
+    $('#htrSendErrorMsg').text('Selected token is not available on Hathor.');
+    $('#htrSendError').show();
+    return;
+  }
+
+  const amountStr = $('#htrAmount').val();
+  const amountFloat = parseFloat(amountStr);
+  if (!amountStr || isNaN(amountFloat) || amountFloat <= 0) {
+    $('#htrAmount').addClass('is-invalid');
+    $('#htrAmountError').text('Enter a valid amount.');
+    return;
+  }
+  $('#htrAmount').removeClass('is-invalid');
+
+  const evmDest = $('#htrDestAddress').val().trim();
+  if (!evmDest || !/^0x[0-9a-fA-F]{40}$/.test(evmDest)) {
+    $('#htrDestAddress').addClass('is-invalid');
+    $('#htrSendErrorMsg').text('Enter a valid Arbitrum address (0x...).');
+    $('#htrSendError').show();
+    return;
+  }
+  $('#htrDestAddress').removeClass('is-invalid');
+
+  const hathorConfig = isTestnet ? HTR_TESTNET_CONFIG : HTR_MAINNET_CONFIG;
+  const bridgeHathorAddr = hathorConfig.bridgeHathorAddress;
+  if (!bridgeHathorAddr || bridgeHathorAddr.startsWith('HATHOR_')) {
+    $('#htrSendErrorMsg').text('Bridge Hathor deposit address is not configured.');
+    $('#htrSendError').show();
+    return;
+  }
+
+  const decimals = token[31].decimals;
+  const amountUnits = Math.round(amountFloat * Math.pow(10, decimals));
+  const tokenUid = token[31].pureHtrAddress;
+
+  const btn = $('#htrSendBtn');
+  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+
+  try {
+    const result = await window.HathorWallet.sendBridgeTx(
+      bridgeHathorAddr, tokenUid, amountUnits, evmDest, isTestnet
+    );
+
+    // Store in local transaction history (keyed by EVM destination, which the
+    // polling system uses when querying the backend for updates)
+    const evmNetworkName = config ? config.crossToNetwork.name : (isTestnet ? 'Golf' : 'Hathor Mainnet');
+    TXN_Storage.addHathorTxn(evmDest, evmNetworkName, {
+      transactionHash: result.hash,
+      token: token[31].symbol || token.token,
+      amount: amountStr,
+      sender: window.HathorWallet.getAddress(),
+      status: 'processing_transfer',
+      action: `<span class="badge badge-warning">Submitted — awaiting votes</span>`,
+      votes: 0,
+    });
+
+    // If the user also has an EVM wallet connected, refresh the transaction list
+    if (address) {
+      updateActiveAddressTXNs();
+      showActiveAddressTXNs();
+    }
+
+    $('#htrSendSuccess').show();
+    // Switch to HTR→ARB history tab so the user can track the tx
+    showEvmTxsnTabe();
+    location.hash = '';
+    location.hash = '#nav-eth-htr-tab';
+  } catch (err) {
+    console.error('HTR→ARB send failed', err);
+    $('#htrSendErrorMsg').text(err.message || 'Transaction failed. Please try again.');
+    $('#htrSendError').show();
+  } finally {
+    btn.prop('disabled', false).text('Send via Hathor Wallet');
+  }
+}
+
+// --------- HTR→ARB FUNCTIONS END ----------
+
 // --------- CONFIGS ----------
 let SEPOLIA_CONFIG = {
   networkId: 11155111,
@@ -1571,6 +1801,8 @@ let HTR_TESTNET_CONFIG = {
   confirmationTime: "10 minutes",
   secondsPerBlock: 30,
   crossToNetwork: SEPOLIA_CONFIG,
+  // Hathor deposit address: send tokens here to initiate HTR→EVM bridge transfer
+  bridgeHathorAddress: 'wYr7GUqHFDCan2WBN1f6JPJYUWPtpVhb22',
 };
 SEPOLIA_CONFIG.crossToNetwork = HTR_TESTNET_CONFIG;
 
@@ -1597,6 +1829,8 @@ let HTR_MAINNET_CONFIG = {
   confirmationTime: "10 minutes",
   secondsPerBlock: 30,
   crossToNetwork: ETH_CONFIG,
+  // Hathor deposit address: send tokens here to initiate HTR→EVM bridge transfer
+  bridgeHathorAddress: 'hQj6skwZY9RT3bRvFuRjioJP5ZbLSRYeuD',
 };
 ETH_CONFIG.crossToNetwork = HTR_MAINNET_CONFIG;
 // --------- CONFIGS  END --------------
@@ -1730,3 +1964,14 @@ TOGGER_TOKEN = {
 
 const TOKENS = [USDC_TOKEN, EVM_NATIVE_TOKEN, HATHOR_NATIVE_TOKEN, TOGGER_TOKEN];
 // --------- TOKENS  END --------------
+
+// Restore Hathor wallet session after main.js (module) finishes loading.
+window.addEventListener('hathorWalletRestored', function (e) {
+  const addr = e.detail.address;
+  if (!addr) return;
+  $('#hathorWalletAddress').text(truncateMiddle(addr));
+  $('#hathorWalletInfo').css('display', 'flex');
+  $('#connectHathorWallet').hide();
+  enableHtrSendForm();
+  populateHtrTokenDropdown();
+});

@@ -44,34 +44,68 @@
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark align-items-center">
             <div class="container d-flex  align-items-center" style="line-height: normal;">
                 <a class="navbar-brand" href="/">
-                    <img src="./assets/storm-labs-reduced-logo.png" class="logo alt="">
+                    <img src="./assets/storm-labs-reduced-logo.png" class="logo" alt="">
                     </a>
                     <div class=" navbar-collapse collapse" id="navbarResponsive">
-                    <div class="navbar-item ml-auto">
-                        <button id="logIn" type="button" class="btn btn-primary badge-pill" style="width: 170px;">
-                            Connect wallet
-                        </button>
-                        <div class="wallet-status navbar-item indicator badge-outline badge-pill"
-                            style="display: none;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 14 14"
-                                fill="white" class="w-5 h-5 fill-foreground">
-                                <g clip-path="url(#clip0_434_1586)">
-                                    <path
-                                        d="M12.1509 2H1.85167C0.829068 2 0 2.82907 0 3.85167V10.5496C0 11.5722 0.829068 12.4013 1.85167 12.4013H12.1509C13.1735 12.4013 14.0026 11.5722 14.0026 10.5496V3.85167C14.0026 2.82907 13.1735 2 12.1509 2ZM12.4752 5.43396C12.4752 5.63273 12.3157 5.79227 12.1169 5.79227H8.49468C8.32991 5.79227 8.1756 5.8995 8.13637 6.05903C8.01607 6.57426 7.55315 6.9561 7.00131 6.9561C6.44947 6.9561 5.98655 6.57164 5.86624 6.05903C5.82963 5.89688 5.67271 5.79227 5.50794 5.79227H1.88567C1.6869 5.79227 1.52737 5.63273 1.52737 5.43396V4.19951C1.52737 3.80198 1.84906 3.48029 2.24659 3.48029H11.756C12.1536 3.48029 12.4752 3.80198 12.4752 4.19951V5.43396Z">
-                                    </path>
-                                </g>
-                                <defs>
-                                    <clipPath id="clip0_434_1586">
-                                        <rect width="14" height="14" fill="white"></rect>
-                                    </clipPath>
-                                </defs>
-                            </svg>
-                            <span aria-describedby="tooltip-status"></span>
+                    <div class="navbar-item ml-auto d-flex flex-column align-items-end" style="gap: 4px;">
+
+                        <!-- EVM Wallet -->
+                        <div class="d-flex align-items-center" style="gap: 6px; width:200px;">
+                            <button id="logIn" type="button" class="btn btn-primary badge-pill btn-sm" style="width:200px; white-space:nowrap;">
+                                Connect EVM
+                            </button>
+                            <div class="wallet-status indicator" style="display:none; gap:8px; align-items:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 14 14"
+                                    fill="white" style="display:block; flex-shrink:0; align-self:center;">
+                                    <g clip-path="url(#clip0_evm_wallet)">
+                                        <path d="M12.1509 2H1.85167C0.829068 2 0 2.82907 0 3.85167V10.5496C0 11.5722 0.829068 12.4013 1.85167 12.4013H12.1509C13.1735 12.4013 14.0026 11.5722 14.0026 10.5496V3.85167C14.0026 2.82907 13.1735 2 12.1509 2ZM12.4752 5.43396C12.4752 5.63273 12.3157 5.79227 12.1169 5.79227H8.49468C8.32991 5.79227 8.1756 5.8995 8.13637 6.05903C8.01607 6.57426 7.55315 6.9561 7.00131 6.9561C6.44947 6.9561 5.98655 6.57164 5.86624 6.05903C5.82963 5.89688 5.67271 5.79227 5.50794 5.79227H1.88567C1.6869 5.79227 1.52737 5.63273 1.52737 5.43396V4.19951C1.52737 3.80198 1.84906 3.48029 2.24659 3.48029H11.756C12.1536 3.48029 12.4752 3.80198 12.4752 4.19951V5.43396Z"></path>
+                                    </g>
+                                    <defs>
+                                        <clipPath id="clip0_evm_wallet">
+                                            <rect width="14" height="14" fill="white"></rect>
+                                        </clipPath>
+                                    </defs>
+                                </svg>
+                                <div style="line-height:1.3; color:white; text-align:left; align-self:center;">
+                                    <div id="evmNetwork" style="font-size:10px; opacity:0.7; white-space:nowrap;"></div>
+                                    <div style="white-space:nowrap;"><span id="address" style="font-size:11px; font-family:monospace;"></span></div>
+                                </div>
+                                <button type="button" onclick="onDisconnectEvmClick()" aria-label="Disconnect EVM"
+                                    style="background:none; border:none; padding:0; cursor:pointer; color:rgba(255,255,255,0.5); font-size:22px; line-height:1; flex-shrink:0; align-self:center;">
+                                    &times;
+                                </button>
+                            </div>
                         </div>
-                        <div class="wallet-status navbar-item badge-pill text-truncate"
-                            style="width: 170px; display: none;">
-                            <span id="address">0x123456789</span>
+
+                        <!-- Hathor Wallet -->
+                        <div class="d-flex align-items-center" style="gap: 6px; width:200px;">
+                            <button id="connectHathorWallet" type="button"
+                                class="btn btn-primary badge-pill btn-sm" style="width:200px; white-space:nowrap;">
+                                Connect Hathor
+                            </button>
+                            <div id="hathorWalletInfo" style="display:none; gap:8px; align-items:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 14 14"
+                                    fill="white" style="display:block; flex-shrink:0; align-self:center;">
+                                    <g clip-path="url(#clip0_htr_wallet)">
+                                        <path d="M12.1509 2H1.85167C0.829068 2 0 2.82907 0 3.85167V10.5496C0 11.5722 0.829068 12.4013 1.85167 12.4013H12.1509C13.1735 12.4013 14.0026 11.5722 14.0026 10.5496V3.85167C14.0026 2.82907 13.1735 2 12.1509 2ZM12.4752 5.43396C12.4752 5.63273 12.3157 5.79227 12.1169 5.79227H8.49468C8.32991 5.79227 8.1756 5.8995 8.13637 6.05903C8.01607 6.57426 7.55315 6.9561 7.00131 6.9561C6.44947 6.9561 5.98655 6.57164 5.86624 6.05903C5.82963 5.89688 5.67271 5.79227 5.50794 5.79227H1.88567C1.6869 5.79227 1.52737 5.63273 1.52737 5.43396V4.19951C1.52737 3.80198 1.84906 3.48029 2.24659 3.48029H11.756C12.1536 3.48029 12.4752 3.80198 12.4752 4.19951V5.43396Z"></path>
+                                    </g>
+                                    <defs>
+                                        <clipPath id="clip0_htr_wallet">
+                                            <rect width="14" height="14" fill="white"></rect>
+                                        </clipPath>
+                                    </defs>
+                                </svg>
+                                <div style="line-height:1.3; color:white; text-align:left; align-self:center;">
+                                    <div style="font-size:10px; opacity:0.7; white-space:nowrap;">Hathor</div>
+                                    <div style="white-space:nowrap;"><span id="hathorWalletAddress" style="font-size:11px; font-family:monospace;"></span></div>
+                                </div>
+                                <button type="button" onclick="onConnectHathorWalletClick()" aria-label="Disconnect Hathor"
+                                    style="background:none; border:none; padding:0; cursor:pointer; color:rgba(255,255,255,0.5); font-size:22px; line-height:1; flex-shrink:0; align-self:center;">
+                                    &times;
+                                </button>
+                            </div>
                         </div>
+
                     </div>
             </div>
             </div>
@@ -90,6 +124,17 @@
                 <div id="transferTab" class="align-center disabled">
                     <div class="card">
                         <div class="card-body">
+                            <!-- Direction toggle -->
+                            <div class="form-group text-center mb-3">
+                                <div class="btn-group btn-group-toggle" data-toggle="buttons" id="directionToggle">
+                                    <label class="btn btn-outline-secondary active" id="btn-arb-to-htr">
+                                        <input type="radio" name="direction" value="arb-to-htr" checked> ARB &rarr; HTR
+                                    </label>
+                                    <label class="btn btn-outline-secondary" id="btn-htr-to-arb">
+                                        <input type="radio" name="direction" value="htr-to-arb"> HTR &rarr; ARB
+                                    </label>
+                                </div>
+                            </div>
                             <form id="crossForm" name="crossForm">
                                 <div class="form-group">
                                     <label for="tokenAddress">Select token</label>
@@ -134,6 +179,54 @@
                                         class="btn btn-primary btn-lg btn-block mt-2">Convert tokens</button>
                                 </div>
                             </form>
+
+                            <!-- HTR→ARB transfer form (shown when direction toggle = HTR→ARB) -->
+                            <div id="htrToArbForm" style="display:none;">
+                                <div class="form-group">
+                                    <label for="htrTokenSelect">Select token</label>
+                                    <select class="selectpicker" id="htrTokenSelect" data-width="100%"
+                                        title="Select token" disabled required>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        Balance: <span id="htrTokenBalance">—</span>
+                                    </small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="htrAmount">Amount</label>
+                                    <div class="input-group">
+                                        <input id="htrAmount" class="form-control" placeholder="0.0" type="text" disabled>
+                                        <div class="input-group-append">
+                                            <button id="htrMax" class="btn btn-secondary" type="button" disabled>Max</button>
+                                        </div>
+                                    </div>
+                                    <div class="invalid-feedback" id="htrAmountError"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="htrDestAddress">Destination Arbitrum address</label>
+                                    <input id="htrDestAddress" class="form-control" type="text" disabled
+                                        placeholder="0x... (auto-filled from connected EVM wallet)">
+                                    <small class="form-text text-muted">
+                                        Where you will receive tokens on Arbitrum.
+                                    </small>
+                                </div>
+                                <div class="form-group">
+                                    <div class="fees mt-2">
+                                        <p>Service fee: paid on the bridge contract at time of claim</p>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <button id="htrSendBtn" class="btn btn-primary btn-lg btn-block" type="button" disabled>
+                                        Send via Hathor Wallet
+                                    </button>
+                                </div>
+                                <div id="htrSendSuccess" class="alert alert-success mt-3" style="display:none;">
+                                    Transaction submitted. The bridge will process it shortly.
+                                    Check the HTR &rarr; ARB tab below for status updates.
+                                </div>
+                                <div id="htrSendError" class="alert alert-danger mt-3" style="display:none;">
+                                    <span id="htrSendErrorMsg"></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -281,7 +374,7 @@
                     <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
                         <div class="btn-group mr-2" role="group" aria-label="First group">
                             <button type="button" id="txn-previous" class="btn btn-secondary">
-                                < previous</button>
+                                &lt; previous</button>
                                     <button type="button" id="txn-next" class="btn btn-secondary">next ></button>
                         </div>
                     </div>
@@ -435,6 +528,8 @@
             <script type="text/javascript" src="./js/validate-address.js"></script>
             <!-- Custom Js -->
             <script type="text/javascript" src="./js/index.js"></script>
+            <!-- Vite entry: Reown AppKit + Hathor WalletConnect -->
+            <script type="module" src="./js/main.js"></script>
         </div>
 </body>
 
