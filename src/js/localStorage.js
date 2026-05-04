@@ -54,12 +54,12 @@ function Paginator(items, page = 1, per_page = 5) {
  */
 async function poll4LastBlockNumber(cb) {
     let interval = 30_000;
-    let { number } = await web3.eth.getBlock('latest');
+    let number = await web3.eth.getBlockNumber();
     cb(number);
 
     let intervalId = setInterval(async () => {
         console.log('updating...');
-        let { number } = await web3.eth.getBlock('latest');
+        let number = await web3.eth.getBlockNumber();
         cb(number);
     }, interval);
 
