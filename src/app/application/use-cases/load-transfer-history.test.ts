@@ -202,6 +202,28 @@ describe('claim resolution', () => {
     expect((await load(ADDRESS)).hathorToEvm[0]!.claim).toBeNull()
   })
 
+  it('reports it as claimed, not as still voting', async () => {
+    // The whole point of re-checking: for the seconds between the claim being
+    // mined and the API re-indexing it, the row used to read
+    // "Voting — in progress" beside a full 4/4 approval meter — right after the
+    // user had claimed it.
+    const { load } = setup({
+      remote: [apiRecord({ status: 'awaiting_claim' })],
+      bridge: claimable(true),
+    })
+    expect((await load(ADDRESS)).hathorToEvm[0]!.status).toBe('claimed')
+  })
+
+  it('persists the claimed status, so a reload does not undo it', async () => {
+    const { load, history } = setup({
+      remote: [apiRecord({ status: 'awaiting_claim' })],
+      bridge: claimable(true),
+    })
+
+    await load(ADDRESS)
+    expect(history.list(ADDRESS, 'Hathor Mainnet')[0]!.status).toBe('claimed')
+  })
+
   it('does not check the chain for other statuses', async () => {
     const bridge = claimable(false)
     const spy = vi.spyOn(bridge, 'getTransactionDataHash')

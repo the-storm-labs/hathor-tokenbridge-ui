@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapApiTransfer, needsClaimCheck } from './api-transfer.mapper'
+import { mapApiTransfer, needsClaimCheck, type ClaimCheck } from './api-transfer.mapper'
 import { findToken } from '../../config/tokens'
 import type { ApiTransfer } from '../../ports/driven/bridge-api.port'
 import type { StoredTransfer } from '../../ports/driven/transfer-history.port'
@@ -37,13 +37,17 @@ const apiRecord = (over: Partial<ApiTransfer> = {}): ApiTransfer => ({
   ...over,
 })
 
-const map = (over: Partial<ApiTransfer> = {}, local: StoredTransfer[] = [], claimable = false) =>
+const map = (
+  over: Partial<ApiTransfer> = {},
+  local: StoredTransfer[] = [],
+  claimCheck: ClaimCheck = 'unknown',
+) =>
   mapApiTransfer({
     remote: apiRecord(over),
     local,
     token: AHTR,
     hash: () => KECCAK,
-    claimable,
+    claimCheck,
   })
 
 describe('rule 1 — the amount scale depends on the stage', () => {
@@ -89,7 +93,7 @@ describe('rule 2 — the Hathor origin is identified two ways', () => {
       local: [],
       token: AHTR,
       hash: () => 'unrelated',
-      claimable: false,
+      claimCheck: 'unknown',
     })
     expect(transfer.hathorTxId).toBeNull()
   })
@@ -102,7 +106,7 @@ describe('rule 2 — the Hathor origin is identified two ways', () => {
         local: [],
         token: AHTR,
         hash: () => 'unrelated',
-        claimable: false,
+        claimCheck: 'unknown',
       }).displayedTxHash,
     ).toBe(EVM_TX)
   })
@@ -125,11 +129,12 @@ describe('rule 3 — sender may be the relayer, not the user', () => {
 
 describe('claim parameters', () => {
   it('are absent unless the transfer is confirmed claimable', () => {
-    expect(map({ status: 'awaiting_claim' }, [], false).claim).toBeNull()
+    expect(map({ status: 'awaiting_claim' }, [], 'unknown').claim).toBeNull()
+    expect(map({ status: 'awaiting_claim' }, [], 'claimed').claim).toBeNull()
   })
 
   it('carry the blockHash the data hash is built from', () => {
-    const claim = map({ status: 'awaiting_claim' }, [], true).claim!
+    const claim = map({ status: 'awaiting_claim' }, [], 'claimable').claim!
     expect(claim.blockHash).toBe(KECCAK)
     expect(claim.to).toBe(RECEIVER)
     expect(claim.amount).toBe('2000000000000000000')
@@ -140,9 +145,33 @@ describe('claim parameters', () => {
 
   it('are absent when the record is missing a required field', () => {
     // Better no Claim button than one that builds a hash matching nothing.
-    expect(map({ blockHash: null }, [], true).claim).toBeNull()
-    expect(map({ logIndex: null }, [], true).claim).toBeNull()
-    expect(map({ receiver: null }, [], true).claim).toBeNull()
+    expect(map({ blockHash: null }, [], 'claimable').claim).toBeNull()
+    expect(map({ logIndex: null }, [], 'claimable').claim).toBeNull()
+    expect(map({ receiver: null }, [], 'claimable').claim).toBeNull()
+  })
+})
+
+describe('the status the chain reports outranks the API', () => {
+  it('renders a claimed transfer as claimed while the API still says otherwise', () => {
+    // The API keeps reporting awaiting_claim for a while after the claim is
+    // mined. Showing that status beside a full 4/4 approval meter told the user
+    // their claim had not happened — for several seconds, right after they made
+    // it.
+    expect(map({ status: 'awaiting_claim' }, [], 'claimed').status).toBe('claimed')
+  })
+
+  it('leaves the status alone when the chain was not consulted', () => {
+    expect(map({ status: 'awaiting_claim' }, [], 'unknown').status).toBe('awaiting_claim')
+    expect(map({ status: 'awaiting_claim' }, [], 'claimable').status).toBe('awaiting_claim')
+    expect(map({ status: 'evm_voting' }, [], 'unknown').status).toBe('evm_voting')
+  })
+
+  it('keeps the amount scale of the status the API reported', () => {
+    // The scale follows the *stage*, and overriding the status must not move
+    // it: an 18-decimal amount stays 18-decimal.
+    expect(map({ status: 'awaiting_claim' }, [], 'claimed').amountDecimals).toBe(
+      map({ status: 'awaiting_claim' }, [], 'unknown').amountDecimals,
+    )
   })
 })
 
@@ -164,7 +193,7 @@ describe('token fields', () => {
       local: [],
       token: USDC,
       hash: () => KECCAK,
-      claimable: false,
+      claimCheck: 'unknown',
     })
     expect(transfer.tokenSymbol).toBe('hUSDC')
     expect(transfer.tokenDecimals).toBe(2)

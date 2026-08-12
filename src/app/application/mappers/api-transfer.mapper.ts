@@ -38,6 +38,24 @@ import type { StoredTransfer } from '../../ports/driven/transfer-history.port'
  * say, given where the transfer is.
  */
 
+/**
+ * What the bridge contract says about a transfer the API reports as
+ * `awaiting_claim`.
+ *
+ * Three outcomes, not two. Collapsing them into one boolean is what made a
+ * freshly claimed transfer render as "Voting — in progress" beside a full 4/4
+ * approval meter: "not claimable" was true both for *already claimed* and for
+ * *could not be checked*, and only the second one means the API's status should
+ * be believed.
+ */
+export type ClaimCheck =
+  /** The chain says this is claimed, whatever the API still reports. */
+  | 'claimed'
+  /** Offer the button: the chain says unclaimed, or it could not be reached. */
+  | 'claimable'
+  /** Nothing to offer: not awaiting a claim, no contract, or unreadable. */
+  | 'unknown'
+
 export interface MapApiTransferInput {
   readonly remote: ApiTransfer
   /** Records already stored for this address, to recover what the API omits. */
@@ -46,12 +64,12 @@ export interface MapApiTransferInput {
   readonly token: Token
   /** keccak256, injected so this stays pure. */
   readonly hash: (value: string) => string
-  /** True once the transfer is confirmed claimable on-chain. */
-  readonly claimable: boolean
+  /** What the bridge contract says; see {@link ClaimCheck}. */
+  readonly claimCheck: ClaimCheck
 }
 
 export function mapApiTransfer(input: MapApiTransferInput): BridgeTransfer {
-  const { remote, local, token, hash, claimable } = input
+  const { remote, local, token, hash, claimCheck } = input
 
   const matched = matchLocalHathorTransfer(local, remote, hash)
 
@@ -76,12 +94,15 @@ export function mapApiTransfer(input: MapApiTransferInput): BridgeTransfer {
 
     sender: resolveOriginSender(remote, matched),
 
-    status: remote.status,
+    // The chain outranks the API here. The API keeps reporting `awaiting_claim`
+    // for a while after the claim is mined, and rendering that status while the
+    // approval meter reads 4/4 tells the user their claim did not happen.
+    status: claimCheck === 'claimed' ? TransferStatus.Claimed : remote.status,
     votes: remote.votes,
     signatures: remote.signatures,
     blockNumber: remote.blockNumber,
 
-    claim: claimable ? toClaimRequest(remote) : null,
+    claim: claimCheck === 'claimable' ? toClaimRequest(remote) : null,
   }
 }
 

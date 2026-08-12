@@ -58,6 +58,9 @@ assume still work.
 19. Vote/signature counts render.
 20. A **Claim** button appears for an unclaimed Hathor→EVM transfer, and
     claiming it submits successfully.
+20b. The row flips straight to **Claimed** — it must never pass through
+    "Voting — in progress", which the Read API's stale status used to produce
+    for a few seconds after the claim was mined.
 21. Claim errors are **visible** (they render in the transfer alert area — before
     the Phase 0 cleanup they were written into a permanently hidden tab).
 

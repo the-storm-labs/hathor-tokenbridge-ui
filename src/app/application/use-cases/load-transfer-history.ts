@@ -6,7 +6,7 @@ import type { BridgeApiPort } from '../../ports/driven/bridge-api.port'
 import { TransferDirection } from '../../ports/driven/bridge-api.port'
 import type { BridgeContractPort } from '../../ports/driven/contracts.port'
 import type { TransferHistoryPort, StoredTransfer } from '../../ports/driven/transfer-history.port'
-import { mapApiTransfer, needsClaimCheck } from '../mappers/api-transfer.mapper'
+import { mapApiTransfer, needsClaimCheck, type ClaimCheck } from '../mappers/api-transfer.mapper'
 
 /**
  * Loads the Hathor→EVM transfer history for an address.
@@ -59,7 +59,7 @@ export function createLoadTransferHistory(deps: LoadTransferHistoryDeps) {
         local,
         token,
         hash: deps.hash,
-        claimable: await isActuallyClaimable(deps, record.status, record),
+        claimCheck: await checkClaim(deps, record.status, record),
       })
 
       deps.history.upsertHathorTransfer(evmAddress, hathorNetwork, toStored(transfer))
@@ -94,16 +94,17 @@ async function fetchRemote(deps: LoadTransferHistoryDeps, evmAddress: string) {
  *
  * `awaiting_claim` is not authoritative — a transfer already claimed keeps
  * reporting it — so offering the button on the API's word alone sends users to a
- * transaction that reverts.
+ * transaction that reverts, and *rendering* that status makes a claim the user
+ * just made look like it never happened.
  */
-async function isActuallyClaimable(
+async function checkClaim(
   deps: LoadTransferHistoryDeps,
   status: string | null,
   record: { blockHash: string | null; receiver: string | null; amount: string; logIndex: number | null; originChainId: number | null; destinationChainId: number | null },
-): Promise<boolean> {
-  if (!needsClaimCheck(status) || !deps.bridge) return false
-  if (!record.blockHash || !record.receiver || record.logIndex == null) return false
-  if (record.originChainId == null || record.destinationChainId == null) return false
+): Promise<ClaimCheck> {
+  if (!needsClaimCheck(status) || !deps.bridge) return 'unknown'
+  if (!record.blockHash || !record.receiver || record.logIndex == null) return 'unknown'
+  if (record.originChainId == null || record.destinationChainId == null) return 'unknown'
 
   try {
     const dataHash = await deps.bridge.getTransactionDataHash({
@@ -114,11 +115,14 @@ async function isActuallyClaimable(
       originChainId: record.originChainId,
       destinationChainId: record.destinationChainId,
     })
-    return !(await deps.bridge.isClaimed(dataHash))
+    // The one place that can tell "already claimed" from "cannot tell", which
+    // is the difference between showing Claimed and showing the API's stale
+    // awaiting_claim.
+    return (await deps.bridge.isClaimed(dataHash)) ? 'claimed' : 'claimable'
   } catch (error) {
     // If the chain cannot be reached, trust the API rather than hide the button.
     console.warn('Could not verify claim status on-chain, using the API status', error)
-    return true
+    return 'claimable'
   }
 }
 

@@ -83,7 +83,12 @@ describe('transferStatusCell', () => {
 
   it('withholds the button when no valid claim could be built', () => {
     // Better no button than one that builds a data hash matching nothing.
-    expect(transferStatusCell('awaiting_claim', null)).not.toContain('claim-button')
+    const html = transferStatusCell('awaiting_claim', null)
+    expect(html).not.toContain('claim-button')
+    // And it does not claim the transfer is still voting: awaiting a claim
+    // means voting is over, and the row shows a full approval meter beside it.
+    expect(html).toContain('Awaiting claim')
+    expect(html).not.toContain('Voting')
   })
 
   it('renders nothing for an unknown status', () => {

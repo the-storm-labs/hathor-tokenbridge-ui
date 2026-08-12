@@ -118,7 +118,7 @@ Only `GET /transactions-by-receiver` is used. `/voted-counts` and `/executed-eve
 Things the API's shape does not make obvious:
 - `amount` is **18-decimal scaled on the wire** regardless of the EVM token's own decimals (USDC is 6) — but only after the Hathor voting stage. `application/mappers/api-transfer.mapper.ts` owns the three rules that depend on the transfer's stage: the amount scale, how the origin is identified, and whether `sender` is the user or the relayer.
 - `originTransactionHash` for `hathor_to_evm` is the Hathor tx id **0x-prefixed**; the wallet and explorer use bare hex. Strip it with `toHathorTxId()`.
-- `status: "awaiting_claim"` is **not authoritative** — records already claimed on-chain still report it, so the claim is re-checked against the bridge contract before a Claim button is rendered.
+- `status: "awaiting_claim"` is **not authoritative** — records already claimed on-chain still report it, for seconds after the claim is mined. So it is re-checked against the bridge contract, and the result is a **tri-state** (`ClaimCheck` in the mapper), not a boolean: `claimed` overrides the API's status so the row reads Claimed; `claimable` renders the button; `unknown` (no contract, unreadable record) renders neither. Collapsing the first two is what made a transfer the user had just claimed render as "Voting — in progress" beside a full 4/4 approval meter.
 
 ### Claim data hashes
 

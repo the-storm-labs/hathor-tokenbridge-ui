@@ -21,10 +21,15 @@ export function transferStatusCell(status: string | null, claimIndex: number | n
       return badge('warning', 'fa-hourglass-half', 'Voting — in progress')
 
     case TransferStatus.AwaitingClaim:
-      // No claim parameters means we could not build a valid request; offering
-      // the button anyway would send the user to a transaction that reverts.
+      // No claim parameters means we could not build a valid request — no
+      // wallet connected, or a record missing a field. Offering the button
+      // anyway would send the user to a transaction that reverts.
+      //
+      // The fallback used to read "Voting — in progress", which contradicted
+      // the 4/4 approval meter next to it: a transfer awaiting a claim has
+      // finished voting by definition.
       return claimIndex === null
-        ? badge('warning', 'fa-hourglass-half', 'Voting — in progress')
+        ? badge('warning', 'fa-hourglass-half', 'Awaiting claim')
         : `<button class="btn btn-primary claim-button" data-claim-index="${claimIndex}">Claim</button>`
 
     case TransferStatus.Claimed:
