@@ -1,6 +1,7 @@
 import { UniversalConnector } from '@reown/appkit-universal-connector'
 import { createContainer } from './composition/container'
 import { installLegacyBridge } from './composition/legacy-bridge'
+import { mountUi } from './composition/ui'
 
 /**
  * Entry point of the module graph, shared by index.html and testnet.html.
@@ -26,6 +27,7 @@ const container = createContainer({
 })
 
 installLegacyBridge(container)
+mountUi(container, window.document)
 
 /**
  * Reattach to a persisted Hathor session and tell index.js about it.

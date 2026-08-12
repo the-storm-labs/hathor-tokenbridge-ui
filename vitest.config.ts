@@ -13,6 +13,8 @@ export default defineConfig({
     // exits 1 on an empty suite and CI is red for a reason that is not a defect.
     // The domain tests land in Phase 2.
     passWithNoTests: true,
-    // jsdom arrives later, with the UI component/template tests.
+    // node is the default because the domain, application and driven-adapter
+    // tests never touch a DOM and jsdom costs about 300ms per file to build.
+    // The UI components opt in per file with `// @vitest-environment jsdom`.
   },
 })

@@ -155,7 +155,8 @@ $(document).ready(function () {
       "This operation is unavailable until Celo Donut Fork."
     );
   });
-  updateTokenListTab();
+  // The token bridge list is a component now (app/adapters/driving/ui/components),
+  // mounted from app/composition/ui.ts before this ready block runs.
   // Wallet discovery (EIP-6963) is the adapter's; it starts listening when the
   // module graph loads, which is before this ready block runs.
   autoConnectWallet();
@@ -1084,53 +1085,6 @@ async function updateTokenAddressDropdown(networkId) {
   $("#tokenAddress").prop("disabled", false);
   $("#tokenAddress").selectpicker("refresh");
   $("#tokenAddress").trigger('change');
-}
-
-function updateTokenListTab() {
-  let htrConfig = SEPOLIA_CONFIG;
-  if (!isTestnet) htrConfig = ETH_CONFIG;
-
-  let tabHtml = `<div class="row mb-3 justify-content-center text-center">`;
-  tabHtml += `\n    <div class="col-5">`;
-  tabHtml += `\n        ${htrConfig.name}`;
-  tabHtml += `\n    </div>`;
-  tabHtml += `\n    <div class="col-1" style="min-width:56px;"></div>`;
-  tabHtml += `\n    <div class="col-5">`;
-  tabHtml += `\n        ${htrConfig.crossToNetwork.name}`;
-  tabHtml += `\n    </div>`;
-  tabHtml += `\n</div>`;
-  for (let aToken of TOKENS) {
-    if (aToken[htrConfig.networkId] != undefined) {
-      tabHtml += `\n<div class="row mb-3 justify-content-center text-center">`;
-      tabHtml += `\n    <div class="col-5 row">`;
-      tabHtml += `\n      <div class="col-12 font-weight-bold">`;
-      tabHtml += `\n          <a href="${htrConfig.explorer}/address/${aToken[
-        htrConfig.networkId
-      ].address.toLowerCase()}" class="address" target="_blank">`;
-      tabHtml += `\n            <span><img src="${aToken.icon
-        }" class="token-logo"></span>${aToken[htrConfig.networkId].symbol}`;
-      tabHtml += `\n          </a>`;
-      tabHtml += `\n       </div>`;
-      tabHtml += `\n    </div>`;
-      tabHtml += `\n    <div class="col-2 text-center">`;
-      tabHtml += `\n        <i class="fas fa-arrows-alt-h"></i>`;
-      tabHtml += `\n    </div>`;
-      tabHtml += `\n    <div class="col-5 row">`;
-      tabHtml += `\n      <div class="col-12 font-weight-bold">`;
-      tabHtml += `\n          <a href="${htrConfig.crossToNetwork.explorer
-        }/${htrConfig.crossToNetwork.explorerTokenTab}/${aToken[
-          htrConfig.crossToNetwork.networkId
-        ].pureHtrAddress.toLowerCase()}" class="address" target="_blank">`;
-      tabHtml += `\n              <span><img src="${aToken.icon
-        }" class="token-logo"></span>${aToken[htrConfig.crossToNetwork.networkId].symbol
-        }`;
-      tabHtml += `\n          </a>`;
-      tabHtml += `\n      </div>`;
-      tabHtml += `\n    </div>`;
-      tabHtml += `\n</div>`;
-    }
-  }
-  $("#tokenListTab").html(tabHtml);
 }
 
 // --------- HTR→ARB FUNCTIONS ----------
