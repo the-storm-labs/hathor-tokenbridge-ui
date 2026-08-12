@@ -60,7 +60,14 @@ export interface BridgeContractPort {
 }
 
 export interface AllowTokensPort {
-  getInfoAndLimits(): Promise<{ min: string; max: string; daily: string }>
+  /**
+   * The transfer limits for one token, in 18-decimal wei whatever the token's
+   * own precision is.
+   *
+   * Per token, not global: the contract's signature takes an address, and the
+   * limits are configured per token type.
+   */
+  getInfoAndLimits(tokenAddress: string): Promise<{ min: string; max: string; daily: string }>
   calcMaxWithdraw(tokenAddress: string): Promise<string>
 }
 

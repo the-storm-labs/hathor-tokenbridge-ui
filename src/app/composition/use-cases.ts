@@ -1,7 +1,13 @@
 import type { Container } from './container'
+import { createWriteUseCases, type WriteUseCases } from './write-use-cases'
 import { tokensFor } from '../config/tokens'
 import { createLoadTransferHistory } from '../application/use-cases/load-transfer-history'
-import { createLoadBridgeParameters } from '../application/use-cases/load-bridge-parameters'
+import {
+  createLoadBridgeParameters,
+  type BridgeParameters,
+} from '../application/use-cases/load-bridge-parameters'
+import type { Store } from '../application/state/store'
+import type { AppState } from '../application/state/app-state'
 import { createWatchBlockNumber } from '../application/use-cases/watch-block-number'
 import {
   createCheckAllowance,
@@ -37,13 +43,16 @@ export function createReadUseCases(container: Container) {
       hash: keccak256,
     }),
 
-    loadBridgeParameters: createLoadBridgeParameters({
-      bridge: container.bridge,
-      allowTokens: container.allowTokens,
-      federation: container.federation,
-      feePercentageDivider: store.getState().feePercentageDivider,
-      fromWei,
-    }),
+    loadBridgeParameters: withStoredParameters(
+      createLoadBridgeParameters({
+        bridge: container.bridge,
+        allowTokens: container.allowTokens,
+        federation: container.federation,
+        feePercentageDivider: store.getState().feePercentageDivider,
+        fromWei,
+      }),
+      store,
+    ),
 
     watchBlockNumber: createWatchBlockNumber({
       chain: container.chain,
@@ -66,3 +75,46 @@ export function createReadUseCases(container: Container) {
 }
 
 export type ReadUseCases = ReturnType<typeof createReadUseCases>
+
+/**
+ * Every use case the app can reach, composed once.
+ *
+ * Read and write are wired separately because they need different things from
+ * the store, and joined here because no call site cares which half a call
+ * belongs to. Built once in main.ts and handed to both the components and the
+ * legacy shim, so the two halves drive the same instances — and the same
+ * store — for as long as they coexist.
+ */
+export function createUseCases(container: Container): UseCases {
+  return { ...createReadUseCases(container), ...createWriteUseCases(container) }
+}
+
+export type UseCases = ReadUseCases & WriteUseCases
+
+/**
+ * Keeps the store's copy of the bridge parameters in step with the last read.
+ *
+ * The fee and the limits are not only displayed: the amount validation, the
+ * quote and the approval gross-up all read them, so loading them has to be a
+ * state change and not just a value handed to the info panel. setInfoTab did
+ * this by assigning five globals; here the write happens once, at the seam
+ * between the use case and its callers, so no component has to remember it.
+ */
+function withStoredParameters(
+  load: (tokenAddress: string) => Promise<BridgeParameters>,
+  store: Store<AppState>,
+) {
+  return async function loadBridgeParameters(tokenAddress: string): Promise<BridgeParameters> {
+    const parameters = await load(tokenAddress)
+
+    store.patch({
+      minTokensAllowed: parameters.minTokensAllowed,
+      maxTokensAllowed: parameters.maxTokensAllowed,
+      maxDailyLimit: parameters.maxDailyLimit,
+      feeRate: parameters.feeRate,
+      feePercentage: parameters.feePercentage,
+    })
+
+    return parameters
+  }
+}

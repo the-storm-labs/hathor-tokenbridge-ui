@@ -2,6 +2,7 @@ import { UniversalConnector } from '@reown/appkit-universal-connector'
 import { createContainer } from './composition/container'
 import { installLegacyBridge } from './composition/legacy-bridge'
 import { mountUi } from './composition/ui'
+import { createUseCases } from './composition/use-cases'
 
 /**
  * Entry point of the module graph, shared by index.html and testnet.html.
@@ -26,8 +27,12 @@ const container = createContainer({
   universalConnector: UniversalConnector as unknown as { init(options: unknown): Promise<never> },
 })
 
-installLegacyBridge(container)
-mountUi(container, window.document)
+// One set of use cases, driven by both halves of the app: the components
+// mounted here and the legacy script that still owns the rest of the page.
+const useCases = createUseCases(container)
+
+const ui = mountUi(container, useCases, window.document)
+installLegacyBridge(container, useCases, ui)
 
 /**
  * Reattach to a persisted Hathor session and tell index.js about it.

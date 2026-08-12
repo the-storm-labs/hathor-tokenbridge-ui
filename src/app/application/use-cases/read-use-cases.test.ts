@@ -19,14 +19,18 @@ const SLT7 = findToken('mainnet', 'SLT7')! // not on mainnet EVM
 const fromWei = (value: string) => new BigNumber(value).shiftedBy(-18).toFixed()
 
 describe('loadBridgeParameters', () => {
+  const askedFor: string[] = []
   const deps = {
     bridge: { getFeePercentage: async () => '20' },
     allowTokens: {
-      getInfoAndLimits: async () => ({
-        min: '1000000000000000000',
-        max: '100000000000000000000000',
-        daily: '1000000000000000000000000',
-      }),
+      getInfoAndLimits: async (tokenAddress: string) => {
+        askedFor.push(tokenAddress)
+        return {
+          min: '1000000000000000000',
+          max: '100000000000000000000000',
+          daily: '1000000000000000000000000',
+        }
+      },
     },
     federation: { getMembers: async () => ['a', 'b', 'c', 'd', 'e'] },
     feePercentageDivider: 10_000,
@@ -34,27 +38,36 @@ describe('loadBridgeParameters', () => {
   }
 
   it('converts the contract limits to whole tokens', async () => {
-    const params = await createLoadBridgeParameters(deps as never)()
+    const params = await createLoadBridgeParameters(deps as never)(USDC.evm!.address)
     expect(params.minTokensAllowed).toBe(1)
     expect(params.maxTokensAllowed).toBe(100_000)
     expect(params.maxDailyLimit).toBe(1_000_000)
   })
 
+  it('reads the limits of the token it was asked about', async () => {
+    // They are configured per token on the contract, so this is not a
+    // page-level constant: it changes with the dropdown.
+    askedFor.length = 0
+    await createLoadBridgeParameters(deps as never)(AHTR.evm!.address)
+    expect(askedFor).toEqual([AHTR.evm!.address])
+  })
+
   it('derives the fractional fee rate from the basis points', async () => {
-    const params = await createLoadBridgeParameters(deps as never)()
+    const params = await createLoadBridgeParameters(deps as never)(USDC.evm!.address)
     expect(params.feePercentage).toBe(20)
     expect(params.feeRate).toBe(0.002)
   })
 
   it('reports a simple majority of federators as required', async () => {
-    const params = await createLoadBridgeParameters(deps as never)()
+    const params = await createLoadBridgeParameters(deps as never)(USDC.evm!.address)
     expect(params.federatorCount).toBe(5)
     expect(params.federatorsRequired).toBe(3)
   })
 
   it('rounds the requirement the way the original did', async () => {
     const withFour = { ...deps, federation: { getMembers: async () => ['a', 'b', 'c', 'd'] } }
-    expect((await createLoadBridgeParameters(withFour as never)()).federatorsRequired).toBe(3)
+    const params = await createLoadBridgeParameters(withFour as never)(USDC.evm!.address)
+    expect(params.federatorsRequired).toBe(3)
   })
 })
 

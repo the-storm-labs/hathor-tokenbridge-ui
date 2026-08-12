@@ -36,9 +36,14 @@ export interface LoadBridgeParametersDeps {
 }
 
 export function createLoadBridgeParameters(deps: LoadBridgeParametersDeps) {
-  return async function loadBridgeParameters(): Promise<BridgeParameters> {
+  /**
+   * @param tokenAddress the EVM token the limits are read for. They are
+   *        configured per token, so this is not a page-level constant — it
+   *        changes with the dropdown.
+   */
+  return async function loadBridgeParameters(tokenAddress: string): Promise<BridgeParameters> {
     const [limits, federators, feePercentageRaw] = await Promise.all([
-      deps.allowTokens.getInfoAndLimits(),
+      deps.allowTokens.getInfoAndLimits(tokenAddress),
       deps.federation.getMembers(),
       deps.bridge.getFeePercentage(),
     ])

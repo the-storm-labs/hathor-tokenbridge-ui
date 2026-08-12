@@ -156,15 +156,24 @@ export class Web3AllowTokensAdapter implements AllowTokensPort {
     private readonly address: string,
   ) {}
 
-  async getInfoAndLimits(): Promise<{ min: string; max: string; daily: string }> {
-    const limits = (await this.contract().methods['getInfoAndLimits']!().call()) as
-      | Record<string, unknown>
-      | undefined
+  /**
+   * `getInfoAndLimits(address)` returns two tuples, `info` and `limit`, and the
+   * limits are in the second one. Reading `min` off the top level — as this did
+   * before it was wired to anything — yields undefined for all three, and
+   * calling it without the address reverts outright.
+   */
+  async getInfoAndLimits(
+    tokenAddress: string,
+  ): Promise<{ min: string; max: string; daily: string }> {
+    const result = (await this.contract()
+      .methods['getInfoAndLimits']!(tokenAddress)
+      .call()) as Record<string, unknown> | undefined
+    const limit = result?.['limit'] as Record<string, unknown> | undefined
 
     return {
-      min: asString(limits?.['min']),
-      max: asString(limits?.['max']),
-      daily: asString(limits?.['daily']),
+      min: asString(limit?.['min']),
+      max: asString(limit?.['max']),
+      daily: asString(limit?.['daily']),
     }
   }
 

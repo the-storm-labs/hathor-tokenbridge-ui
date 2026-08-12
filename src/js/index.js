@@ -97,7 +97,9 @@ $(document).ready(function () {
       // whatever is already typed.
       clampCrossAmountToHathorPrecision();
 
-      setInfoTab(token[config.networkId].address).then(() => {
+      // The info panel is a component now; refreshing it also refreshes the
+      // fee and the limits in the store, which isAmountOk reads.
+      window.__ui.infoPanel.refresh(token[config.networkId].address).then(() => {
         isAmountOk();
         if ($("#amount").val()) {
           checkAllowance();
@@ -194,7 +196,7 @@ $(document).ready(function () {
     const selectedKey = $(this).val();
     const token = TOKENS.find(t => t.token === selectedKey);
     if (token) {
-      setInfoTab(token[config.networkId].address);
+      window.__ui.infoPanel.refresh(token[config.networkId].address);
     }
   });
 
@@ -378,40 +380,6 @@ function onNextTxnClick() {
 }
 
 // END CLAIMS
-
-async function setInfoTab(tokenAddress) {
-  try {
-
-    const { limit } = await allowTokensContract.methods.getInfoAndLimits(tokenAddress).call();
-
-
-    // Dinamically get the values, this is comented as the public node some times throws errors
-    const federators = await federationContract.methods.getMembers().call();
-    minTokensAllowed = parseInt(web3.utils.fromWei(limit.min, "ether"));
-    maxTokensAllowed = parseInt(web3.utils.fromWei(limit.max, "ether"));
-    maxDailyLimit = parseInt(web3.utils.fromWei(limit.daily, "ether"));
-
-    feePercentage = await retry3Times(
-      bridgeContract.methods.getFeePercentage().call
-    );
-    fee = feePercentage / feePercentageDivider;
-    let feeFormated = (fee * 100).toFixed(2) + "%";
-    let isValidatingAllowedTokens = true;
-
-    $("#fee").html(feeFormated);
-    $("#config-fee").text(feeFormated);
-    $("#config-min").text(minTokensAllowed.toLocaleString());
-    $("#config-max").text(maxTokensAllowed.toLocaleString());
-    $("#config-to-spend").text(maxDailyLimit.toLocaleString());
-    $("#config-federators-count").text(`${federators.length}`);
-    $('#config-federators-required').text(`${Math.floor((federators.length / 2) + 1)}`);
-    $("#config-whitelisted-enabled").html(
-      `${config.crossToNetwork.confirmationTime}`
-    );
-  } catch (err) {
-    console.error("Error setting info tab ", err);
-  }
-}
 
 async function getMaxBalance(event) {
   //TODO understand if we need to change contract
@@ -1042,7 +1010,6 @@ async function updateNetwork(newNetwork) {
     $("#myModal").modal("hide");
     await updateNetworkConfig(config);
 
-    // setInfoTab();
     onMetaMaskConnectionSuccess();
 
     if (poolingIntervalId) {

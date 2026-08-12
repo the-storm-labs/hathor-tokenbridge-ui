@@ -26,8 +26,8 @@ import { approvalProgress } from '../domain/vote-progress'
 import { validateAmount, rejectionMessage } from '../domain/limits'
 import { isEvmAddress } from '../domain/evm-address'
 import { apiAmountDecimals } from '../domain/api-amount'
-import { createReadUseCases } from './use-cases'
-import { createWriteUseCases } from './write-use-cases'
+import type { UseCases } from './use-cases'
+import type { MountedUi } from './ui'
 import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
 import { hathorTransferRow } from '../adapters/driving/ui/templates/hathor-transfer-row'
 import { transferStatusCell } from '../adapters/driving/ui/templates/transfer-status'
@@ -255,7 +255,11 @@ function bindStateAccessors(
 
 type LegacyConfigLookup = (route: BridgeRoute) => object
 
-export function installLegacyBridge(container: Container): void {
+export function installLegacyBridge(
+  container: Container,
+  useCases: UseCases,
+  ui: MountedUi,
+): void {
   const deployment = container.deployment
   const route = ROUTES[deployment]
   const legacyConfigs = toLegacyConfigs(route)
@@ -272,12 +276,6 @@ export function installLegacyBridge(container: Container): void {
     candidate.deployment === deployment ? legacyConfigs.evm : otherConfigs.evm
 
   bindStateAccessors(container.store, deployment, legacyConfigForRoute)
-
-  // Use cases and the row templates, for index.js to delegate to while its DOM
-  // code still lives there. Read and write are composed separately — they need
-  // different things from the store — and published as one object because the
-  // legacy call sites do not care which half a call belongs to.
-  const useCases = { ...createReadUseCases(container), ...createWriteUseCases(container) }
 
   // Toasts own their own dismissal timers, so index.js shows and hides by id
   // instead of calling .show()/.hide() on the elements directly.
@@ -322,10 +320,16 @@ export function installLegacyBridge(container: Container): void {
     ) => matchLocalHathorTransfer(localTxns, tx, (value) => Web3.utils.keccak256(value)),
 
     __useCases: useCases,
+
+    // The components index.js still has to drive, until the forms around them
+    // are components too.
     __ui: {
       toast: {
         show: (id: string, options?: { autoDismiss?: boolean }) => toasts.show(id, options),
         hide: (id: string) => toasts.hide(id),
+      },
+      infoPanel: {
+        refresh: (tokenAddress: string) => ui.infoPanel.refresh(tokenAddress),
       },
     },
     __templates: { hathorTransferRow, transferStatusCell, formatRowAmount, formatFeeRate },

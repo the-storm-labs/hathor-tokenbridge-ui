@@ -1,6 +1,8 @@
 import type { Container } from './container'
+import type { UseCases } from './use-cases'
 import { tokensFor } from '../config/tokens'
 import { mountTokenList } from '../adapters/driving/ui/components/token-list.component'
+import { mountInfoPanel, type InfoPanel } from '../adapters/driving/ui/components/info-panel.component'
 
 /**
  * Mounts the driving adapters — the components that own a piece of the page.
@@ -13,7 +15,22 @@ import { mountTokenList } from '../adapters/driving/ui/components/token-list.com
  * Called from a `type="module"` script, which runs after the document is parsed
  * and before `DOMContentLoaded` — so every element already exists, and every
  * component is mounted before jQuery's ready block runs.
+ *
+ * @returns the components js/index.js still has to reach, published under
+ *          `window.__ui`. That object shrinks to nothing as the forms around
+ *          them are extracted.
  */
-export function mountUi(container: Container, root: Document): void {
+export interface MountedUi {
+  readonly infoPanel: InfoPanel
+}
+
+export function mountUi(container: Container, useCases: UseCases, root: Document): MountedUi {
   mountTokenList(root, tokensFor(container.deployment), container.route)
+
+  const infoPanel = mountInfoPanel(root, {
+    route: container.route,
+    loadParameters: useCases.loadBridgeParameters,
+  })
+
+  return { infoPanel }
 }
