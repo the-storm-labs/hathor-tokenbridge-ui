@@ -84,10 +84,7 @@ describe('initialAppState', () => {
     expect(state.maxDailyLimit).toBe(1_000_000)
     expect(state.feeRate).toBe(0)
     expect(state.feePercentageDivider).toBe(10_000)
-    expect(state.hathorToEvmPage).toBe(1)
-    expect(state.evmToHathorPage).toBe(1)
-    expect(state.blockNumber).toBeNull()
-    expect(state.pollingIntervalId).toBeNull()
+    expect(state.bridgeContract).toBeNull()
   })
 
   it('returns a fresh object each time, so tests cannot leak state', () => {

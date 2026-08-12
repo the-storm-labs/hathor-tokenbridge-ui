@@ -181,13 +181,18 @@ function identityKeys(record: {
 }
 
 /**
- * A stored record the API did not return — a locally-sent transfer awaiting
- * indexing, or one whose token this deployment no longer lists.
+ * A stored record as a transfer with no claim.
+ *
+ * Either one the API did not return — a locally-sent transfer awaiting
+ * indexing, or one whose token this deployment no longer lists — or one being
+ * rendered straight from storage while the next poll resolves it. The claim
+ * request is checked against the bridge contract and is never persisted, so a
+ * record from here never carries one.
  *
  * `amountDecimals` is absent on records written by earlier builds; the row
  * template treats that as "already formatted".
  */
-function fromStored(record: StoredTransfer): BridgeTransfer {
+export function fromStored(record: StoredTransfer): BridgeTransfer {
   return {
     transactionId: record.transactionId ?? null,
     transactionHash: record.transactionHash ?? null,

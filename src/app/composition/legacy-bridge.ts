@@ -1,38 +1,18 @@
-import BigNumber from 'bignumber.js'
 import { ROUTES } from '../config/networks'
 import type { Container } from './container'
-import { TransferDirection, TransferStatus } from '../ports/driven/bridge-api.port'
-import type { StoredTransfer } from '../ports/driven/transfer-history.port'
+import { clampDecimals } from '../domain/amount-math'
+import { truncateMiddle } from '../domain/tx-id'
 import { tokensFor } from '../config/tokens'
 import { ABIS } from '../adapters/driven/evm/abis'
-import { API_AMOUNT_DECIMALS } from '../config/constants'
 import type { BridgeRoute } from '../domain/model/network'
 import type { Deployment } from '../domain/model/deployment'
 import type { Token } from '../domain/model/token'
 import { validateHathorAddress } from '../domain/hathor-address'
-import { toBaseUnits, fromBaseUnits, clampDecimals } from '../domain/amount-math'
 import { quote, formatQuoteValue, maxTransferable } from '../domain/fee-math'
-import { gasPriceFor, needsLatestBlockMinimum } from '../domain/gas-price'
-import {
-  toHathorTxId,
-  truncateMiddle,
-  matchLocalHathorTransfer,
-  resolveOriginSender,
-  isEvmSideAddress,
-} from '../domain/tx-id'
-import { paginate } from '../domain/pagination'
-import { confirmationProgress } from '../domain/confirmations'
-import { approvalProgress } from '../domain/vote-progress'
 import { validateAmount, rejectionMessage } from '../domain/limits'
-import { isEvmAddress } from '../domain/evm-address'
-import { apiAmountDecimals } from '../domain/api-amount'
 import type { UseCases } from './use-cases'
 import type { MountedUi } from './ui'
 import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
-import { hathorTransferRow } from '../adapters/driving/ui/templates/hathor-transfer-row'
-import { transferStatusCell } from '../adapters/driving/ui/templates/transfer-status'
-import { formatRowAmount } from '../adapters/driving/ui/templates/amount'
-import { formatFeeRate } from '../application/use-cases/load-bridge-parameters'
 import { routeForChainId } from '../config/networks'
 import type { Store } from '../application/state/store'
 import type { AppState } from '../application/state/app-state'
@@ -95,75 +75,20 @@ function toLegacyTokens(tokens: readonly Token[], evmChainId: number): object[] 
 }
 
 /**
- * Re-publishes the three globals that js/bridge-api.js, src/txns-storage.js and
- * js/hathor-wallet.js used to define, now backed by the adapters.
+ * Re-publishes what is left of the globals js/hathor-wallet.js used to define,
+ * now backed by the adapter.
  *
- * The signatures are the legacy ones, not the ports': `getBalance` returns a
- * map keyed by token uid, `sendBridgeTx` wraps its result in `{ response }`, and
- * TXN_Storage is an object with the same *static* method names because index.js
- * calls it as a class. Adapting here rather than editing index.js keeps the
- * translation in the file that gets deleted.
+ * The signature is the legacy one, not the port's, because index.js still calls
+ * it that way — adapting here rather than editing index.js keeps the
+ * translation in the file that gets deleted. BridgeAPI and TXN_Storage are gone
+ * from here: the history component reaches the adapters through use cases, and
+ * nothing in index.js reads either any more.
  */
 function publishLegacyServices(container: Container): Record<string, unknown> {
-  const { deployment, transferHistory, bridgeApi, hathorWallet } = container
+  const { hathorWallet } = container
 
   return {
-    BridgeAPI: {
-      DIRECTION: {
-        HATHOR_TO_EVM: TransferDirection.HathorToEvm,
-        EVM_TO_HATHOR: TransferDirection.EvmToHathor,
-      },
-      STATUS: {
-        HATHOR_VOTING: TransferStatus.HathorVoting,
-        EVM_VOTING: TransferStatus.EvmVoting,
-        AWAITING_CLAIM: TransferStatus.AwaitingClaim,
-        CLAIMED: TransferStatus.Claimed,
-      },
-      getTransactionsByReceiver: (
-        receiver: string,
-        options: { limit?: number; direction?: TransferDirection } = {},
-      ) => bridgeApi.listByReceiver(receiver, options),
-      ping: () => bridgeApi.ping(),
-      formatAmount: (raw: unknown, decimals = 18, displayDecimals = 4) => {
-        try {
-          return new BigNumber((raw as string) || 0)
-            .shiftedBy(-decimals)
-            .toFormat(displayDecimals, BigNumber.ROUND_DOWN)
-        } catch {
-          return '0'
-        }
-      },
-    },
-
-    TXN_Storage: {
-      isStorageAvailable: () => transferHistory.isAvailable(),
-      getAllTxns4Address: (address: string, network = '') => transferHistory.list(address, network),
-      addTxn: (address: string, network = '', data: StoredTransfer = {}) =>
-        transferHistory.addEvmTransfer(address, network, data),
-      addHathorTxn: (address: string, network = '', data: StoredTransfer = {}) =>
-        transferHistory.upsertHathorTransfer(address, network, data),
-    },
-
     HathorWallet: {
-      connect: async () => ({ address: (await hathorWallet.connect(deployment)).address }),
-      disconnect: () => hathorWallet.disconnect(),
-      restoreSession: () => hathorWallet.restore(deployment),
-      // Legacy shape: a map keyed by token uid.
-      getBalance: async (tokenUid: string) => ({
-        [tokenUid]: await hathorWallet.getBalance(tokenUid, deployment),
-      }),
-      // Legacy shape: the result wrapped in `{ response }`.
-      sendBridgeTx: async (
-        bridgeAddress: string,
-        tokenUid: string,
-        amountUnits: string,
-        evmDestination: string,
-      ) => ({
-        response: await hathorWallet.sendBridgeTransfer(
-          { bridgeAddress, tokenUid, amountUnits: String(amountUnits), evmDestination },
-          deployment,
-        ),
-      }),
       getAddress: () => hathorWallet.getAddress(),
       isConnected: () => hathorWallet.isConnected(),
     },
@@ -180,9 +105,9 @@ function publishLegacyServices(container: Container): Record<string, unknown> {
  * failure may only show up on a rare path like `accountsChanged`. Reviewing this
  * list against index.js's old declarations is the check that matters.
  *
- * Note the transfer-list names: the legacy ones are inverted with respect to
- * what they hold. `activeAddresseth2HtrTxns` is loaded with the *Hathor* network
- * name and therefore holds Hathor→EVM transfers. See app-state.ts.
+ * The list shrinks as components take ownership of their own state: the
+ * transfer lists, the page numbers and the block number left with the history
+ * table.
  */
 const STATE_ALIASES = {
   address: 'evmAddress',
@@ -199,15 +124,6 @@ const STATE_ALIASES = {
   feePercentage: 'feePercentage',
   feePercentageDivider: 'feePercentageDivider',
 
-  currentBlockNumber: 'blockNumber',
-  poolingIntervalId: 'pollingIntervalId',
-
-  activeAddresseth2HtrTxns: 'hathorToEvmTransfers',
-  activeAddresshtr2EthTxns: 'evmToHathorTransfers',
-  eth2HtrTablePage: 'hathorToEvmPage',
-  htr2EthTablePage: 'evmToHathorPage',
-  eth2HtrPaginationObj: 'hathorToEvmPagination',
-  htr2EthPaginationObj: 'evmToHathorPagination',
 } as const satisfies Record<string, keyof AppState>
 
 /**
@@ -298,25 +214,10 @@ export function installLegacyBridge(
 
     // --- pure helpers, called by index.js under their original names ---
     truncateMiddle,
-    toHathorTxId,
-    Paginator: paginate,
 
     /** index.js calls this with one argument; deployment is bound here. */
     validateHathorAddress: (address: string) =>
       validateHathorAddress(address, deployment, cdnCrypto),
-
-    /**
-     * The domain takes an injected hasher; the legacy call site does not have
-     * one, so the Web3 global is supplied at the boundary.
-     */
-    matchLocalHathorTxn: (
-      localTxns: readonly { hathorTxId?: string | null }[],
-      tx: {
-        originTransactionHash?: string | null
-        backendTxHash?: string | null
-        blockHash?: string | null
-      },
-    ) => matchLocalHathorTransfer(localTxns, tx, (value) => Web3.utils.keccak256(value)),
 
     __useCases: useCases,
 
@@ -330,29 +231,17 @@ export function installLegacyBridge(
       infoPanel: {
         refresh: (tokenAddress: string) => ui.infoPanel.refresh(tokenAddress),
       },
+      history: ui.history,
     },
-    __templates: { hathorTransferRow, transferStatusCell, formatRowAmount, formatFeeRate },
 
     // --- domain functions the legacy code now delegates to ---
     __domain: {
-      toBaseUnits,
-      fromBaseUnits,
       clampDecimals,
       quote,
       formatQuoteValue,
       maxTransferable,
-      gasPriceFor,
-      needsLatestBlockMinimum,
-      confirmationProgress,
-      approvalProgress,
       validateAmount,
       rejectionMessage,
-      isEvmAddress,
-      API_AMOUNT_DECIMALS,
-      apiAmountDecimals,
-      resolveOriginSender,
-      isEvmSideAddress,
-      deployment,
     },
   })
 }

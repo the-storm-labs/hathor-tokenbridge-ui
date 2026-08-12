@@ -1,7 +1,7 @@
 import type { Container } from './container'
 import type { UseCases } from './use-cases'
 import { tokensFor } from '../config/tokens'
-import { bindToasts, type Toasts } from '../adapters/driving/ui/toasts'
+import { bindToasts, TOAST, type Toasts } from '../adapters/driving/ui/toasts'
 import { refreshSelectpicker } from '../adapters/driving/ui/bootstrap-plugins'
 import { mountTokenList } from '../adapters/driving/ui/components/token-list.component'
 import {
@@ -10,8 +10,13 @@ import {
 } from '../adapters/driving/ui/components/info-panel.component'
 import {
   mountHathorTransferForm,
+  HATHOR_FORM_EVENT,
   type HathorTransferForm,
 } from '../adapters/driving/ui/components/hathor-transfer-form.component'
+import {
+  mountTransferHistory,
+  type TransferHistory,
+} from '../adapters/driving/ui/components/transfer-history.component'
 
 /**
  * Mounts the driving adapters — the components that own a piece of the page.
@@ -29,13 +34,29 @@ export interface MountedUi {
   readonly toasts: Toasts
   readonly infoPanel: InfoPanel
   readonly hathorForm: HathorTransferForm
+  readonly history: TransferHistory
+  /** Shows a failure in the shared error toast. */
+  readonly reportError: (message: string) => void
 }
 
 export function mountUi(container: Container, useCases: UseCases, root: Document): MountedUi {
   const { store, deployment, route } = container
   const tokens = tokensFor(deployment)
+  const getEvmAddress = () => store.getState().evmAddress
 
   const toasts = bindToasts(root, container.scheduler)
+
+  /**
+   * The one error channel the transfer flows share.
+   *
+   * Claim errors used to be written into #claimTab, which is permanently
+   * hidden, so users never saw them at all.
+   */
+  const reportError = (message: string) => {
+    const target = root.getElementById('alert-danger-text')
+    if (target) target.textContent = message
+    toasts.show(TOAST.transferError)
+  }
 
   mountTokenList(root, tokens, route)
 
@@ -50,7 +71,7 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
     refreshSelect: refreshSelectpicker,
     refreshBalance: useCases.refreshHathorBalance,
     sendTransfer: useCases.sendHathorTransfer,
-    getEvmAddress: () => store.getState().evmAddress,
+    getEvmAddress,
 
     // The port is deployment-scoped; the form should not have to carry that.
     wallet: {
@@ -69,5 +90,24 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
     },
   })
 
-  return { toasts, infoPanel, hathorForm }
+  const history = mountTransferHistory(root, {
+    route,
+    getEvmAddress,
+    reportError,
+    loadHistory: useCases.loadTransferHistory,
+    listStored: (address, network) => container.transferHistory.list(address, network),
+    claim: useCases.claimTransfer,
+    watchBlockNumber: useCases.watchBlockNumber,
+  })
+
+  // A Hathor-origin transfer has to appear before the next poll resolves it,
+  // and it is keyed by its EVM destination — which is not necessarily the
+  // connected account, since that form works without an EVM wallet.
+  root.defaultView?.addEventListener(HATHOR_FORM_EVENT.transferSent, (event) => {
+    const { evmDestination } = (event as CustomEvent<{ evmDestination: string }>).detail
+    history.showStored(evmDestination)
+    history.showTab('hathor', { reveal: true })
+  })
+
+  return { toasts, infoPanel, hathorForm, history, reportError }
 }

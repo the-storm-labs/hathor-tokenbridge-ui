@@ -29,33 +29,6 @@ const clone = (obj) => {
 }
 
 /**
- * Poll given network for latest block number
- *
- * @param {Function} cb: callback function to call upon new value
- */
-async function poll4LastBlockNumber(cb) {
-    try {
-        let interval = 30_000;
-        let number = await web3.eth.getBlockNumber();
-        cb(number);
-
-        let intervalId = setInterval(async () => {
-            console.log('updating...');
-            let number = await web3.eth.getBlockNumber();
-            cb(number);
-        }, interval);
-
-        return intervalId;
-    }
-    catch (err) {
-        console.error('Error while polling for last block number', err);
-        throw err;
-    }
-};
-
-
-
-/**
  * Retry system with async / await
  *
  * @param {Function} fn : function to execute

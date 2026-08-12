@@ -1,5 +1,4 @@
 import type { BridgeRoute } from '../../domain/model/network'
-import type { StoredTransfer } from '../../ports/driven/transfer-history.port'
 
 /**
  * Everything the app knows at a point in time — the typed replacement for the
@@ -9,12 +8,10 @@ import type { StoredTransfer } from '../../ports/driven/transfer-history.port'
  * reached through a `window` accessor keyed by name, and a flat map keeps that
  * translation mechanical while both halves coexist.
  *
- * ## The transfer lists are named for what they hold
- *
- * The legacy names are inverted, and it has misled every reader of this code:
- * `activeAddresseth2HtrTxns` holds the **Hathor→EVM** transfers (it is loaded
- * with the *Hathor* network name and rendered into `#eth-htr-tbody`, whose tab
- * is labelled "HTR → ARB"). The mapping is spelled out in legacy-bridge.ts.
+ * It shrinks as phase 8 proceeds: state that belongs to one component and is
+ * read by nothing else moves into that component, where it cannot be mutated
+ * from a distance. The transfer lists, the page numbers and the block number
+ * went that way with the history table.
  */
 export interface AppState {
   /** Connected EVM account, or `''` when disconnected. */
@@ -45,28 +42,6 @@ export interface AppState {
   /** The same fee as basis points out of feePercentageDivider. */
   feePercentage: number
   feePercentageDivider: number
-
-  // --- chain ---------------------------------------------------------------
-  blockNumber: number | null
-  /**
-   * Handle of the history poller. Held here because claiming has to stop the
-   * poll before submitting and restart it afterwards.
-   */
-  pollingIntervalId: number | null
-
-  // --- transfer history ----------------------------------------------------
-  /** Hathor-origin transfers. Legacy name: `activeAddresseth2HtrTxns`. */
-  hathorToEvmTransfers: readonly StoredTransfer[]
-  /** EVM-origin transfers. Legacy name: `activeAddresshtr2EthTxns`. */
-  evmToHathorTransfers: readonly StoredTransfer[]
-  /** Legacy name: `eth2HtrTablePage`. */
-  hathorToEvmPage: number
-  /** Legacy name: `htr2EthTablePage`. */
-  evmToHathorPage: number
-  /** Legacy name: `eth2HtrPaginationObj`. */
-  hathorToEvmPagination: unknown
-  /** Legacy name: `htr2EthPaginationObj`. */
-  evmToHathorPagination: unknown
 }
 
 /** The values the globals were initialised with, preserved exactly. */
@@ -86,15 +61,5 @@ export function initialAppState(): AppState {
     feeRate: 0,
     feePercentage: 0,
     feePercentageDivider: 10_000,
-
-    blockNumber: null,
-    pollingIntervalId: null,
-
-    hathorToEvmTransfers: [],
-    evmToHathorTransfers: [],
-    hathorToEvmPage: 1,
-    evmToHathorPage: 1,
-    hathorToEvmPagination: {},
-    evmToHathorPagination: {},
   }
 }

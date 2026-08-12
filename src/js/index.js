@@ -3,8 +3,8 @@
 // the token's EVM decimals (USDC is 6 on Arbitrum, 2 on Hathor), and a future
 // token with a different precision must work by config alone.
 
-// truncateMiddle, toHathorTxId, matchLocalHathorTxn, Paginator and
-// validateHathorAddress now come from app/composition/legacy-bridge.ts.
+// truncateMiddle and validateHathorAddress now come from
+// app/composition/legacy-bridge.ts.
 // Do not redeclare them here: a top-level declaration in this classic script
 // would shadow the window property and silently win.
 
@@ -20,14 +20,6 @@
 // isTestnet likewise comes from resolveDeployment(). The old
 // href.includes("testnet") matched the word anywhere in the URL — a host or path
 // containing it silently switched the whole app to testnet contract addresses.
-// pagination of active txs table
-const numberOfLines = 6;
-
-const requiredVotesToClaim = 4;
-// The Read API reports Hathor-side ProposalSigned events but not the threshold
-// they are counted against; the federation uses the same size as the EVM side.
-const requiredSignaturesToRelay = 4;
-
 $(document).ready(function () {
   new ClipboardJS(".copy");
   $('[data-toggle="tooltip"]').tooltip();
@@ -58,12 +50,6 @@ $(document).ready(function () {
   });
 
   $("#logIn").attr("onclick", "onLogInClick()");
-
-  $("#claimTokens").click(function () {
-    showEvmTxsnTabe();
-    location.hash = "";
-    location.hash = `#nav-eth-htr-tab`;
-  });
 
   $("#tokenAddress").change(function (event) {
     cleanAlertSuccess();
@@ -179,9 +165,6 @@ $(document).ready(function () {
     }
   });
 
-  $('#nav-htr-eth-tab, #nav-eth-htr-tab').on('shown.bs.tab', function () {
-    showActiveAddressTXNs();
-  });
 });
 
 /**
@@ -222,16 +205,16 @@ async function onWalletConnected(wallet, connection) {
 
   events.onChainChanged((newChain) => {
     updateNetwork(newChain);
-    showActiveTxnsTab();
+    window.__ui.history.showTab('evm');
   });
   events.onAccountsChanged((newAddresses) => {
     if (newAddresses.length === 0) {
       onMetaMaskConnectionError({ message: "Wallet disconnected. Please connect again." });
     } else {
       checkAllowance();
-      updateAddress(newAddresses)
-        .then((addr) => updateActiveAddressTXNs(addr))
-        .then(() => showActiveAddressTXNs());
+      // Straight from storage, so the table stops showing the previous
+      // account's transfers before the next poll resolves the new one's.
+      updateAddress(newAddresses).then(() => window.__ui.history.showStored());
     }
   });
   events.onDisconnect((error) => {
@@ -256,88 +239,9 @@ function handleHathorAddressChange() {
   }
 }
 
-// CLAIMS
-
-/**
- * Hathor→EVM transfers, as resolved by the load-transfer-history use case.
- *
- * Kept here so the render below can read the claim requests without going
- * through `data-*` attributes. Replaced by component state in the next phase.
- */
-let loadedHathorTransfers = [];
-
-async function fillHathorToEvmTxs() {
-  if (!address || address === "0x123456789") {
-    return;
-  }
-
-  // The use case owns what used to be getPendingClaims, resolveClaimStatus,
-  // the token lookup, the local-record matching and the persistence.
-  const { hathorToEvm, evmToHathor } = await window.__useCases.loadTransferHistory(address);
-
-  // Render from the resolved transfers rather than re-reading storage: only
-  // these carry the typed claim request and the amount scale.
-  loadedHathorTransfers = hathorToEvm;
-  activeAddresseth2HtrTxns = hathorToEvm;
-  activeAddresshtr2EthTxns = evmToHathor;
-
-  showActiveAddressTXNs();
-}
-
-
-
-
-
-// resolveGasPrice and waitForReceipt now live in the application layer: the gas
-// rule is one function in domain/gas-price.ts fed by the chain port, and the
-// receipt wait is confirmTransaction, which also stopped leaking its polling
-// interval on the timeout path.
-
-function onLogInClick() {
-  const walletList = $("#wallet-list");
-  walletList.empty(); // Clear previous list
-
-  const wallets = window.__useCases.discoveredWallets();
-  if (wallets.length === 0) {
-    showModal("No Wallets Found", "Please install a wallet extension like MetaMask.");
-    return;
-  }
-
-  wallets.forEach(wallet => {
-    const walletItem = $(`
-      <li class="list-group-item d-flex justify-content-between align-items-center">
-        <div>
-          <img src="${wallet.icon}" alt="${wallet.name}" width="30" height="30" class="mr-2">
-          ${wallet.name}
-        </div>
-        <button class="btn btn-primary btn-sm">Connect</button>
-      </li>
-    `);
-    walletItem.find('button').on('click', () => connectWallet(wallet));
-    walletList.append(walletItem);
-  });
-
-  showModal("Select a Wallet", "");
-  $('#myModal .modal-body').show(); // Make sure the body is visible
-}
-
-function onPreviousTxnClick() {
-  if ($("#nav-eth-htr-tab").attr("class").includes("active")) {
-    eth2HtrTablePage -= 1;
-  } else {
-    htr2EthTablePage -= 1;
-  }
-  showActiveAddressTXNs();
-}
-
-function onNextTxnClick() {
-  if ($("#nav-eth-htr-tab").attr("class").includes("active")) {
-    eth2HtrTablePage += 1;
-  } else {
-    htr2EthTablePage += 1;
-  }
-  showActiveAddressTXNs();
-}
+// The history tables, their pagination and claiming are a component now:
+// app/adapters/driving/ui/components/transfer-history.component.ts. It owns the
+// resolved transfers, so a claim's parameters never travel through the DOM.
 
 // END CLAIMS
 
@@ -444,9 +348,8 @@ async function crossToken() {
     $("#receive").text(receives);
     window.__ui.toast.show("success");
 
-    updateActiveAddressTXNs(address);
-    showActiveTxnsTab();
-    showActiveAddressTXNs();
+    window.__ui.history.showStored();
+    window.__ui.history.showTab('evm');
     disableApproveCross({
       approvalDisable: true,
       doNotAskDisabled: true,
@@ -458,37 +361,6 @@ async function crossToken() {
   } finally {
     convertButton.prop("disabled", false).html(originalButtonText);
     disableInputs(false);
-  }
-}
-
-// Claim errors used to be written into #claimTab, which is permanently hidden —
-// so users never saw them. They now go to the same visible alert the transfer
-// flow uses.
-function errorClaim(error) {
-  $("#alert-danger-text").html(error);
-  window.__ui.toast.show("alert-danger");
-}
-
-/**
- * Submits a claim and reports the outcome.
- *
- * @param {import('../app/ports/driven/contracts.port').ClaimRequest} claim
- *        The typed request built by the load-transfer-history use case.
- */
-async function claimToken(claim) {
-  cleanAlertError();
-  cleanAlertSuccess();
-
-  try {
-    await window.__useCases.claimTransfer(claim);
-  } catch (err) {
-    // A reverted claim used to look like a successful one: the send promise was
-    // awaited and the receipt status never checked, so the row simply never
-    // changed and the user was left guessing.
-    console.error(err);
-    errorClaim(`Couldn't claim the tokens. ${err.message}`);
-  } finally {
-    startPoolingTxs();
   }
 }
 
@@ -628,6 +500,8 @@ function markInvalidAmount(errorDescription) {
 
 function onDisconnectEvmClick() {
   window.__useCases.forgetEvmWallet();
+  // The original left the poller running against a wallet that was gone.
+  window.__ui.history.stop();
   $("#logIn").show();
   $("#transferTab").addClass("disabled");
   $(".wallet-status").hide();
@@ -642,6 +516,7 @@ function onDisconnectEvmClick() {
 function onMetaMaskConnectionError(err) {
   console.log(err);
   window.__useCases.forgetEvmWallet();
+  window.__ui.history.stop();
   showModal("Connect wallet", `<p>${err.message}</p>`);
   $("#logIn").attr("onclick", "onLogInClick()");
   $("#logIn").text("Connect wallet");
@@ -719,196 +594,12 @@ async function updateAddress(newAddresses) {
   return Promise.resolve(address);
 }
 
-/**
- * Reloads both history lists straight from storage.
- *
- * Used when the account changes and the table must stop showing the previous
- * account's transfers before the next poll runs.
- *
- * Storage records carry no claim request — that is resolved against the chain by
- * the load-transfer-history use case. So rows rendered from here show no Claim
- * button until the next poll, which is deliberate: a button built from
- * unresolved data could point at a transfer that was already claimed.
- */
-function updateActiveAddressTXNs() {
-  activeAddresseth2HtrTxns = TXN_Storage.getAllTxns4Address(
-    address,
-    config.crossToNetwork.name
-  );
-  activeAddresshtr2EthTxns = TXN_Storage.getAllTxns4Address(
-    address,
-    config.name
-  );
-  // Drop the resolved transfers too, so no stale index can resolve to a claim
-  // belonging to a different account.
-  loadedHathorTransfers = [];
-}
-
-function showActiveTxnsTab() {
-  if (config.name.toLowerCase().includes("eth")) {
-    showEvmTxsnTabe();
-  } else {
-    showHtrTxsnTabe();
-  }
-}
-
-function showEvmTxsnTabe() {
-  $("#nav-eth-htr-tab").addClass("active").attr("aria-selected", true);
-  $("#nav-eth-htr").addClass("active show");
-  $("#nav-htr-eth-tab").removeClass("active").attr("aria-selected", false);
-  $("#nav-htr-eth").removeClass("active show");
-}
-
-function showHtrTxsnTabe() {
-  $("#nav-htr-eth-tab").addClass("active").attr("aria-selected", true);
-  $("#nav-htr-eth").addClass("active show");
-  $("#nav-eth-htr-tab").attr("aria-selected", false).removeClass("active");
-  $("#nav-eth-htr").removeClass("active show");
-}
-
-function showActiveAddressTXNs() {
-
-  // Allow rendering Hathor-initiated txns even without EVM wallet/polling
-  if (poolingIntervalId === null && !activeAddresseth2HtrTxns.length)
-    return;
-
-  if (!activeAddresseth2HtrTxns.length && !activeAddresshtr2EthTxns.length) {
-    $("#previousTxnsEmptyTab").css("margin-bottom", "6em").show();
-    $("#previousTxnsTab").hide();
-    return;
-  }
-
-  $("#previousTxnsEmptyTab").css("margin-bottom", "0em").hide();
-  $("#previousTxnsTab").show().css("margin-bottom", "6em");
-  $("#txn-previous").off().on("click", onPreviousTxnClick);
-  $("#txn-next").off().on("click", onNextTxnClick);
-
-  let eth2HtrTable = $("#eth-htr-tbody");
-  let htr2EthTable = $("#htr-eth-tbody");
-
-  eth2HtrPaginationObj = Paginator(
-    activeAddresseth2HtrTxns,
-    eth2HtrTablePage,
-    numberOfLines
-  );
-  let { data: eth2HtrTxns } = eth2HtrPaginationObj;
-
-  htr2EthPaginationObj = Paginator(
-    activeAddresshtr2EthTxns,
-    htr2EthTablePage,
-    numberOfLines
-  );
-  let { data: htr2EthTxns } = htr2EthPaginationObj;
-
-  const isEthToHtrTabActive = $("#nav-eth-htr-tab").hasClass("active");
-  const activePaginationObj = isEthToHtrTabActive ? eth2HtrPaginationObj : htr2EthPaginationObj;
-
-  if (activePaginationObj.total_pages > 1) {
-    $(".btn-toolbar").show();
-    $("#txn-previous").prop('disabled', activePaginationObj.pre_page === null);
-    $("#txn-next").prop('disabled', activePaginationObj.next_page === null);
-  } else {
-    $(".btn-toolbar").hide();
-  }
-
-  let currentNetwork = $(".indicator span").text();
-
-
-  /**
-   * One Hathor-origin row.
-   *
-   * The markup now comes from app/adapters/driving/ui/templates. The claim
-   * request travels as an index into `loadedHathorTransfers` instead of a set of
-   * `data-*` attributes that setClaimButtons had to re-parse — an amount used to
-   * make a round trip through a string attribute before reaching a contract call.
-   */
-  const processHtrTxn = (txn, route) => {
-    // Identity, because these rows are the very objects the use case returned.
-    const claimIndex = txn.claim ? loadedHathorTransfers.indexOf(txn) : -1;
-    const action = window.__templates.transferStatusCell(
-      txn.status,
-      claimIndex >= 0 ? claimIndex : null
-    );
-    const explorer = route && route.crossToNetwork ? route.crossToNetwork.explorer : null;
-    return window.__templates.hathorTransferRow({ ...txn, action }, explorer);
-  };
-
-  const processTxn = (txn, config = {}) => {
-    const { confirmations, secondsPerBlock, explorer } = config;
-
-    const progress = window.__domain.confirmationProgress({
-      transactionBlock: txn.blockNumber,
-      currentBlock: currentBlockNumber,
-      required: confirmations,
-      secondsPerBlock,
-    });
-    const status = progress.confirmed
-      ? `<span> Confirmed</span>`
-      : `<span> Pending</span>`;
-    const humanTimeToConfirmation = progress.humanTimeRemaining;
-
-    let txnExplorerLink = `${explorer}/tx/${txn.transactionHash}`;
-    let shortTxnHash = `${txn.transactionHash.substring(
-      0,
-      8
-    )}...${txn.transactionHash.slice(-8)}`;
-
-    let htmlRow = `<tr class="black">
-            <th scope="row"><a href="${txnExplorerLink}">${shortTxnHash}</a></th>
-            <td>${txn.blockNumber}</td>
-            <td>${window.__templates.formatRowAmount(txn.amount, txn.amountDecimals ?? null, 2)} ${txn.tokenFrom}</td>
-            <td>${status} ${humanTimeToConfirmation}</td>
-        </tr>`;
-
-    return htmlRow;
-  };
-
-  const activeAddressTXNseth2HtrRows = eth2HtrTxns.map((txn) => {
-    return processHtrTxn(txn, config);
-  });
-  const activeAddressTXNshtr2EthRows = htr2EthTxns.map((txn) => {
-    return processTxn(txn, config);
-  });
-
-  eth2HtrTable.html(activeAddressTXNseth2HtrRows.join());
-  htr2EthTable.html(activeAddressTXNshtr2EthRows.join());
-  setClaimButtons();
-}
-
-function setClaimButtons() {
-  document
-    .querySelectorAll(".claim-button:not([disabled])")
-    .forEach((button) => {
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        clearInterval(poolingIntervalId);
-        poolingIntervalId = null;
-        button.setAttribute('disabled', 'true');
-
-        // The button carries only its index. The claim parameters are the typed
-        // object the use case built — they no longer make a round trip through
-        // string attributes, where an amount could be truncated or a hash lost.
-        const index = Number(button.getAttribute("data-claim-index"));
-        const transfer = loadedHathorTransfers[index];
-        if (!transfer || !transfer.claim) {
-          errorClaim("This transfer can no longer be claimed. Reload and try again.");
-          startPoolingTxs();
-          return;
-        }
-
-        claimToken(transfer.claim);
-      });
-    });
-}
-
 async function updateCallback(chainId, accounts) {
-  await startPoolingTxs();
   return updateNetwork(chainId)
     .then(() => updateAddress(accounts))
-    .then((addr) => updateActiveAddressTXNs(addr))
-    .then(fillHathorToEvmTxs)
-    .then(showActiveAddressTXNs)
-    ;
+    .then(() => window.__ui.history.showStored())
+    // Starting the poll loads the history too: its first tick fires at once.
+    .then(() => window.__ui.history.start());
 }
 
 async function updateNetworkConfig(config) {
@@ -972,31 +663,15 @@ async function updateNetwork(newNetwork) {
 
     onMetaMaskConnectionSuccess();
 
-    if (poolingIntervalId) {
-      clearInterval(poolingIntervalId);
-    }
-    await startPoolingTxs();
-
-    if (TXN_Storage.isStorageAvailable("localStorage")) {
-      console.log(`Local Storage Available!`);
-    } else {
-      console.log(`Local Storage Unavailable!`);
-    }
+    // Idempotent: the history component ignores this while already polling,
+    // where the original left the old interval running and doubled the request
+    // rate on every network switch.
+    window.__ui.history.start();
 
   } catch (err) {
     onMetaMaskConnectionError(err);
     throw err;
   }
-}
-
-async function startPoolingTxs() {
-  poolingIntervalId = await poll4LastBlockNumber(async function (
-    blockNumber
-  ) {
-    currentBlockNumber = blockNumber;
-    await fillHathorToEvmTxs();
-    showActiveAddressTXNs();
-  });
 }
 
 async function updateTokenAddressDropdown(networkId) {
@@ -1046,24 +721,4 @@ window.addEventListener('hathorwallet:connected', function (event) {
   }
 });
 
-window.addEventListener('hathortransfer:sent', function (event) {
-  const { evmDestination } = event.detail;
 
-  // Always show the Hathor→EVM transfers of the destination address; if an EVM
-  // wallet is connected, refresh its own transfers too.
-  //
-  // The Hathor network name comes from the config object rather than through
-  // `config`, which is null until an EVM wallet is connected — and that form
-  // works without one.
-  const hathorNetworkName = (isTestnet ? HTR_TESTNET_CONFIG : HTR_MAINNET_CONFIG).name;
-  activeAddresseth2HtrTxns = TXN_Storage.getAllTxns4Address(evmDestination, hathorNetworkName);
-  if (address) {
-    activeAddresshtr2EthTxns = TXN_Storage.getAllTxns4Address(address, config.name);
-  }
-  showActiveAddressTXNs();
-
-  // Switch to the HTR→ARB history tab so the user can track the transaction.
-  showEvmTxsnTabe();
-  location.hash = '';
-  location.hash = '#nav-eth-htr-tab';
-});
