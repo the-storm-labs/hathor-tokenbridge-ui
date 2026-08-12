@@ -61,6 +61,7 @@ export interface HathorTransferFormDeps {
 }
 
 export class HathorTransferForm {
+  private readonly form: HTMLElement | null
   private readonly tokenSelect: HTMLSelectElement | null
   private readonly amount: HTMLInputElement | null
   private readonly destination: HTMLInputElement | null
@@ -80,6 +81,7 @@ export class HathorTransferForm {
   ) {
     const byId = <T extends HTMLElement>(id: string) => root.getElementById(id) as T | null
 
+    this.form = byId('htrToArbForm')
     this.tokenSelect = byId<HTMLSelectElement>('htrTokenSelect')
     this.amount = byId<HTMLInputElement>('htrAmount')
     this.destination = byId<HTMLInputElement>('htrDestAddress')
@@ -123,11 +125,16 @@ export class HathorTransferForm {
 
     this.maxButton?.addEventListener('click', () => void this.fillMax())
 
-    // The destination is prefilled from the connected EVM account each time the
-    // user switches to this direction, since they may have connected since.
+    // Each form shows and hides itself: the toggle is shared, the two halves of
+    // its effect are not. The destination is prefilled from the connected EVM
+    // account each time, since the user may have connected since.
     this.root.getElementById('directionToggle')?.addEventListener('change', (event) => {
       const input = event.target as HTMLInputElement | null
-      if (input?.value === 'htr-to-arb') this.prefillDestination()
+      if (input?.name !== 'direction') return
+
+      const mine = input.value === 'htr-to-arb'
+      if (this.form) this.form.style.display = mine ? 'block' : 'none'
+      if (mine) this.prefillDestination()
     })
 
     this.reflectConnection(this.deps.wallet.isConnected() ? this.deps.wallet.getAddress() : null)

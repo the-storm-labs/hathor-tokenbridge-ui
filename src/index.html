@@ -155,6 +155,13 @@
                                             <button id="max" class="btn btn-secondary" type="button">Max</button>
                                         </div>
                                     </div>
+                                    <!--
+                                      The amount rejections used to be written into
+                                      `.amount .invalid-feedback`, a selector that matches nothing
+                                      in this page — so an amount below the minimum or over the
+                                      daily limit was refused with no explanation at all.
+                                    -->
+                                    <div class="invalid-feedback" id="amountError"></div>
                                 </div>
                                 <div class="form-group">
                                     <div class="fees mt-2">
@@ -167,6 +174,9 @@
                                 <div class="form-group willReceive">
                                     <label class="hathorAddress-label" for="hathorAddress">Which Hathor Address do you
                                         want to send the tokens to:</label>
+                                    <small class="token-balance-label">
+                                        You will receive: <span id="willReceiveToken">—</span>
+                                    </small>
                                     <div class="input-group">
                                         <div class="form-control-plaintext" id="htrAddress" name="htrAddress">
                                             <input name="hathorAddress" id="hathorAddress"
@@ -176,9 +186,25 @@
                                     </div>
                                 </div>
                                 <div class="text-center mt-3">
-                                    <button disabled id="approve"
-                                        class="btn btn-primary btn-lg btn-block">Approve</button>
-                                    <button disbaled id="deposit" type="submit"
+                                    <!--
+                                      The approval step, shown only while the bridge is not yet
+                                      allowed to move the total cost. Both this block and the
+                                      checkbox in it were missing from the page, which made
+                                      unlimited approval unreachable even though the use case
+                                      implements it.
+                                    -->
+                                    <div class="approve-deposit">
+                                        <button disabled id="approve"
+                                            class="btn btn-primary btn-lg btn-block">Approve</button>
+                                        <div class="custom-control custom-checkbox mt-2 text-left">
+                                            <input type="checkbox" class="custom-control-input" id="doNotAskAgain"
+                                                disabled>
+                                            <label class="custom-control-label" for="doNotAskAgain">
+                                                Approve once and don't ask again for this token
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <button disabled id="deposit" type="submit"
                                         class="btn btn-primary btn-lg btn-block mt-2">Convert tokens</button>
                                 </div>
 
@@ -486,8 +512,6 @@
                 integrity="sha384-8CYhPwYlLELodlcQV713V9ZikA3DlCVaXFDpjHfP8Z36gpddf/Vrt47XmKDsCttu"
                 crossorigin="anonymous"></script>
             <!-- async-await-retry  https://github.com/VoodooTeam/async-await-retry -->
-            <!--- local Storage Static utilities -->
-            <script type="text/javascript" src="./js/localStorage.js"></script>
             <script src="./js/bs58.js"></script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
             <!-- Hathor Bridge Read API client (see docs/bridge-api.yaml) -->

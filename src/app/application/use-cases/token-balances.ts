@@ -29,6 +29,26 @@ export function createRefreshHathorBalance(deps: HathorBalanceDeps) {
   }
 }
 
+export interface TokenBalanceDeps {
+  readonly erc20: Erc20Port
+}
+
+export function createGetTokenBalance(deps: TokenBalanceDeps) {
+  /**
+   * The owner's balance of an EVM token, as a decimal string at the token's own
+   * precision.
+   *
+   * Unformatted on purpose: how many places to show is the form's decision, and
+   * the value is also what Max is capped against.
+   */
+  return async function getTokenBalance(token: Token, owner: string): Promise<string> {
+    if (!isOnEvm(token) || !owner) return '0'
+
+    const raw = await deps.erc20.balanceOf(token.evm.address, owner)
+    return new BigNumber(raw).shiftedBy(-token.evm.decimals).toFixed()
+  }
+}
+
 export interface MaxTransferableDeps {
   readonly erc20: Erc20Port
   readonly allowTokens: AllowTokensPort

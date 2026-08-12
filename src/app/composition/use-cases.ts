@@ -12,6 +12,7 @@ import { createWatchBlockNumber } from '../application/use-cases/watch-block-num
 import {
   createCheckAllowance,
   createGetMaxTransferable,
+  createGetTokenBalance,
   createRefreshHathorBalance,
 } from '../application/use-cases/token-balances'
 
@@ -69,6 +70,8 @@ export function createReadUseCases(container: Container) {
       allowTokens: container.allowTokens,
       fromWei,
     }),
+
+    getTokenBalance: createGetTokenBalance({ erc20: container.erc20 }),
 
     checkAllowance: createCheckAllowance({ erc20: container.erc20, fromWei }),
   }

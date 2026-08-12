@@ -17,6 +17,13 @@ import {
   mountTransferHistory,
   type TransferHistory,
 } from '../adapters/driving/ui/components/transfer-history.component'
+import {
+  mountCrossTransferForm,
+  CROSS_FORM_EVENT,
+  type CrossTransferForm,
+} from '../adapters/driving/ui/components/cross-transfer-form.component'
+import { validateHathorAddress } from '../domain/hathor-address'
+import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
 
 /**
  * Mounts the driving adapters — the components that own a piece of the page.
@@ -35,6 +42,7 @@ export interface MountedUi {
   readonly infoPanel: InfoPanel
   readonly hathorForm: HathorTransferForm
   readonly history: TransferHistory
+  readonly crossForm: CrossTransferForm
   /** Shows a failure in the shared error toast. */
   readonly reportError: (message: string) => void
 }
@@ -109,5 +117,31 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
     history.showTab('hathor', { reveal: true })
   })
 
-  return { toasts, infoPanel, hathorForm, history, reportError }
+  const crossForm = mountCrossTransferForm(root, {
+    tokens,
+    route,
+    toasts,
+    reportError,
+    getEvmAddress,
+    refreshSelect: refreshSelectpicker,
+    getParameters: () => store.getState(),
+    getTokenBalance: useCases.getTokenBalance,
+    getMaxTransferable: useCases.getMaxTransferable,
+    isApproved: useCases.checkAllowance,
+    loadParameters: (tokenAddress) => infoPanel.refresh(tokenAddress),
+    approve: useCases.approveSpend,
+    cross: useCases.crossToken,
+    isValidHathorAddress: (address) =>
+      validateHathorAddress(address, deployment, new CdnCryptoAdapter()),
+  })
+
+  // Same reason as above, from the other direction: the record is written
+  // locally before the bridge indexes it, and it is keyed by the account that
+  // sent it.
+  root.defaultView?.addEventListener(CROSS_FORM_EVENT.transferSent, () => {
+    history.showStored()
+    history.showTab('evm', { reveal: true })
+  })
+
+  return { toasts, infoPanel, hathorForm, history, crossForm, reportError }
 }
