@@ -2,7 +2,7 @@ import type { Container } from './container'
 import { fromWei } from '../adapters/driven/evm/units'
 import { tokensFor } from '../config/tokens'
 import { validateHathorAddress } from '../domain/hathor-address'
-import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
+import { AddressCryptoAdapter } from '../adapters/driven/crypto/address-crypto.adapter'
 import { createResolveGasPrice } from '../application/use-cases/resolve-gas-price'
 import { createApproveSpend } from '../application/use-cases/approve-spend'
 import { createCrossToken } from '../application/use-cases/cross-token'
@@ -43,7 +43,7 @@ export function createWriteUseCases(container: Container) {
     getChainId: () => store.getState().route?.evm.chainId ?? route.evm.chainId,
   })
 
-  const crypto = new CdnCryptoAdapter()
+  const crypto = new AddressCryptoAdapter()
 
   return {
     resolveGasPrice,

@@ -30,7 +30,7 @@ import {
 import { mountPageChrome } from '../adapters/driving/ui/components/page-chrome.component'
 import { routeForChainId } from '../config/networks'
 import { validateHathorAddress } from '../domain/hathor-address'
-import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
+import { AddressCryptoAdapter } from '../adapters/driven/crypto/address-crypto.adapter'
 
 /**
  * Mounts the driving adapters — the components that own a piece of the page.
@@ -140,7 +140,7 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
     approve: useCases.approveSpend,
     cross: useCases.crossToken,
     isValidHathorAddress: (address) =>
-      validateHathorAddress(address, deployment, new CdnCryptoAdapter()),
+      validateHathorAddress(address, deployment, new AddressCryptoAdapter()),
   })
 
   // Same reason as above, from the other direction: the record is written

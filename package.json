@@ -19,8 +19,10 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@noble/hashes": "^2.3.0",
     "@reown/appkit": "1.8.0",
     "@reown/appkit-universal-connector": "1.8.0",
+    "@scure/base": "^2.3.0",
     "bignumber.js": "9.0.0",
     "viem": "^2.55.13"
   }

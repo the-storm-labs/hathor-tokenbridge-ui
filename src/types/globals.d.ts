@@ -6,7 +6,10 @@
  *  - The page loads **jquery.slim**, which has no $.ajax and no effects
  *    (.fadeIn, .animate). @types/jquery would type-check code that fails at
  *    runtime, and it is ~10k lines that make jQuery look permanent.
- *  - Web3 is gone: the EVM adapters are on viem, which ships its own types.
+ *
+ * Web3, BigNumber, CryptoJS and bs58 have all left; what remains is jQuery and
+ * the three Bootstrap plugins, and they are here only because bootstrap-select
+ * is. Nothing else on the page is a global.
  *
  * Treat this file as an inventory of our remaining coupling to global scripts.
  * It should only ever shrink.
@@ -61,19 +64,3 @@ interface JQuery {
 }
 
 declare const $: (selector: string | HTMLElement | Document) => JQuery
-
-// ---------------------------------------------------------------------------
-// Small CDN utilities
-// ---------------------------------------------------------------------------
-
-declare const bs58: {
-  encode(bytes: Uint8Array | number[]): string
-  decode(str: string): Uint8Array
-}
-
-declare const CryptoJS: {
-  SHA256(message: unknown): { toString(encoder?: unknown): string }
-  enc: {
-    Hex: { parse(hex: string): unknown; stringify(words: unknown): string }
-  }
-}

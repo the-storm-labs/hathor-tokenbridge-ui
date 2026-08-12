@@ -6,13 +6,13 @@ import type { Deployment } from './model/deployment'
  *
  * The original read the global `isTestnet` and reached for the `bs58` and
  * `CryptoJS` CDN globals directly, which made it both untestable and silently
- * coupled to script load order. Both are now parameters.
+ * coupled to script load order. Both are parameters now.
  */
 
 /**
- * The two primitives this needs from outside. Supplied by the CDN scripts in the
- * browser and by node:crypto in tests — the algorithm itself is what matters and
- * it lives here.
+ * The two primitives this needs from outside. Supplied by
+ * AddressCryptoAdapter in the browser and by node:crypto in tests — the
+ * algorithm itself is what matters and it lives here.
  */
 export interface AddressCrypto {
   /** Throws or returns a short array for malformed input; both are handled. */

@@ -5,9 +5,9 @@ import { validateHathorAddress, type AddressCrypto } from './hathor-address'
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
 /**
- * Test-only base58 decoder. In the browser this comes from the bs58 CDN script;
- * reimplementing it here keeps the domain test free of that dependency, and a
- * bug in this decoder would show up as the real addresses below failing.
+ * Test-only base58 decoder. Reimplementing it here keeps the domain test free
+ * of the library the adapter uses, so this exercises the algorithm rather than
+ * @scure/base — see address-crypto.adapter.test.ts for the pairing that ships.
  */
 function decodeBase58(value: string): Uint8Array {
   const bytes: number[] = [0]
