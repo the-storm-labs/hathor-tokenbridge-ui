@@ -9,6 +9,7 @@ import {
 import { HATHOR_FORM_EVENT } from './hathor-transfer-form.component'
 import { ROUTES } from '../../../../config/networks'
 import { tokensFor } from '../../../../config/tokens'
+import { mountTokenSelect } from './token-select.component'
 import { TOAST } from '../toasts'
 
 const ROUTE = ROUTES.mainnet
@@ -52,7 +53,7 @@ function setup(overrides: Partial<CrossTransferFormDeps> = {}) {
     route: ROUTE,
     toasts: { show: vi.fn(), hide: vi.fn() },
     reportError: vi.fn(),
-    refreshSelect: vi.fn(),
+    tokenSelect: mountTokenSelect(document, 'tokenAddress', 'Select token'),
     getEvmAddress: () => ACCOUNT,
     getParameters: () => PARAMETERS,
     getTokenBalance: vi.fn(async () => '250.5'),

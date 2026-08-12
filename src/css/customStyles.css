@@ -131,12 +131,6 @@ label {
   cursor: pointer;
 }
 
-.bootstrap-select .dropdown-toggle .filter-option {
-  font-family: "Poppins";
-  font-size: 20px;
-  line-height: 25px;
-  text-align: center;
-}
 
 .dropdown-item,
 .form-control-plaintext {
@@ -253,14 +247,7 @@ label {
   background-color: transparent;
 }
 
-.bootstrap-select>.dropdown-toggle.bs-placeholder:hover,
-.bootstrap-select>.dropdown-toggle.bs-placeholder {
-  color: #000;
-}
 
-.dropdown.bootstrap-select.disabled>.disabled {
-  color: #bfbdbd;
-}
 
 .btn-toolbar {
   justify-content: center;
@@ -529,13 +516,6 @@ a:hover {
   vertical-align: 0.255em;
 }
 
-.bootstrap-select>.dropdown-toggle:after {
-  margin-top: 0px;
-  font-size: 20px;
-  vertical-align: middle;
-  line-height: 25px;
-  text-align: center;
-}
 
 #wait {
   font-family: "Rubik";
@@ -883,4 +863,102 @@ table.table td {
 
 #eth-htr-tbody tr {
   height: 67px;
+}
+/* --------------------------------------------------------------------------
+   Token dropdown
+
+   Replaces bootstrap-select, which was the last reason jQuery, Popper and
+   Bootstrap's JS were on the page. The values below are the ones those rules
+   used, so the widget looks the same; see token-select.component.ts for why a
+   native <select> could not be styled into this (an <option> cannot hold an
+   image).
+   -------------------------------------------------------------------------- */
+
+.token-select {
+  position: relative;
+  width: 100%;
+}
+
+/* Kept in the DOM and authoritative — hidden from sight, not removed, so the
+   label, the name and the form control all still exist. */
+.token-select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.token-select-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+  font-family: "Poppins";
+  font-size: 20px;
+  line-height: 25px;
+  text-align: center;
+  color: #fff;
+  background-color: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.token-select-toggle::after {
+  content: "\f107";
+  font-family: "Font Awesome 5 Free";
+  font-weight: 300;
+  position: absolute;
+  right: 0.75rem;
+  font-size: 20px;
+  line-height: 25px;
+}
+
+.token-select.open .token-select-toggle::after {
+  content: "\f106";
+}
+
+.token-select-toggle:disabled {
+  color: #bfbdbd;
+  cursor: default;
+}
+
+.token-select-menu {
+  position: absolute;
+  z-index: 1000;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.5rem 0;
+  list-style: none;
+  background-color: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 0.25rem;
+}
+
+.token-select-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 1.5rem;
+  color: #fff;
+  cursor: pointer;
+}
+
+.token-select-item:hover,
+.token-select-item:focus {
+  background-color: #333;
+  outline: none;
+}
+
+.token-select-item.active {
+  background-color: #1f1f1f;
 }

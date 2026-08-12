@@ -10,7 +10,7 @@ import type { CrossTokenParams } from '../../../../application/use-cases/cross-t
 import { formatRowAmount } from '../templates/amount'
 import { HATHOR_FORM_EVENT } from './hathor-transfer-form.component'
 import { TOAST } from '../toasts'
-import { onChange, onRadioToggle } from '../bootstrap-plugins'
+import type { TokenSelect } from './token-select.component'
 
 /**
  * The ARB→HTR half of the transfer card: pick a token, type an amount, approve
@@ -53,7 +53,8 @@ export interface CrossTransferFormDeps {
   readonly toasts: { show(id: string): void; hide(id: string): void }
   /** Shows a failure in the shared error toast. */
   readonly reportError: (message: string) => void
-  readonly refreshSelect: (select: HTMLSelectElement) => void
+  /** The icon dropdown built over the native `<select>`. */
+  readonly tokenSelect: TokenSelect | null
 
   /** The connected EVM account, or `''`. */
   readonly getEvmAddress: () => string
@@ -108,7 +109,7 @@ export class CrossTransferForm {
   }
 
   mount(): void {
-    if (this.tokenSelect) onChange(this.tokenSelect, () => void this.onTokenChanged())
+    this.tokenSelect?.addEventListener('change', () => void this.onTokenChanged())
 
     // 'input' rather than 'keypress', so pasting is covered too. It fires before
     // 'keyup', so the check below already sees the clamped value.
@@ -148,8 +149,10 @@ export class CrossTransferForm {
       if (address) this.setDestination(address)
     })
 
-    const toggle = this.root.getElementById('directionToggle')
-    if (toggle) onRadioToggle(toggle, (direction) => this.setVisible(direction === 'arb-to-htr'))
+    this.root.getElementById('directionToggle')?.addEventListener('change', (event) => {
+      const input = event.target as HTMLInputElement | null
+      if (input?.name === 'direction') this.setVisible(input.value === 'arb-to-htr')
+    })
 
     this.setEnabled(false)
     this.setButtons({ approve: false, cross: false })
@@ -159,10 +162,7 @@ export class CrossTransferForm {
 
   /** Enabled means: a wallet is connected on a chain this deployment bridges. */
   setEnabled(enabled: boolean): void {
-    if (this.tokenSelect) {
-      this.tokenSelect.disabled = !enabled
-      this.deps.refreshSelect(this.tokenSelect)
-    }
+    this.deps.tokenSelect?.setDisabled(!enabled)
     if (this.amount) this.amount.disabled = !enabled
     // The Max link is bound once and checks this, rather than having its
     // handler and its href added and removed on every state change.
@@ -190,16 +190,14 @@ export class CrossTransferForm {
   populateTokens(): void {
     if (!this.tokenSelect) return
 
-    this.tokenSelect.innerHTML = this.deps.tokens
-      .filter(isOnEvm)
-      .map((token) => {
-        const content = `<span><img src='${token.icon}' class='token-logo'></span>${token.evm.symbol}`
-        return `<option value="${token.key}" data-content="${content}"></option>`
-      })
-      .join('')
-
-    this.tokenSelect.disabled = false
-    this.deps.refreshSelect(this.tokenSelect)
+    this.deps.tokenSelect?.setOptions(
+      this.deps.tokens.filter(isOnEvm).map((token) => ({
+        value: token.key,
+        label: token.evm.symbol,
+        icon: token.icon,
+      })),
+    )
+    this.deps.tokenSelect?.setDisabled(false)
     void this.onTokenChanged()
   }
 

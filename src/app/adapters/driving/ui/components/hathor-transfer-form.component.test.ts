@@ -6,6 +6,7 @@ import {
   type HathorTransferFormDeps,
 } from './hathor-transfer-form.component'
 import { tokensFor } from '../../../../config/tokens'
+import { mountTokenSelect } from './token-select.component'
 import { TOAST } from '../toasts'
 
 const TOKENS = tokensFor('mainnet')
@@ -54,7 +55,7 @@ function setup(overrides: Partial<HathorTransferFormDeps> = {}) {
     refreshBalance: vi.fn(async () => '12.34'),
     sendTransfer: vi.fn(async () => ({})),
     toasts: { show: vi.fn(), hide: vi.fn() },
-    refreshSelect: vi.fn(),
+    tokenSelect: mountTokenSelect(document, 'htrTokenSelect', 'Select token'),
     getEvmAddress: () => EVM_ADDRESS,
     showTokenInfo: vi.fn(),
     ...overrides,
@@ -275,7 +276,7 @@ describe('a restored session', () => {
       refreshBalance: async () => '0.00',
       sendTransfer: async () => ({}),
       toasts: { show: vi.fn(), hide: vi.fn() },
-      refreshSelect: vi.fn(),
+      tokenSelect: mountTokenSelect(document, 'htrTokenSelect', 'Select token'),
       getEvmAddress: () => EVM_ADDRESS,
       showTokenInfo: vi.fn(),
     }).showConnected('HRestoredRestoredRestoredRestored1')

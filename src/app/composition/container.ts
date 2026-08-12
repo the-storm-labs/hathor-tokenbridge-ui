@@ -90,7 +90,11 @@ export function createContainer(options: ContainerOptions): Container {
     preferences,
     transferHistory,
 
-    bridgeApi: new HttpBridgeApiAdapter(window.__ENV__?.bridgeApiUrl ?? ''),
+    // Inlined by Vite at build time. It used to travel through a
+    // `window.__ENV__` object filled by an inline script with `%VITE_*%`
+    // placeholders, because the classic scripts could not see import.meta —
+    // and a page served without a build then shipped the literal placeholder.
+    bridgeApi: new HttpBridgeApiAdapter(import.meta.env['VITE_BRIDGE_API_URL'] ?? ''),
 
     hathorWallet: new HathorWalletConnectAdapter(
       options.universalConnector,

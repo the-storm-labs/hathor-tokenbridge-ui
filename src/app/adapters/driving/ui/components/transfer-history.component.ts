@@ -88,13 +88,12 @@ export class TransferHistory {
     this.active = this.isMarkedActive('hathor') ? 'hathor' : 'evm'
 
     for (const origin of ['hathor', 'evm'] as const) {
-      this.root.getElementById(TAB[origin].link)?.addEventListener('click', () => {
-        // Not `shown.bs.tab`: Bootstrap's tab plugin is jQuery-based, and a
-        // jQuery-triggered custom event never reaches addEventListener. The
-        // plugin still does the visual switch — this only has to know which
-        // side the pager now belongs to.
-        this.active = origin
-        this.render()
+      this.root.getElementById(TAB[origin].link)?.addEventListener('click', (event) => {
+        // The switch itself is this component's now. It used to be Bootstrap's
+        // tab plugin, whose `shown.bs.tab` is a jQuery event that never reaches
+        // addEventListener — so this had to guess when to repaint.
+        event.preventDefault()
+        this.showTab(origin)
       })
     }
 

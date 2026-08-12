@@ -24,8 +24,10 @@ assume still work.
    Note the third one only appears **after** a Hathor session exists. With no
    stored session the page does not initialise WalletConnect at all.
 2. Header, transfer card, token list tab and info tab all render.
-3. `window.__ENV__` contains real URLs — **not** literal `%VITE_BRIDGE_API_URL%`.
-   A `%` here means the page was deployed without a Vite build.
+3. The transaction history loads for a connected account. The Read API URL is
+   inlined into the bundle at build time, so a missing one is silent — an empty
+   history is the only symptom. (The deploy workflow refuses to build without
+   it; this catches the case where it was built with the wrong one.)
 
 ## EVM wallet
 

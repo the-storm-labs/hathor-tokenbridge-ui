@@ -2,8 +2,10 @@ import type { Container } from './container'
 import type { UseCases } from './use-cases'
 import { tokensFor } from '../config/tokens'
 import { bindToasts, TOAST, type Toasts } from '../adapters/driving/ui/toasts'
-import { initSelectpickers, refreshSelectpicker } from '../adapters/driving/ui/bootstrap-plugins'
 import { mountTokenList } from '../adapters/driving/ui/components/token-list.component'
+import { mountTokenSelect } from '../adapters/driving/ui/components/token-select.component'
+import { bindButtonGroup } from '../adapters/driving/ui/button-group'
+import { bindModalDismiss } from '../adapters/driving/ui/modal'
 import {
   mountInfoPanel,
   type InfoPanel,
@@ -62,6 +64,12 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
 
   const toasts = bindToasts(root, container.scheduler)
 
+  // The two icon dropdowns, built over the native selects that stay
+  // authoritative. They replace bootstrap-select, and with it the last reason
+  // jQuery, Popper and Bootstrap's JS were on the page.
+  const crossTokenSelect = mountTokenSelect(root, 'tokenAddress', 'Select token')
+  const hathorTokenSelect = mountTokenSelect(root, 'htrTokenSelect', 'Select token')
+
   /**
    * The one error channel the transfer flows share.
    *
@@ -84,7 +92,7 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
   const hathorForm = mountHathorTransferForm(root, {
     tokens,
     toasts,
-    refreshSelect: refreshSelectpicker,
+    tokenSelect: hathorTokenSelect,
     refreshBalance: useCases.refreshHathorBalance,
     sendTransfer: useCases.sendHathorTransfer,
     getEvmAddress,
@@ -131,7 +139,7 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
     toasts,
     reportError,
     getEvmAddress,
-    refreshSelect: refreshSelectpicker,
+    tokenSelect: crossTokenSelect,
     getParameters: () => store.getState(),
     getTokenBalance: useCases.getTokenBalance,
     getMaxTransferable: useCases.getMaxTransferable,
@@ -189,9 +197,13 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
 
   mountPageChrome(root, deployment)
 
-  // Last, and the ordering matters: bootstrap-select copies the options it
-  // finds when it initialises, so every dropdown has to be filled by now.
-  initSelectpickers(root)
+  // The two behaviours Bootstrap's JS provided beyond the dropdown: the active
+  // class on the direction toggle, and the ways a modal closes.
+  const directionToggle = root.getElementById('directionToggle')
+  if (directionToggle) bindButtonGroup(directionToggle)
+
+  const modal = root.getElementById('myModal')
+  if (modal) bindModalDismiss(modal)
 
   return { toasts, infoPanel, hathorForm, history, crossForm, walletHeader, reportError }
 }

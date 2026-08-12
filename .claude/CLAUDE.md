@@ -99,23 +99,28 @@ The events, all defined next to their publisher:
 Component tests run under jsdom, opted into per file with
 `// @vitest-environment jsdom`. The domain and adapter suites stay on `node`.
 
-### The jQuery seam
+### No globals, no CDN scripts
 
-`adapters/driving/ui/bootstrap-plugins.ts` is the **only** module allowed to
-touch the jQuery-based CDN plugins (bootstrap-select, Bootstrap's modal). Every
-function there is a no-op when the plugin is absent, which is what lets the same
-code run under jsdom. Two rules learned the hard way:
+The page loads exactly one script: `app/main.ts`. jQuery, Popper, Bootstrap's JS,
+bootstrap-select, Web3, BigNumber, CryptoJS and bs58 are all gone, and with them
+`src/types/globals.d.ts` — there is nothing left to declare. Bootstrap's **CSS**
+stays; it was only ever the JS that was a problem.
 
-- **A jQuery-triggered event does not reach `addEventListener`.** `$(el).trigger(type)`
-  runs jQuery's own handler list and dispatches nothing native. This bites twice:
-  `shown.bs.tab` never arrives (the history component tracks the active tab
-  itself, from the links' own clicks), and the direction toggle's `change` never
-  arrives either — Bootstrap's button plugin `preventDefault()`s the click,
-  assigns `input.checked` itself, and triggers a jQuery change. Subscribe through
-  `onChange` / `onRadioToggle`, which bind via jQuery when it is present and
-  therefore catch both kinds.
-- **`refresh` on an uninitialised selectpicker initialises it.** The guard is the
-  `.bootstrap-select` wrapper the plugin adds around the `<select>`.
+Three things that plugin provided are now ours, in `adapters/driving/ui/`:
+
+- `components/token-select.component.ts` — the icon dropdown. It exists because
+  a native `<option>` cannot hold an image, which is the only thing
+  bootstrap-select was needed for. The native `<select>` stays in the DOM and
+  stays authoritative: the widget writes through it and dispatches a **native**
+  `change`, so every listener in the app is bound to a real form control.
+- `modal.ts` — show, hide, and the three ways a dialog closes.
+- `button-group.ts` — the `.active` class on the direction toggle.
+
+**The lesson that cost the most, kept because it explains the shape of the
+code:** a jQuery-triggered event never reaches `addEventListener`. `trigger()`
+runs jQuery's own handler list and dispatches nothing native. That silently broke
+the direction toggle and the history tabs during the migration, and it is why
+those two now own their own switching rather than listening for `shown.bs.tab`.
 
 ### Showing and hiding
 
@@ -179,17 +184,18 @@ Until then the balance comes from the full node, in `adapters/driven/hathor/node
 
 ### Vite build
 
-Root is `src/`, output `../public/`, two HTML entry points. The CDN libraries
-(jQuery slim, Bootstrap, bootstrap-select, Web3.js, BigNumber, CryptoJS, bs58)
-are `<script>` tags, not npm packages, and are typed by hand in
-`src/types/globals.d.ts` — treat that file as an inventory of remaining coupling;
-it should only shrink.
+Root is `src/`, output `../public/`, two HTML entry points, one module graph.
+Nothing is copied verbatim any more and no dependency arrives by `<script>` tag.
 
-Vite only processes `type="module"` scripts, so `src/js/bs58.js` is copied
-verbatim by the `copy-vendor-scripts` plugin in `vite.config.js`. Without it the
-deployed site 404s on it and every Hathor address fails validation. The ABIs are
-static imports (`adapters/driven/evm/abis.ts`), which is what killed the race
-where a contract could be built with an undefined ABI.
+Build-time config comes from `import.meta.env.VITE_*`, inlined by Vite. It used
+to travel through a `window.__ENV__` object filled by an inline script with
+`%VITE_*%` placeholders, because the classic scripts could not see
+`import.meta` — and a page served without a build shipped the literal
+placeholder. The failure mode now is an *empty* value, which the deploy workflow
+checks for before building.
+
+The ABIs are static imports (`adapters/driven/evm/abis.ts`), which is what killed
+the race where a contract could be built with an undefined ABI.
 
 ## Known gaps
 

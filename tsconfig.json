@@ -17,9 +17,8 @@
     "skipLibCheck": true,
     "noEmit": true,
 
-    // src/js holds one vendored classic script (bs58). It is third-party code
-    // loaded as a <script> tag and typed by hand in src/types/globals.d.ts, so
-    // there is nothing for tsc to check there.
+    // Nothing outside src/app is JavaScript any more: no classic scripts, no
+    // CDN globals, no hand-rolled ambient declarations.
     "allowJs": false,
     "checkJs": false,
 
@@ -27,6 +26,6 @@
     // code itself must never import a node builtin.
     "types": ["vite/client", "node"]
   },
-  "include": ["src/app", "src/types"],
-  "exclude": ["src/js", "public", "node_modules"]
+  "include": ["src/app"],
+  "exclude": ["public", "node_modules"]
 }

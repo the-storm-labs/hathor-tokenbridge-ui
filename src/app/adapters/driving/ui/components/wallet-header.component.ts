@@ -7,7 +7,7 @@ import type {
   EvmWalletEvents,
 } from '../../../../ports/driven/evm-wallet.port'
 import type { ReconnectedWallet } from '../../../../application/use-cases/connect-evm-wallet'
-import { hideModal, showModal } from '../bootstrap-plugins'
+import { hideModal, showModal } from '../modal'
 
 /**
  * The EVM wallet: the connect button, the wallet picker, the address and

@@ -6,7 +6,7 @@ import { isOnHathor, type Token } from '../../../../domain/model/token'
 import { truncateMiddle } from '../../../../domain/tx-id'
 import type { SendHathorTransferParams } from '../../../../application/use-cases/send-hathor-transfer'
 import { TOAST } from '../toasts'
-import { onChange, onRadioToggle } from '../bootstrap-plugins'
+import type { TokenSelect } from './token-select.component'
 
 /**
  * The HTR→ARB half of the transfer card, plus the Hathor wallet button in the
@@ -50,11 +50,8 @@ export interface HathorTransferFormDeps {
     show(id: string, options?: { autoDismiss?: boolean }): void
     hide(id: string): void
   }
-  /**
-   * Repaints a bootstrap-select whose options changed. Injected because that
-   * plugin is a jQuery global, and this component should not know it exists.
-   */
-  readonly refreshSelect: (select: HTMLSelectElement) => void
+  /** The icon dropdown built over the native `<select>`. */
+  readonly tokenSelect: TokenSelect | null
   /** The connected EVM account, used to prefill the destination. */
   readonly getEvmAddress: () => string
   /** Shows this token's limits in the info panel, if the chain is reachable. */
@@ -105,7 +102,7 @@ export class HathorTransferForm {
     this.sendButton?.addEventListener('click', () => void this.send())
 
     if (this.tokenSelect) {
-      onChange(this.tokenSelect, () => {
+      this.tokenSelect.addEventListener('change', () => {
         void this.refreshBalance()
         // Switching to a token Hathor represents more coarsely has to re-cap
         // whatever is already typed.
@@ -131,14 +128,14 @@ export class HathorTransferForm {
     // Each form shows and hides itself: the toggle is shared, the two halves of
     // its effect are not. The destination is prefilled from the connected EVM
     // account each time, since the user may have connected since.
-    const toggle = this.root.getElementById('directionToggle')
-    if (toggle) {
-      onRadioToggle(toggle, (direction) => {
-        const mine = direction === 'htr-to-arb'
-        if (this.form) this.form.style.display = mine ? 'block' : 'none'
-        if (mine) this.prefillDestination()
-      })
-    }
+    this.root.getElementById('directionToggle')?.addEventListener('change', (event) => {
+      const input = event.target as HTMLInputElement | null
+      if (input?.name !== 'direction') return
+
+      const mine = input.value === 'htr-to-arb'
+      if (this.form) this.form.style.display = mine ? 'block' : 'none'
+      if (mine) this.prefillDestination()
+    })
 
     this.reflectConnection(this.deps.wallet.isConnected() ? this.deps.wallet.getAddress() : null)
   }
@@ -209,10 +206,7 @@ export class HathorTransferForm {
   }
 
   private setEnabled(enabled: boolean): void {
-    if (this.tokenSelect) {
-      this.tokenSelect.disabled = !enabled
-      this.deps.refreshSelect(this.tokenSelect)
-    }
+    this.deps.tokenSelect?.setDisabled(!enabled)
     if (this.amount) this.amount.disabled = !enabled
     if (this.maxButton) this.maxButton.disabled = !enabled
     if (this.destination) this.destination.disabled = !enabled
@@ -231,16 +225,13 @@ export class HathorTransferForm {
   private populateTokens(): void {
     if (!this.tokenSelect) return
 
-    this.tokenSelect.innerHTML = this.deps.tokens
-      .filter(isOnHathor)
-      .map((token) => {
-        const symbol = token.hathor.symbol || token.name
-        const content = `<span><img src='${token.icon}' class='token-logo'></span>${symbol}`
-        return `<option value="${token.key}" data-content="${content}"></option>`
-      })
-      .join('')
-
-    this.deps.refreshSelect(this.tokenSelect)
+    this.deps.tokenSelect?.setOptions(
+      this.deps.tokens.filter(isOnHathor).map((token) => ({
+        value: token.key,
+        label: token.hathor.symbol || token.name,
+        icon: token.icon,
+      })),
+    )
   }
 
   private selectedToken(): Token | null {
