@@ -31,3 +31,30 @@ export function refreshSelectpicker(select: HTMLSelectElement): void {
 
   $(select).selectpicker('refresh')
 }
+
+/**
+ * Turns every `.selectpicker` on the page into a bootstrap-select widget.
+ *
+ * Called once, **after** the components have filled their dropdowns: the plugin
+ * copies the options it finds into its own markup, so initialising it first
+ * would produce an empty widget over a populated `<select>`. This is the one
+ * ordering constraint the ready block used to enforce, and the reason it is
+ * called last in mountUi.
+ */
+export function initSelectpickers(root: Document): void {
+  if (!hasJQuery()) return
+
+  for (const select of root.querySelectorAll<HTMLSelectElement>('select.selectpicker')) {
+    $(select).selectpicker()
+  }
+}
+
+export function showModal(element: HTMLElement): void {
+  if (!hasJQuery()) return
+  $(element).modal('show')
+}
+
+export function hideModal(element: HTMLElement): void {
+  if (!hasJQuery()) return
+  $(element).modal('hide')
+}

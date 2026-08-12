@@ -15,15 +15,14 @@ npm run ci         # typecheck + tests + build, the same order CI uses
 
 Deploy happens in CI (`.github/workflows/firebase-hosting-merge.yml`) and runs a real build with the `VITE_*` secrets. Do **not** reintroduce a `cp -r src/* public/` deploy: `src/` is source, `public/` is build output and is gitignored.
 
-There is no linter. `docs/smoke-checklist.md` is the manual safety net — run it at every phase boundary of the migration, on both pages.
+There is no linter. `docs/smoke-checklist.md` is the manual safety net — there are no end-to-end tests, so run it in full before shipping UI changes, on both pages.
 
 ## Architecture
 
-The app is being migrated from one 2000-line classic script to hexagonal architecture (ports & adapters) in TypeScript, incrementally, keeping the page deployable at every step. Phases 0–7 are done; what remains is the UI layer.
-
-### The two halves
-
-`src/app/` is the migrated code: TypeScript, strict, unit-tested.
+The app was migrated from one 2000-line classic script to hexagonal architecture
+(ports & adapters) in TypeScript, incrementally, keeping the page deployable at
+every step. **Phases 0–8 are all done** — the legacy script, its `window` shim
+and every shared global are gone.
 
 ```
 src/app/
@@ -32,20 +31,78 @@ src/app/
   ports/driven/         # what the app needs from outside (5 external systems)
   application/          # use cases + the state store
   adapters/driven/      # evm (web3), hathor (walletconnect + node), bridge-api, storage, crypto, scheduler
-  adapters/driving/ui/  # row templates (components come in phase 8)
+  adapters/driving/ui/  # components, row templates, toasts, the jQuery-plugin seam
   config/               # networks, tokens, env, constants
-  composition/          # container.ts (the only place that knows which adapter is which) + the shim
+  composition/          # container.ts (driven) + ui.ts (driving) + use-cases.ts
 ```
 
-`src/js/index.js` is what is left of the old app (~1360 lines): DOM wiring, jQuery, and the render functions. It is a **classic script** using globals, and it stays that way until it is deleted — converting it would break the inline `onclick=` handlers in the HTML and force a big-bang rewrite.
+`src/js/` holds one vendored classic script, `bs58.js`, loaded as a `<script>`
+tag and typed by hand in `src/types/globals.d.ts`. Everything else on the page is
+the module graph.
 
-### How the two halves share state
+### The two composition roots
 
-`src/app/composition/legacy-bridge.ts` publishes the migrated pieces onto `window`. This works because classic scripts run in document order, `type="module"` scripts run after all of them but before `DOMContentLoaded`, and jQuery's `$(document).ready` fires on `DOMContentLoaded`.
+`composition/container.ts` decides which **adapter** satisfies which driven port.
+It also owns the web3 instance: `setProvider()` is called when a wallet connects
+and the adapters are handed a getter, so nothing reads `window.web3`.
 
-**The one rule:** a top-level `let`/`const`/`function` in a classic script creates a script-scope binding that *shadows* the same-named window property. So every symbol the shim publishes must have its declaration deleted from `index.js` in the same commit. Mutable state is published as `window` **accessors** over the store (`STATE_ALIASES` in the shim), which is why `config = null` in legacy code is a real store mutation the new code observes.
+`composition/ui.ts` decides which **component** owns which part of the DOM, wires
+each one to its use cases, and connects the components to each other. It runs
+from `main.ts`, which is a `type="module"` script — deferred, so the document is
+parsed and jQuery/Bootstrap/Web3 are all present, but `DOMContentLoaded` has not
+fired. No component waits for a ready callback.
 
-`index.js` reaches the new code through four globals: `window.__useCases`, `window.__domain`, `window.__templates`, and the legacy service shims (`BridgeAPI`, `TXN_Storage`, `HathorWallet`).
+**Ordering constraint:** `initSelectpickers(root)` is called **last** in
+`mountUi`. bootstrap-select copies the `<option>`s it finds when it initialises,
+so every dropdown must already be filled.
+
+### Components
+
+One file per component in `adapters/driving/ui/components/`, each exporting a
+class plus a `mountX(root, deps)` function. The shape is always the same:
+
+- the constructor resolves its elements by id, all nullable — a page that lacks
+  one degrades instead of throwing;
+- `deps` is a narrow interface of use cases and callbacks, never the container;
+- side effects on **other** components are published as `CustomEvent`s on the
+  window and wired in `ui.ts`. A component commands nothing outside its markup.
+
+The events, all defined next to their publisher:
+
+| event | published by | detail |
+| --- | --- | --- |
+| `evmwallet:connected` | wallet-header | `{ address, route }` |
+| `evmwallet:accountchanged` | wallet-header | `{ address }` |
+| `evmwallet:disconnected` | wallet-header | — |
+| `hathorwallet:connected` | hathor-transfer-form | `{ address }` |
+| `hathorwallet:disconnected` | hathor-transfer-form | — |
+| `hathortransfer:sent` | hathor-transfer-form | `{ evmDestination }` |
+| `crosstransfer:sent` | cross-transfer-form | — |
+
+Component tests run under jsdom, opted into per file with
+`// @vitest-environment jsdom`. The domain and adapter suites stay on `node`.
+
+### The jQuery seam
+
+`adapters/driving/ui/bootstrap-plugins.ts` is the **only** module allowed to
+touch the jQuery-based CDN plugins (bootstrap-select, Bootstrap's modal). Every
+function there is a no-op when the plugin is absent, which is what lets the same
+code run under jsdom. Two rules learned the hard way:
+
+- **`shown.bs.tab` never reaches `addEventListener`.** Bootstrap triggers it
+  through jQuery, which does not dispatch a native event for custom types. The
+  history component tracks the active tab itself, from the links' own clicks.
+- **`refresh` on an uninitialised selectpicker initialises it.** The guard is the
+  `.bootstrap-select` wrapper the plugin adds around the `<select>`.
+
+### Showing and hiding
+
+`element.style.display = ''` only works when nothing in a stylesheet hides the
+element. `#previousTxnsTab` and `#previousTxnsEmptyTab` are `display: none` in
+`css/customStyles.css`, so they are shown with an explicit `'block'`;
+`.btn-toolbar` is `display: flex` from Bootstrap and is shown by clearing the
+inline value, because naming a value would flatten the layout. Getting this
+backwards is invisible in a unit test and obvious on the page.
 
 ### Bridge Read API (`docs/bridge-api.yaml`)
 
@@ -74,9 +131,9 @@ Three different scales, and mixing them is the most expensive kind of bug here:
 
 ### Entry points and deployments
 
-`src/index.html` (Arbitrum One) and `src/testnet.html` (Sepolia) share `index.js` and `app/main.ts`. Which deployment is active comes from `config/env.ts` `resolveDeployment(location, document)`: `?testnet` wins, then `<html data-deployment>`, then mainnet. Never sniff the URL for the substring "testnet" again — that matched a host or path containing the word.
+`src/index.html` (Arbitrum One) and `src/testnet.html` (Sepolia) share `app/main.ts`. Which deployment is active comes from `config/env.ts` `resolveDeployment(location, document)`: `?testnet` wins, then `<html data-deployment>`, then mainnet. Never sniff the URL for the substring "testnet" again — that matched a host or path containing the word.
 
-Networks: `config/networks.ts` (`ROUTES.mainnet` / `ROUTES.testnet`), modelled as an acyclic `BridgeRoute { deployment, evm, hathor }`. The legacy `config` / `config.crossToNetwork` cycle is rebuilt only inside the shim.
+Networks: `config/networks.ts` (`ROUTES.mainnet` / `ROUTES.testnet`), modelled as an acyclic `BridgeRoute { deployment, evm, hathor }`. The legacy `config` / `config.crossToNetwork` cycle is gone: a route holds both sides, so nothing has to walk a back-reference.
 
 Tokens: `config/tokens.ts`, one table per deployment. Read the comment at the top before touching a value — it records what is verified on-chain and what is stale (the testnet UIDs are from the reset `golf` testnet and do not resolve).
 
@@ -92,12 +149,29 @@ Until then the balance comes from the full node, in `adapters/driven/hathor/node
 
 ### Vite build
 
-Root is `src/`, output `../public/`, two HTML entry points. The CDN libraries (jQuery slim, Bootstrap, Web3.js, BigNumber, ClipboardJS, CryptoJS, bs58) are `<script>` tags, not npm packages, and are typed by hand in `src/types/globals.d.ts` — treat that file as an inventory of remaining coupling; it should only shrink.
+Root is `src/`, output `../public/`, two HTML entry points. The CDN libraries
+(jQuery slim, Bootstrap, bootstrap-select, Web3.js, BigNumber, CryptoJS, bs58)
+are `<script>` tags, not npm packages, and are typed by hand in
+`src/types/globals.d.ts` — treat that file as an inventory of remaining coupling;
+it should only shrink.
 
-Vite only processes `type="module"` scripts, so `src/js/*` is copied verbatim by the `copy-legacy-assets` plugin in `vite.config.js`. Without it the deployed site 404s on `js/index.js`. The ABIs are static imports now (`adapters/driven/evm/abis.ts`), which is what killed the race where a contract could be built with an undefined ABI.
+Vite only processes `type="module"` scripts, so `src/js/bs58.js` is copied
+verbatim by the `copy-vendor-scripts` plugin in `vite.config.js`. Without it the
+deployed site 404s on it and every Hathor address fails validation. The ABIs are
+static imports (`adapters/driven/evm/abis.ts`), which is what killed the race
+where a contract could be built with an undefined ABI.
 
 ## Known gaps
 
-- **`index.html` and `testnet.html` are missing 12 ids that `index.js` writes to**: `fee`, `timeToCross`, `confirmations`, `secondsPerBlock`, `config-federators-required`, `willReceive*` (the info panel), `doNotAskAgain` (the unlimited-approval checkbox, so unlimited approval is unreachable), and the dead handlers `cross`, `claimTokens`, `changeNetwork`. jQuery writes to an empty set silently, so these fail invisibly. They date from the page rebuild in `de09fdd` and are for phase 8, when the markup gets owned by components.
-- **Read use cases that exist but are not wired**: `loadBridgeParameters`, `watchBlockNumber`, `checkAllowance`, `getMaxTransferable`, `refreshHathorBalance` are built and tested, but `setInfoTab`, `getMaxBalance`, `checkAllowance` and the block poll in `index.js` still call contracts directly. Wire them as those call sites become components.
-- **`VITE_BRIDGE_API_URL`**: no testnet deployment of the Read API is known; `testnet.html` points at the same base URL as mainnet.
+- **`VITE_BRIDGE_API_URL`**: no testnet deployment of the Read API is known;
+  `testnet.html` points at the same base URL as mainnet.
+- **The testnet token UIDs are stale** — they date from the reset `golf` testnet
+  and do not resolve, so HTR→ARB on `testnet.html` cannot work until someone
+  re-mints them and updates `config/tokens.ts`.
+- **`#changeNetwork` and `#claimTokens` are gone.** Both were handlers in the old
+  ready block bound to elements no page has had since the rebuild in `de09fdd`;
+  neither survived the component migration. If a "switch network" button is
+  wanted, it is new work, not a restoration.
+- **The bundle is one 850 kB chunk**, almost all of it Reown's AppKit. Vite warns
+  on every build. Code-splitting the wallet connector behind a dynamic import is
+  the obvious fix and has not been done.

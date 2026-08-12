@@ -6,16 +6,15 @@ const srcDir = fileURLToPath(new URL('./src', import.meta.url))
 const outDir = fileURLToPath(new URL('./public', import.meta.url))
 
 /**
- * Vite only processes `type="module"` scripts, and src/app is reached through
- * the module entry so it is bundled. What remains in src/js are classic scripts
- * that keep their source paths in the HTML, so they have to be copied verbatim.
- *
- * The list of files to exclude is gone: every bundled module now lives under
- * src/app, which this never copies.
+ * Vite only processes `type="module"` scripts, and the whole app is reached
+ * through the module entry so it is bundled. One classic script is left —
+ * js/bs58.js, a vendored base58 implementation the page loads as a `<script>`
+ * tag and the Hathor address checksum reads off the global. It keeps its source
+ * path in the HTML, so it has to be copied verbatim or the deployed site 404s.
  */
-function copyLegacyAssets() {
+function copyVendorScripts() {
   return {
-    name: 'copy-legacy-assets',
+    name: 'copy-vendor-scripts',
     apply: 'build',
     async closeBundle() {
       await cp(`${srcDir}/js`, `${outDir}/js`, { recursive: true })
@@ -28,7 +27,7 @@ function copyLegacyAssets() {
 
 export default defineConfig({
   root: 'src',
-  plugins: [copyLegacyAssets()],
+  plugins: [copyVendorScripts()],
   build: {
     outDir: '../public',
     emptyOutDir: true,

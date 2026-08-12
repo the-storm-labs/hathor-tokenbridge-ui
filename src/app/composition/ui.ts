@@ -2,7 +2,7 @@ import type { Container } from './container'
 import type { UseCases } from './use-cases'
 import { tokensFor } from '../config/tokens'
 import { bindToasts, TOAST, type Toasts } from '../adapters/driving/ui/toasts'
-import { refreshSelectpicker } from '../adapters/driving/ui/bootstrap-plugins'
+import { initSelectpickers, refreshSelectpicker } from '../adapters/driving/ui/bootstrap-plugins'
 import { mountTokenList } from '../adapters/driving/ui/components/token-list.component'
 import {
   mountInfoPanel,
@@ -22,6 +22,13 @@ import {
   CROSS_FORM_EVENT,
   type CrossTransferForm,
 } from '../adapters/driving/ui/components/cross-transfer-form.component'
+import {
+  mountWalletHeader,
+  WALLET_EVENT,
+  type WalletHeader,
+} from '../adapters/driving/ui/components/wallet-header.component'
+import { mountPageChrome } from '../adapters/driving/ui/components/page-chrome.component'
+import { routeForChainId } from '../config/networks'
 import { validateHathorAddress } from '../domain/hathor-address'
 import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
 
@@ -43,6 +50,7 @@ export interface MountedUi {
   readonly hathorForm: HathorTransferForm
   readonly history: TransferHistory
   readonly crossForm: CrossTransferForm
+  readonly walletHeader: WalletHeader
   /** Shows a failure in the shared error toast. */
   readonly reportError: (message: string) => void
 }
@@ -143,5 +151,47 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
     history.showTab('evm', { reveal: true })
   })
 
-  return { toasts, infoPanel, hathorForm, history, crossForm, reportError }
+  const walletHeader = mountWalletHeader(root, {
+    route,
+    discoveredWallets: useCases.discoveredWallets,
+    connect: useCases.connectEvmWallet,
+    reconnect: useCases.reconnectEvmWallet,
+    forget: useCases.forgetEvmWallet,
+    walletEvents: useCases.walletEvents,
+    adoptProvider: container.setProvider,
+    routeForChainId: (chainId) => routeForChainId(chainId, deployment),
+    setAccount: (evmAddress) => store.patch({ evmAddress }),
+    setRoute: (connectedRoute) => store.patch({ route: connectedRoute }),
+  })
+
+  // What connecting means to the rest of the page. Each of these used to be a
+  // line in a promise chain in index.js that named five functions across four
+  // concerns; here every reaction sits next to the component it belongs to.
+  root.defaultView?.addEventListener(WALLET_EVENT.connected, () => {
+    crossForm.setEnabled(true)
+    crossForm.populateTokens()
+    // From storage first, so something is on screen before the poll resolves.
+    history.showStored()
+    history.start()
+  })
+
+  root.defaultView?.addEventListener(WALLET_EVENT.accountChanged, () => {
+    // Straight from storage, so the table stops showing the previous account's
+    // transfers before the next poll resolves the new one's.
+    history.showStored()
+  })
+
+  root.defaultView?.addEventListener(WALLET_EVENT.disconnected, () => {
+    crossForm.setEnabled(false)
+    // The original left the poller running against a wallet that was gone.
+    history.stop()
+  })
+
+  mountPageChrome(root, deployment)
+
+  // Last, and the ordering matters: bootstrap-select copies the options it
+  // finds when it initialises, so every dropdown has to be filled by now.
+  initSelectpickers(root)
+
+  return { toasts, infoPanel, hathorForm, history, crossForm, walletHeader, reportError }
 }

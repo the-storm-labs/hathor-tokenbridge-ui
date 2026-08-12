@@ -138,8 +138,6 @@ declare const Web3: {
 // Small CDN utilities
 // ---------------------------------------------------------------------------
 
-declare const ClipboardJS: new (selector: string) => { destroy(): void }
-
 declare const bs58: {
   encode(bytes: Uint8Array | number[]): string
   decode(str: string): Uint8Array

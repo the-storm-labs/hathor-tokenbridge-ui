@@ -1,13 +1,13 @@
 # Smoke checklist
 
-Run at every migration phase boundary, on **both** pages:
+Run before shipping any UI change, on **both** pages:
 
 - `/` (or `/index.html`) — Arbitrum One mainnet
 - `/testnet.html` — Sepolia testnet
 
-There are no end-to-end tests. This checklist is the safety net for the refactor,
-so run it fully rather than sampling it — the failures that matter are the ones
-in the paths you assume still work.
+There are no end-to-end tests. This checklist is the safety net, so run it fully
+rather than sampling it — the failures that matter are the ones in the paths you
+assume still work.
 
 ## Load
 
@@ -32,9 +32,13 @@ in the paths you assume still work.
 10. Selecting a token shows its EVM balance.
 11. Typing an amount updates **service fee** and **total cost**.
 12. **Max** fills the field with the maximum transferable amount.
-13. Amount below the minimum / above the maximum shows the validation message.
+13. Amount below the minimum / above the maximum shows the validation message
+    **under the amount field**.
 14. An invalid Hathor destination address is rejected.
-15. **Approve** submits and confirms.
+15. **Approve** submits and confirms, and the *don't ask again* checkbox next to
+    it is usable.
+15b. Once the allowance covers the transfer, the whole approve block disappears
+    and only **Convert tokens** is offered.
 16. **Cross** submits, and the new transaction appears in the history table.
 
 ## Transaction history
@@ -65,5 +69,6 @@ in the paths you assume still work.
 
 ## Info tab
 
-32. All six config values render: min, max, daily limit, fee, federator count,
-    whitelist enabled.
+32. All seven config values render: min, max, daily limit, fee, federator count,
+    federators required, crossing period. The crossing period shows **before**
+    any wallet is connected.

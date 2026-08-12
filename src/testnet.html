@@ -76,7 +76,7 @@
                                     <div id="evmNetwork" style="font-size:10px; opacity:0.7; white-space:nowrap;"></div>
                                     <div style="white-space:nowrap;"><span id="address" style="font-size:11px; font-family:monospace;"></span></div>
                                 </div>
-                                <button type="button" onclick="onDisconnectEvmClick()" aria-label="Disconnect EVM"
+                                <button type="button" id="disconnectEvmWallet" aria-label="Disconnect EVM"
                                     style="background:none; border:none; padding:0; cursor:pointer; color:rgba(255,255,255,0.5); font-size:22px; line-height:1; flex-shrink:0; align-self:center;">
                                     &times;
                                 </button>
@@ -543,15 +543,10 @@
             <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.0.0/bignumber.min.js"
                 integrity="sha384-W92bSiy/NxoN+p5YNhm8ybWnIFnqtH0/Bxc4l9jojSsPK2KQdOvQonrRBon0O/om"
                 crossorigin="anonymous"></script>
-            <!-- Copy to Clipboard https://clipboardjs.com/ -->
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"
-                integrity="sha384-8CYhPwYlLELodlcQV713V9ZikA3DlCVaXFDpjHfP8Z36gpddf/Vrt47XmKDsCttu"
-                crossorigin="anonymous"></script>
-            <!-- async-await-retry  https://github.com/VoodooTeam/async-await-retry -->
+            <!-- base58, for the Hathor address checksum -->
             <script src="./js/bs58.js"></script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-            <!-- Hathor Bridge Read API client (see docs/bridge-api.yaml) -->
-            <!-- Env vars injected at build time by Vite; must run before index.js -->
+            <!-- Env vars injected at build time by Vite; read by config/env.ts -->
             <script>
               window.__ENV__ = {
                 bridgeApiUrl: '%VITE_BRIDGE_API_URL%',
@@ -559,9 +554,7 @@
                 evmHostTestnet: '%VITE_EVM_HOST_TESTNET%',
               }
             </script>
-            <!-- Custom Js -->
-            <script type="text/javascript" src="./js/index.js"></script>
-            <!-- Vite entry: Reown AppKit + Hathor WalletConnect -->
+            <!-- The whole app: TypeScript modules, bundled by Vite. -->
             <script type="module" src="./app/main.ts"></script>
         </div>
 </body>

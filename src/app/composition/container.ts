@@ -49,14 +49,19 @@ export interface Container {
   readonly bridge: Web3BridgeAdapter
   readonly allowTokens: Web3AllowTokensAdapter
   readonly federation: Web3FederationAdapter
+
+  /**
+   * Adopts the provider of a newly connected wallet, or `null` on disconnect.
+   *
+   * The web3 instance lives here rather than on `window`, which is where the
+   * legacy script built it and every adapter read it back from. It is replaced
+   * on each wallet or network switch, so the adapters are handed a getter and
+   * read it per call.
+   */
+  setProvider(provider: unknown | null): void
 }
 
 export interface ContainerOptions {
-  /**
-   * How to reach the current web3 instance. It is replaced on every wallet or
-   * network switch, so the adapters read it per call rather than capturing it.
-   */
-  readonly getWeb3: () => Web3Instance | null
   /** Reown's UniversalConnector, injected because it arrives via a global. */
   readonly universalConnector: { init(options: unknown): Promise<never> }
 }
@@ -64,6 +69,9 @@ export interface ContainerOptions {
 export function createContainer(options: ContainerOptions): Container {
   const deployment = resolveDeployment(window.location, window.document)
   const route = ROUTES[deployment]
+
+  let web3: Web3Instance | null = null
+  const getWeb3 = () => web3
 
   const store = createStore<AppState>(initialAppState())
   const scheduler = new WindowSchedulerAdapter()
@@ -74,6 +82,9 @@ export function createContainer(options: ContainerOptions): Container {
     deployment,
     route,
     store,
+    setProvider: (provider) => {
+      web3 = provider ? new Web3(provider) : null
+    },
     scheduler,
     preferences,
     transferHistory,
@@ -92,11 +103,11 @@ export function createContainer(options: ContainerOptions): Container {
     ),
 
     evmWallet: new Eip6963WalletAdapter(),
-    chain: new Web3ChainAdapter(options.getWeb3, scheduler),
+    chain: new Web3ChainAdapter(getWeb3, scheduler),
 
-    erc20: new Web3Erc20Adapter(options.getWeb3),
-    bridge: new Web3BridgeAdapter(options.getWeb3, route.evm.bridge),
-    allowTokens: new Web3AllowTokensAdapter(options.getWeb3, route.evm.allowTokens),
-    federation: new Web3FederationAdapter(options.getWeb3, route.evm.federation),
+    erc20: new Web3Erc20Adapter(getWeb3),
+    bridge: new Web3BridgeAdapter(getWeb3, route.evm.bridge),
+    allowTokens: new Web3AllowTokensAdapter(getWeb3, route.evm.allowTokens),
+    federation: new Web3FederationAdapter(getWeb3, route.evm.federation),
   }
 }

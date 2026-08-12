@@ -17,10 +17,9 @@
     "skipLibCheck": true,
     "noEmit": true,
 
-    // The legacy scripts in src/js are classic (non-module) scripts sharing ~45
-    // undeclared cross-file globals. Type-checking them would emit hundreds of
-    // errors on code whose planned lifespan is a few weeks. We check the
-    // destination, not the source: the migration signal is "is it in src/app yet".
+    // src/js holds one vendored classic script (bs58). It is third-party code
+    // loaded as a <script> tag and typed by hand in src/types/globals.d.ts, so
+    // there is nothing for tsc to check there.
     "allowJs": false,
     "checkJs": false,
 
@@ -29,5 +28,5 @@
     "types": ["vite/client", "node"]
   },
   "include": ["src/app", "src/types"],
-  "exclude": ["src/js", "src/txns-storage.js", "public", "node_modules"]
+  "exclude": ["src/js", "public", "node_modules"]
 }
