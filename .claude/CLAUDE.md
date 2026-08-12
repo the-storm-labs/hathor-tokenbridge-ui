@@ -89,9 +89,14 @@ touch the jQuery-based CDN plugins (bootstrap-select, Bootstrap's modal). Every
 function there is a no-op when the plugin is absent, which is what lets the same
 code run under jsdom. Two rules learned the hard way:
 
-- **`shown.bs.tab` never reaches `addEventListener`.** Bootstrap triggers it
-  through jQuery, which does not dispatch a native event for custom types. The
-  history component tracks the active tab itself, from the links' own clicks.
+- **A jQuery-triggered event does not reach `addEventListener`.** `$(el).trigger(type)`
+  runs jQuery's own handler list and dispatches nothing native. This bites twice:
+  `shown.bs.tab` never arrives (the history component tracks the active tab
+  itself, from the links' own clicks), and the direction toggle's `change` never
+  arrives either — Bootstrap's button plugin `preventDefault()`s the click,
+  assigns `input.checked` itself, and triggers a jQuery change. Subscribe through
+  `onChange` / `onRadioToggle`, which bind via jQuery when it is present and
+  therefore catch both kinds.
 - **`refresh` on an uninitialised selectpicker initialises it.** The guard is the
   `.bootstrap-select` wrapper the plugin adds around the `<select>`.
 

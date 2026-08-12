@@ -10,6 +10,7 @@ import type { CrossTokenParams } from '../../../../application/use-cases/cross-t
 import { formatRowAmount } from '../templates/amount'
 import { HATHOR_FORM_EVENT } from './hathor-transfer-form.component'
 import { TOAST } from '../toasts'
+import { onChange, onRadioToggle } from '../bootstrap-plugins'
 
 /**
  * The ARB→HTR half of the transfer card: pick a token, type an amount, approve
@@ -107,7 +108,7 @@ export class CrossTransferForm {
   }
 
   mount(): void {
-    this.tokenSelect?.addEventListener('change', () => void this.onTokenChanged())
+    if (this.tokenSelect) onChange(this.tokenSelect, () => void this.onTokenChanged())
 
     // 'input' rather than 'keypress', so pasting is covered too. It fires before
     // 'keyup', so the check below already sees the clamped value.
@@ -147,12 +148,8 @@ export class CrossTransferForm {
       if (address) this.setDestination(address)
     })
 
-    this.root.getElementById('directionToggle')?.addEventListener('change', (event) => {
-      const input = event.target as HTMLInputElement | null
-      if (input?.name !== 'direction') return
-
-      this.setVisible(input.value === 'arb-to-htr')
-    })
+    const toggle = this.root.getElementById('directionToggle')
+    if (toggle) onRadioToggle(toggle, (direction) => this.setVisible(direction === 'arb-to-htr'))
 
     this.setEnabled(false)
     this.setButtons({ approve: false, cross: false })

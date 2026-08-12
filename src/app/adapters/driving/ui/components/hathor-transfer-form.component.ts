@@ -6,6 +6,7 @@ import { isOnHathor, type Token } from '../../../../domain/model/token'
 import { truncateMiddle } from '../../../../domain/tx-id'
 import type { SendHathorTransferParams } from '../../../../application/use-cases/send-hathor-transfer'
 import { TOAST } from '../toasts'
+import { onChange, onRadioToggle } from '../bootstrap-plugins'
 
 /**
  * The HTR→ARB half of the transfer card, plus the Hathor wallet button in the
@@ -103,16 +104,18 @@ export class HathorTransferForm {
     this.disconnectButton?.addEventListener('click', () => void this.toggleConnection())
     this.sendButton?.addEventListener('click', () => void this.send())
 
-    this.tokenSelect?.addEventListener('change', () => {
-      void this.refreshBalance()
-      // Switching to a token Hathor represents more coarsely has to re-cap
-      // whatever is already typed.
-      this.clampAmount()
-      this.validateAmount()
+    if (this.tokenSelect) {
+      onChange(this.tokenSelect, () => {
+        void this.refreshBalance()
+        // Switching to a token Hathor represents more coarsely has to re-cap
+        // whatever is already typed.
+        this.clampAmount()
+        this.validateAmount()
 
-      const token = this.selectedToken()
-      if (token) this.deps.showTokenInfo(token)
-    })
+        const token = this.selectedToken()
+        if (token) this.deps.showTokenInfo(token)
+      })
+    }
 
     // 'input' rather than 'keypress', so pasting is covered too.
     this.amount?.addEventListener('input', () => {
@@ -128,14 +131,14 @@ export class HathorTransferForm {
     // Each form shows and hides itself: the toggle is shared, the two halves of
     // its effect are not. The destination is prefilled from the connected EVM
     // account each time, since the user may have connected since.
-    this.root.getElementById('directionToggle')?.addEventListener('change', (event) => {
-      const input = event.target as HTMLInputElement | null
-      if (input?.name !== 'direction') return
-
-      const mine = input.value === 'htr-to-arb'
-      if (this.form) this.form.style.display = mine ? 'block' : 'none'
-      if (mine) this.prefillDestination()
-    })
+    const toggle = this.root.getElementById('directionToggle')
+    if (toggle) {
+      onRadioToggle(toggle, (direction) => {
+        const mine = direction === 'htr-to-arb'
+        if (this.form) this.form.style.display = mine ? 'block' : 'none'
+        if (mine) this.prefillDestination()
+      })
+    }
 
     this.reflectConnection(this.deps.wallet.isConnected() ? this.deps.wallet.getAddress() : null)
   }
