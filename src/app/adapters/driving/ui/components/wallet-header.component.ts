@@ -58,6 +58,8 @@ export class WalletHeader {
   private readonly transferTab: HTMLElement | null
   private readonly modal: HTMLElement | null
   private readonly walletList: HTMLElement | null
+  /** The connected account, so a chain switch can re-announce it. */
+  private account = ''
 
   constructor(
     private readonly root: Document,
@@ -137,6 +139,12 @@ export class WalletHeader {
     if (!events) return
 
     events.onChainChanged((chainId) => {
+      // These handlers outlive the connection: dropping a wallet does not
+      // detach them from its provider. Without this guard, a chain event
+      // arriving after a wrong-network disconnect would repaint the header as
+      // connected while there is no account and no provider behind it.
+      if (!this.account) return
+
       // Wallets report this as a hex string; the port leaves it as sent.
       this.applyChain(Number(chainId))
     })
@@ -177,6 +185,7 @@ export class WalletHeader {
   }
 
   private applyAccount(address: string): void {
+    this.account = address
     this.deps.setAccount(address)
 
     if (this.address) this.address.textContent = truncateMiddle(address)
@@ -189,6 +198,7 @@ export class WalletHeader {
   }
 
   private disconnect(): void {
+    this.account = ''
     this.deps.forget()
     this.deps.adoptProvider(null)
     this.deps.setAccount('')
@@ -199,6 +209,7 @@ export class WalletHeader {
 
   /** Disconnects and says why, in the modal. */
   private fail(message: string): void {
+    this.account = ''
     this.deps.forget()
     this.deps.adoptProvider(null)
     this.deps.setAccount('')

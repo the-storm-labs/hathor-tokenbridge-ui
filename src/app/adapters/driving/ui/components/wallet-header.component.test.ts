@@ -170,6 +170,22 @@ describe('provider events', () => {
     expect(context.deps.setRoute).toHaveBeenLastCalledWith(null)
   })
 
+  it('ignores chain events that arrive after the wallet was dropped', async () => {
+    const context = setup()
+    await connect(context)
+    context.handlers.chain!('0x1')
+
+    // These handlers outlive the connection — dropping a wallet does not
+    // detach them from its provider. Repainting the header as connected here
+    // would show a good network with no account and no provider behind it.
+    const heard = vi.fn()
+    window.addEventListener(WALLET_EVENT.connected, heard)
+    context.handlers.chain!(String(ROUTE.evm.chainId))
+
+    expect(heard).not.toHaveBeenCalled()
+    expect(el('transferTab').classList.contains('disabled')).toBe(true)
+  })
+
   it('follows an account switch', async () => {
     const context = setup()
     await connect(context)
