@@ -32,6 +32,7 @@ import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
 import { hathorTransferRow } from '../adapters/driving/ui/templates/hathor-transfer-row'
 import { transferStatusCell } from '../adapters/driving/ui/templates/transfer-status'
 import { formatRowAmount } from '../adapters/driving/ui/templates/amount'
+import { bindToasts } from '../adapters/driving/ui/toasts'
 import { formatFeeRate } from '../application/use-cases/load-bridge-parameters'
 import { routeForChainId } from '../config/networks'
 import type { Store } from '../application/state/store'
@@ -278,6 +279,10 @@ export function installLegacyBridge(container: Container): void {
   // legacy call sites do not care which half a call belongs to.
   const useCases = { ...createReadUseCases(container), ...createWriteUseCases(container) }
 
+  // Toasts own their own dismissal timers, so index.js shows and hides by id
+  // instead of calling .show()/.hide() on the elements directly.
+  const toasts = bindToasts(window.document, container.scheduler)
+
   Object.assign(window, publishLegacyServices(container), {
     // --- config, in the shape index.js still reads ---
     ETH_CONFIG: mainnetConfigs.evm,
@@ -317,6 +322,7 @@ export function installLegacyBridge(container: Container): void {
     ) => matchLocalHathorTransfer(localTxns, tx, (value) => Web3.utils.keccak256(value)),
 
     __useCases: useCases,
+    __ui: { toast: { show: (id: string) => toasts.show(id), hide: (id: string) => toasts.hide(id) } },
     __templates: { hathorTransferRow, transferStatusCell, formatRowAmount, formatFeeRate },
 
     // --- domain functions the legacy code now delegates to ---

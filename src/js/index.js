@@ -513,7 +513,7 @@ async function crossToken() {
 
     $("#confirmationTime").text(config.confirmationTime);
     $("#receive").text(receives);
-    $("#success").show();
+    window.__ui.toast.show("success");
 
     updateActiveAddressTXNs(address);
     showActiveTxnsTab();
@@ -537,8 +537,7 @@ async function crossToken() {
 // flow uses.
 function errorClaim(error) {
   $("#alert-danger-text").html(error);
-  $("#alert-danger").show();
-  $("#alert-danger").focus();
+  window.__ui.toast.show("alert-danger");
 }
 
 /**
@@ -565,18 +564,17 @@ async function claimToken(claim) {
 }
 
 function cleanAlertSuccess() {
-  $("#success").hide();
+  window.__ui.toast.hide("success");
 }
 
 function cleanAlertError() {
   $("#alert-danger-text").html("");
-  $("#alert-danger").hide();
+  window.__ui.toast.hide("alert-danger");
 }
 
 function crossTokenError(err) {
   $("#alert-danger-text").html(err);
-  $("#alert-danger").show();
-  $("#alert-danger").focus();
+  window.__ui.toast.show("alert-danger");
   // $('#cross').prop('disabled', false);
   $("#deposit").prop("disabled", false);
 
@@ -1262,13 +1260,13 @@ async function onConnectHathorWalletClick() {
     btn.text('Connect Hathor').prop('disabled', false).show();
     console.error('Hathor wallet connect failed', err);
     $('#htrSendErrorMsg').text(`Could not connect Hathor wallet: ${err.message}`);
-    $('#htrSendError').show();
+    window.__ui.toast.show('htrSendError');
   }
 }
 
 async function onHtrSendClick() {
-  $('#htrSendSuccess').hide();
-  $('#htrSendError').hide();
+  window.__ui.toast.hide('htrSendSuccess');
+  window.__ui.toast.hide('htrSendError');
 
   const amountStr = $('#htrAmount').val();
   const evmDest = $('#htrDestAddress').val().trim();
@@ -1286,7 +1284,7 @@ async function onHtrSendClick() {
   if (!window.__domain.isEvmAddress(evmDest)) {
     $('#htrDestAddress').addClass('is-invalid');
     $('#htrSendErrorMsg').text('Enter a valid Arbitrum address (0x...).');
-    $('#htrSendError').show();
+    window.__ui.toast.show('htrSendError');
     return;
   }
   $('#htrDestAddress').removeClass('is-invalid');
@@ -1314,7 +1312,7 @@ async function onHtrSendClick() {
     }
     showActiveAddressTXNs();
 
-    $('#htrSendSuccess').show();
+    window.__ui.toast.show('htrSendSuccess');
     // Switch to the HTR→ARB history tab so the user can track the tx
     showEvmTxsnTabe();
     location.hash = '';
@@ -1322,7 +1320,7 @@ async function onHtrSendClick() {
   } catch (err) {
     console.error('HTR→ARB send failed', err);
     $('#htrSendErrorMsg').text(err.message || 'Transaction failed. Please try again.');
-    $('#htrSendError').show();
+    window.__ui.toast.show('htrSendError');
   } finally {
     btn.prop('disabled', false).text('Send via Hathor Wallet');
   }

@@ -532,9 +532,105 @@ a:hover {
   color: #919191;
 }
 
-#success {
-  padding: 0px;
-  max-width: 222px;
+/* Toasts
+ *
+ * Transfer feedback, bottom-right. Bootstrap's .alert palette is built for a
+ * light page — on this background the success message rendered as dark text on
+ * dark, i.e. invisible. So the surface is the page's own dark grey and the
+ * severity is carried by the left border, which stays legible either way.
+ *
+ * Above .modal (1050): a transfer can fail while the wallet modal is open.
+ */
+.toast-area {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1090;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 360px;
+  max-width: calc(100vw - 2rem);
+  /* The empty container must not swallow clicks on the page behind it; each
+     toast takes its own clicks back. */
+  pointer-events: none;
+}
+
+.toast-area .toast-item {
+  pointer-events: auto;
+  position: relative;
+  margin: 0;
+  padding: 0.75rem 2.25rem 0.75rem 1rem;
+  background-color: #2a2a2a;
+  color: #e5e5e5;
+  border: 1px solid #444;
+  border-left: 4px solid #6c757d;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5);
+  /* Going from display:none to block restarts this animation by itself, so the
+     entrance needs no class toggled from script and no frame to wait for.
+     Deliberately animates only the slide, never opacity: if the animation never
+     runs — reduced motion, a throttled tab, a browser that stalls it — the toast
+     is still fully visible. Fading in from 0 makes visibility depend on the
+     animation, which is the bug this whole change is fixing. */
+  animation: toast-in 0.2s ease;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+.toast-area .alert-success {
+  border-left-color: #28a745;
+}
+
+.toast-area .alert-danger {
+  border-left-color: #dc3545;
+}
+
+.toast-area .toast-icon {
+  color: #28a745;
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.toast-area .alert-heading {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  color: #fff;
+}
+
+.toast-area .toast-item p:last-child {
+  margin-bottom: 0;
+}
+
+.toast-area .toast-item .close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  color: #e5e5e5;
+  text-shadow: none;
+  opacity: 0.6;
+}
+
+.toast-area .toast-item .close:hover {
+  color: #fff;
+  opacity: 1;
+}
+
+/* Respect a reduced-motion preference: appear, but do not slide. */
+@media (prefers-reduced-motion: reduce) {
+  .toast-area .toast-item {
+    animation: none;
+  }
 }
 
 /*Spinner*/
