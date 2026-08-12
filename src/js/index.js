@@ -1267,6 +1267,7 @@ async function onConnectHathorWalletClick() {
 async function onHtrSendClick() {
   window.__ui.toast.hide('htrSendSuccess');
   window.__ui.toast.hide('htrSendError');
+  window.__ui.toast.hide('htrSendPending');
 
   const amountStr = $('#htrAmount').val();
   const evmDest = $('#htrDestAddress').val().trim();
@@ -1291,6 +1292,12 @@ async function onHtrSendClick() {
 
   const btn = $('#htrSendBtn');
   btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+
+  // The wallet has to approve this over WalletConnect and does not raise a
+  // notification of its own, so a user who does not switch to it sees only a
+  // spinner and assumes the app is stuck. Sticky: it waits as long as the
+  // request does.
+  window.__ui.toast.show('htrSendPending', { autoDismiss: false });
 
   try {
     await window.__useCases.sendHathorTransfer({
@@ -1322,6 +1329,7 @@ async function onHtrSendClick() {
     $('#htrSendErrorMsg').text(err.message || 'Transaction failed. Please try again.');
     window.__ui.toast.show('htrSendError');
   } finally {
+    window.__ui.toast.hide('htrSendPending');
     btn.prop('disabled', false).text('Send via Hathor Wallet');
   }
 }

@@ -322,7 +322,12 @@ export function installLegacyBridge(container: Container): void {
     ) => matchLocalHathorTransfer(localTxns, tx, (value) => Web3.utils.keccak256(value)),
 
     __useCases: useCases,
-    __ui: { toast: { show: (id: string) => toasts.show(id), hide: (id: string) => toasts.hide(id) } },
+    __ui: {
+      toast: {
+        show: (id: string, options?: { autoDismiss?: boolean }) => toasts.show(id, options),
+        hide: (id: string) => toasts.hide(id),
+      },
+    },
     __templates: { hathorTransferRow, transferStatusCell, formatRowAmount, formatFeeRate },
 
     // --- domain functions the legacy code now delegates to ---

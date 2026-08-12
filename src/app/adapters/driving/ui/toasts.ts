@@ -37,13 +37,26 @@ export class Toasts {
     this.timeoutMs = deps.timeoutMs ?? TOAST_TIMEOUT_MS
   }
 
-  /** Shows a toast and (re)starts its dismissal timer. */
-  show(id: string): void {
+  /**
+   * Shows a toast and (re)starts its dismissal timer.
+   *
+   * @param options.autoDismiss Pass false for a message that describes something
+   *        still in progress. Those have no natural duration — a Hathor
+   *        confirmation waits for the user to open their wallet, which can take
+   *        minutes — so they stay until the caller hides them. The close button
+   *        still works.
+   */
+  show(id: string, options: { readonly autoDismiss?: boolean } = {}): void {
     const element = this.deps.find(id)
     if (!element) return
 
+    // Always cancel first: a toast previously shown with a timer must not keep
+    // that timer when it is shown again as a sticky one.
     this.cancel(id)
     element.setVisible(true)
+
+    if (options.autoDismiss === false) return
+
     this.pending.set(
       id,
       this.deps.scheduler.after(this.timeoutMs, () => {
@@ -68,10 +81,12 @@ export class Toasts {
   }
 }
 
-/** The ids of the four toasts, so no call site spells one wrong. */
+/** The ids of the toasts, so no call site spells one wrong. */
 export const TOAST = {
   transferSuccess: 'success',
   transferError: 'alert-danger',
+  /** Sticky: the Hathor wallet does not notify, so this one waits for the user. */
+  hathorSendPending: 'htrSendPending',
   hathorSendSuccess: 'htrSendSuccess',
   hathorSendError: 'htrSendError',
 } as const

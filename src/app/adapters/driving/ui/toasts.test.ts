@@ -121,6 +121,40 @@ describe('Toasts', () => {
     expect(() => toasts.hide('nope')).not.toThrow()
   })
 
+  it('leaves a progress toast up: it has no natural duration', () => {
+    const { toasts, toast, timers } = setup()
+
+    toasts.show('success', { autoDismiss: false })
+
+    expect(toast.visible).toBe(true)
+    expect(timers.live()).toHaveLength(0)
+
+    // Nothing pending means nothing can hide it behind the caller's back, which
+    // is the point: the wallet confirmation it describes is still waiting.
+    timers.elapse()
+    expect(toast.visible).toBe(true)
+  })
+
+  it('drops a running timer when the same toast becomes a progress toast', () => {
+    const { toasts, toast, timers } = setup()
+
+    toasts.show('success')
+    toasts.show('success', { autoDismiss: false })
+
+    expect(timers.live()).toHaveLength(0)
+    timers.elapse()
+    expect(toast.visible).toBe(true)
+  })
+
+  it('hides a progress toast when the caller says the work is done', () => {
+    const { toasts, toast } = setup()
+
+    toasts.show('success', { autoDismiss: false })
+    toasts.hide('success')
+
+    expect(toast.visible).toBe(false)
+  })
+
   it('honours an overridden timeout', () => {
     const { toasts, timers } = setup(3_000)
 

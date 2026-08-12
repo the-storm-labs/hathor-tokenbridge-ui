@@ -614,6 +614,16 @@ a:hover {
   border-left-color: #dc3545;
 }
 
+/* In progress, not an outcome: the accent colour, and it stays up until the
+   caller hides it. */
+.toast-area .alert-info {
+  border-left-color: #a06fbd;
+}
+
+.toast-area .alert-info .toast-icon {
+  color: #a06fbd;
+}
+
 .toast-area .toast-icon {
   color: #28a745;
   font-size: 1.5rem;
