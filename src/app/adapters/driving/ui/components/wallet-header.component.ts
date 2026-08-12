@@ -2,6 +2,7 @@ import { truncateMiddle } from '../../../../domain/tx-id'
 import type { BridgeRoute } from '../../../../domain/model/network'
 import type {
   DiscoveredWallet,
+  Eip1193Provider,
   EvmConnection,
   EvmWalletEvents,
 } from '../../../../ports/driven/evm-wallet.port'
@@ -40,7 +41,7 @@ export interface WalletHeaderDeps {
   readonly forget: () => void
   readonly walletEvents: (rdns: string) => EvmWalletEvents | null
   /** Hands the provider to the container, or clears it. */
-  readonly adoptProvider: (provider: unknown | null) => void
+  readonly adoptProvider: (provider: Eip1193Provider | null) => void
   /** The route for a chain id, or null when this deployment does not bridge it. */
   readonly routeForChainId: (chainId: number) => BridgeRoute | null
   /** Records the connected account in the store. */

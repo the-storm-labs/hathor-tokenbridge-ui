@@ -6,11 +6,16 @@ export interface DiscoveredWallet {
   readonly icon: string
 }
 
+/** The EIP-1193 surface the app uses. Wallets expose far more; this is enough. */
+export interface Eip1193Provider {
+  request(args: { method: string; params?: unknown }): Promise<unknown>
+}
+
 export interface EvmConnection {
   readonly accounts: readonly string[]
   readonly chainId: number
-  /** The EIP-1193 provider, for building a web3 instance. */
-  readonly provider: unknown
+  /** The provider the chain clients are built over. */
+  readonly provider: Eip1193Provider
 }
 
 export interface EvmWalletEvents {

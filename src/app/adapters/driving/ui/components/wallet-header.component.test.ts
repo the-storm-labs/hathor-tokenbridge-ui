@@ -12,6 +12,7 @@ const ACCOUNT = '0x1234567890abcdef1234567890abcdef12345678'
 const OTHER_ACCOUNT = '0xfeedfacefeedfacefeedfacefeedfacefeedface'
 
 const WALLET = { rdns: 'io.metamask', name: 'MetaMask', icon: 'data:,' }
+const PROVIDER = { request: async () => null }
 
 const MARKUP = `
   <button id="logIn">Connect EVM</button>
@@ -46,7 +47,7 @@ function setup(overrides: Partial<WalletHeaderDeps> = {}) {
     connect: vi.fn(async () => ({
       accounts: [ACCOUNT],
       chainId: ROUTE.evm.chainId,
-      provider: { id: 'provider' },
+      provider: PROVIDER,
     })),
     reconnect: vi.fn(async () => null),
     forget: vi.fn(),
@@ -113,7 +114,7 @@ describe('picking a wallet', () => {
     const context = setup()
     await connect(context)
 
-    expect(context.deps.adoptProvider).toHaveBeenCalledWith({ id: 'provider' })
+    expect(context.deps.adoptProvider).toHaveBeenCalledWith(PROVIDER)
     expect(context.deps.setAccount).toHaveBeenCalledWith(ACCOUNT)
     expect(context.deps.setRoute).toHaveBeenCalledWith(ROUTE)
     expect(el('address').textContent).toContain('...')
@@ -148,7 +149,7 @@ describe('picking a wallet', () => {
 describe('the wrong network', () => {
   it('refuses a chain this deployment does not bridge', async () => {
     const context = setup({
-      connect: vi.fn(async () => ({ accounts: [ACCOUNT], chainId: 1, provider: {} })),
+      connect: vi.fn(async () => ({ accounts: [ACCOUNT], chainId: 1, provider: PROVIDER })),
     })
     await connect(context)
 
@@ -230,7 +231,7 @@ describe('reconnecting on the next visit', () => {
     const context = setup({
       reconnect: vi.fn(async () => ({
         wallet: WALLET,
-        connection: { accounts: [ACCOUNT], chainId: ROUTE.evm.chainId, provider: {} },
+        connection: { accounts: [ACCOUNT], chainId: ROUTE.evm.chainId, provider: PROVIDER },
       })),
     })
 

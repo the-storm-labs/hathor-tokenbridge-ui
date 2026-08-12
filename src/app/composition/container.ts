@@ -11,23 +11,24 @@ import { HathorWalletConnectAdapter } from '../adapters/driven/hathor/walletconn
 import { LocalPreferencesAdapter } from '../adapters/driven/storage/local-preferences.adapter'
 import { LocalTransferHistoryAdapter } from '../adapters/driven/storage/local-transfer-history.adapter'
 import { WindowSchedulerAdapter } from '../adapters/driven/scheduler/window-scheduler.adapter'
-import { Web3ChainAdapter } from '../adapters/driven/evm/web3-chain.adapter'
+import { ViemChainAdapter } from '../adapters/driven/evm/chain.adapter'
 import { Eip6963WalletAdapter } from '../adapters/driven/evm/eip6963-wallet.adapter'
+import { createEvmClients, type EvmClients } from '../adapters/driven/evm/clients'
+import type { Eip1193Provider } from '../ports/driven/evm-wallet.port'
 import {
-  Web3AllowTokensAdapter,
-  Web3BridgeAdapter,
-  Web3Erc20Adapter,
-  Web3FederationAdapter,
-} from '../adapters/driven/evm/web3-contracts.adapter'
+  ViemAllowTokensAdapter,
+  ViemBridgeAdapter,
+  ViemErc20Adapter,
+  ViemFederationAdapter,
+} from '../adapters/driven/evm/contracts.adapter'
 
 /**
  * Composition root: the one place that knows which adapter implements which
  * port. Everything else receives what it needs.
  *
  * Deliberately synchronous. ABIs are static imports, so nothing has to be
- * awaited before contracts can be built — the initialisation race that let
- * `new web3.eth.Contract(BRIDGE_ABI, …)` run with an undefined ABI is gone by
- * construction.
+ * awaited before contracts can be built — the initialisation race that let a
+ * contract be constructed with an undefined ABI is gone by construction.
  */
 
 /** Reown project id, from cloud.reown.com. */
@@ -43,22 +44,22 @@ export interface Container {
   readonly preferences: LocalPreferencesAdapter
   readonly hathorWallet: HathorWalletConnectAdapter
   readonly evmWallet: Eip6963WalletAdapter
-  readonly chain: Web3ChainAdapter
+  readonly chain: ViemChainAdapter
   readonly scheduler: WindowSchedulerAdapter
-  readonly erc20: Web3Erc20Adapter
-  readonly bridge: Web3BridgeAdapter
-  readonly allowTokens: Web3AllowTokensAdapter
-  readonly federation: Web3FederationAdapter
+  readonly erc20: ViemErc20Adapter
+  readonly bridge: ViemBridgeAdapter
+  readonly allowTokens: ViemAllowTokensAdapter
+  readonly federation: ViemFederationAdapter
 
   /**
    * Adopts the provider of a newly connected wallet, or `null` on disconnect.
    *
-   * The web3 instance lives here rather than on `window`, which is where the
-   * legacy script built it and every adapter read it back from. It is replaced
-   * on each wallet or network switch, so the adapters are handed a getter and
-   * read it per call.
+   * The clients live here rather than on `window`, which is where the legacy
+   * script built its web3 instance and every adapter read it back from. They
+   * are rebuilt on each wallet or network switch, so the adapters are handed a
+   * getter and read them per call.
    */
-  setProvider(provider: unknown | null): void
+  setProvider(provider: Eip1193Provider | null): void
 }
 
 export interface ContainerOptions {
@@ -70,8 +71,8 @@ export function createContainer(options: ContainerOptions): Container {
   const deployment = resolveDeployment(window.location, window.document)
   const route = ROUTES[deployment]
 
-  let web3: Web3Instance | null = null
-  const getWeb3 = () => web3
+  let clients: EvmClients | null = null
+  const getClients = () => clients
 
   const store = createStore<AppState>(initialAppState())
   const scheduler = new WindowSchedulerAdapter()
@@ -83,7 +84,7 @@ export function createContainer(options: ContainerOptions): Container {
     route,
     store,
     setProvider: (provider) => {
-      web3 = provider ? new Web3(provider) : null
+      clients = provider ? createEvmClients(provider) : null
     },
     scheduler,
     preferences,
@@ -103,11 +104,11 @@ export function createContainer(options: ContainerOptions): Container {
     ),
 
     evmWallet: new Eip6963WalletAdapter(),
-    chain: new Web3ChainAdapter(getWeb3, scheduler),
+    chain: new ViemChainAdapter(getClients),
 
-    erc20: new Web3Erc20Adapter(getWeb3),
-    bridge: new Web3BridgeAdapter(getWeb3, route.evm.bridge),
-    allowTokens: new Web3AllowTokensAdapter(getWeb3, route.evm.allowTokens),
-    federation: new Web3FederationAdapter(getWeb3, route.evm.federation),
+    erc20: new ViemErc20Adapter(getClients),
+    bridge: new ViemBridgeAdapter(getClients, route.evm.bridge),
+    allowTokens: new ViemAllowTokensAdapter(getClients, route.evm.allowTokens),
+    federation: new ViemFederationAdapter(getClients, route.evm.federation),
   }
 }

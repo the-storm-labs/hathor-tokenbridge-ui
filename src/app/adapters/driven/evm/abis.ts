@@ -1,3 +1,4 @@
+import type { Abi } from 'viem'
 import bridgeAbi from '../../../../abis/bridge.json'
 import allowTokensAbi from '../../../../abis/allowtokens.json'
 import erc20Abi from '../../../../abis/erc20.json'
@@ -16,10 +17,15 @@ import federationAbi from '../../../../abis/federation.json'
  *
  * It also removes a fragile path: `../abis/` was resolved against the document
  * URL and only worked because it clamped at the site root.
+ *
+ * Cast to viem's `Abi` rather than declared `as const`: these are JSON imports,
+ * so viem cannot infer argument or return types from them, and every call site
+ * narrows what comes back. Pretending otherwise is how a wrong type gets
+ * trusted.
  */
 export const ABIS = {
-  bridge: bridgeAbi as readonly AbiItem[],
-  allowTokens: allowTokensAbi as readonly AbiItem[],
-  erc20: erc20Abi as readonly AbiItem[],
-  federation: federationAbi as readonly AbiItem[],
+  bridge: bridgeAbi as Abi,
+  allowTokens: allowTokensAbi as Abi,
+  erc20: erc20Abi as Abi,
+  federation: federationAbi as Abi,
 } as const
