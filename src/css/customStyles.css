@@ -166,6 +166,26 @@ label {
   line-height: 22px;
 }
 
+/* Address inputs
+ *
+ * A full EVM address is 42 characters and did not fit at the 18px every
+ * .form-control shares: measured at 424px of text in a 400px field, so the tail
+ * was silently cut off — bad in a field where the last four characters are how
+ * you check you pasted the right thing.
+ *
+ * 16px measures 377px, which fits with room to spare, and the size shrinks with
+ * the viewport because the field does too. Below roughly 420px wide a 42-character
+ * address cannot fit at a legible size at all, so the floor stops there and the
+ * field scrolls as any input does.
+ *
+ * Both address fields get it, so the two directions look the same even though the
+ * Hathor address is eight characters shorter and would have fitted as it was.
+ */
+#hathorAddress,
+#htrDestAddress {
+  font-size: clamp(12px, 2.9vw, 16px);
+}
+
 #amount.ok {
   border-color: #1f1f1f;
 }
