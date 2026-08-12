@@ -35,15 +35,17 @@ const ui = mountUi(container, useCases, window.document)
 installLegacyBridge(container, useCases, ui)
 
 /**
- * Reattach to a persisted Hathor session and tell index.js about it.
+ * Reattach to a persisted Hathor session and show the form as connected.
  *
  * This used to be an IIFE inside the wallet module, which meant importing that
  * module had the side effect of opening a session. Driving it from the
  * composition root keeps the adapter inert until someone asks it for something.
+ *
+ * The result used to travel as a `hathorWalletRestored` window event that
+ * index.js re-implemented the whole connected state from. The form owns that
+ * state now, so this hands it the address and the form announces it.
  */
 void (async () => {
   const session = await container.hathorWallet.restore(container.deployment)
-  if (session?.address) {
-    window.dispatchEvent(new CustomEvent('hathorWalletRestored', { detail: session }))
-  }
+  if (session?.address) ui.hathorForm.showConnected(session.address)
 })()

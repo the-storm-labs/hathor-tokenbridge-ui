@@ -32,7 +32,6 @@ import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
 import { hathorTransferRow } from '../adapters/driving/ui/templates/hathor-transfer-row'
 import { transferStatusCell } from '../adapters/driving/ui/templates/transfer-status'
 import { formatRowAmount } from '../adapters/driving/ui/templates/amount'
-import { bindToasts } from '../adapters/driving/ui/toasts'
 import { formatFeeRate } from '../application/use-cases/load-bridge-parameters'
 import { routeForChainId } from '../config/networks'
 import type { Store } from '../application/state/store'
@@ -279,7 +278,7 @@ export function installLegacyBridge(
 
   // Toasts own their own dismissal timers, so index.js shows and hides by id
   // instead of calling .show()/.hide() on the elements directly.
-  const toasts = bindToasts(window.document, container.scheduler)
+  const toasts = ui.toasts
 
   Object.assign(window, publishLegacyServices(container), {
     // --- config, in the shape index.js still reads ---

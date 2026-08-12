@@ -176,51 +176,11 @@ $(document).ready(function () {
     } else {
       $('#crossForm').hide();
       $('#htrToArbForm').show();
-      if (address) $('#htrDestAddress').val(address);
-      populateHtrTokenDropdown();
     }
   });
-
-  $('#connectHathorWallet').on('click', onConnectHathorWalletClick);
-  $('#htrSendBtn').on('click', onHtrSendClick);
 
   $('#nav-htr-eth-tab, #nav-eth-htr-tab').on('shown.bs.tab', function () {
     showActiveAddressTXNs();
-  });
-
-  $('#htrTokenSelect').on('change', function () {
-    refreshHtrBalance();
-    // Switching to a coarser token has to re-cap whatever is already typed.
-    clampHtrAmountToTokenPrecision();
-    validateHtrAmountInput();
-    const selectedKey = $(this).val();
-    const token = TOKENS.find(t => t.token === selectedKey);
-    if (token) {
-      window.__ui.infoPanel.refresh(token[config.networkId].address);
-    }
-  });
-
-  // Cap the input at the selected token's precision. Handled on 'input' rather
-  // than 'keypress' so that pasting is covered too.
-  $('#htrAmount').on('input', function () {
-    clampHtrAmountToTokenPrecision();
-    validateHtrAmountInput();
-  });
-  $('#htrAmount').on('keypress', function (event) {
-    if (event.key !== '.' && (event.key < '0' || event.key > '9')) {
-      return false;
-    }
-  });
-
-  $('#htrMax').on('click', async function () {
-    const token = selectedHathorToken();
-    if (!token || !window.HathorWallet || !window.HathorWallet.isConnected()) return;
-    try {
-      $('#htrAmount').val(await fetchHathorBalance(token));
-      validateHtrAmountInput();
-    } catch (e) {
-      console.error('Could not fetch max balance', e);
-    }
   });
 });
 
@@ -1054,208 +1014,10 @@ async function updateTokenAddressDropdown(networkId) {
   $("#tokenAddress").trigger('change');
 }
 
-// --------- HTR→ARB FUNCTIONS ----------
-
-function populateHtrTokenDropdown() {
-  let html = '';
-  for (const token of TOKENS) {
-    const htrData = token[31];
-    if (!htrData || !htrData.pureHtrAddress) continue;
-    const symbol = htrData.symbol || token.name;
-    html += `<option value="${token.token}" data-content="<span><img src='${token.icon}' class='token-logo'></span>${symbol}"></option>`;
-  }
-  $('#htrTokenSelect').html(html).selectpicker('refresh');
-}
-
-/**
- * The token currently selected in the HTR→ARB form, or null.
- *
- * Its `[31].decimals` is the precision for every Hathor-side amount — the input,
- * the balance display and the value actually sent. It comes from the token
- * table, so a token with a different precision needs no code change.
- */
-function selectedHathorToken() {
-  const selectedKey = $('#htrTokenSelect').val();
-  if (!selectedKey) return null;
-  const token = TOKENS.find(t => t.token === selectedKey);
-  if (!token || !token[31] || !token[31].pureHtrAddress) return null;
-  return token;
-}
-
-/** Available balance of `token` on Hathor, formatted at the token's precision. */
-async function fetchHathorBalance(token) {
-  const tokenUid = token[31].pureHtrAddress;
-  const balanceData = await window.HathorWallet.getBalance(tokenUid, isTestnet);
-  const available = balanceData[tokenUid]?.available ?? 0;
-  // String math: the old `available / 10**decimals` went through a float.
-  return window.__domain.fromBaseUnits(String(available), token[31].decimals);
-}
-
-async function refreshHtrBalance() {
-  const token = selectedHathorToken();
-  if (!token || !window.HathorWallet || !window.HathorWallet.isConnected()) {
-    $('#htrTokenBalance').text('—');
-    return;
-  }
-  try {
-    const formatted = await fetchHathorBalance(token);
-    $('#htrTokenBalance').text(`${formatted} ${token[31].symbol || token.token}`);
-  } catch (e) {
-    console.error('refreshHtrBalance error', e);
-    $('#htrTokenBalance').text('—');
-  }
-}
-
-/**
- * Trim #htrAmount to the selected token's decimal places.
- *
- * Only rewrites the field when it actually changed, so the caret is left alone
- * while typing.
- */
-function clampHtrAmountToTokenPrecision() {
-  const token = selectedHathorToken();
-  if (!token) return;
-
-  const input = $('#htrAmount');
-  const current = input.val();
-  const clamped = window.__domain.clampDecimals(current, token[31].decimals);
-  if (clamped !== current) input.val(clamped);
-}
-
-function validateHtrAmountInput() {
-  const val = parseFloat($('#htrAmount').val());
-  const ready = window.HathorWallet && window.HathorWallet.isConnected() &&
-    $('#htrTokenSelect').val() && !isNaN(val) && val > 0;
-  if (isNaN(val) || val <= 0) {
-    $('#htrAmount').addClass('is-invalid');
-  } else {
-    $('#htrAmount').removeClass('is-invalid');
-  }
-  $('#htrSendBtn').prop('disabled', !ready);
-}
-
-function enableHtrSendForm() {
-  $('#htrTokenSelect').prop('disabled', false).selectpicker('refresh');
-  $('#htrAmount').prop('disabled', false);
-  $('#htrMax').prop('disabled', false);
-  $('#htrDestAddress').prop('disabled', false);
-  if (address) $('#htrDestAddress').val(address);
-}
-
-function disableHtrSendForm() {
-  $('#htrTokenSelect').prop('disabled', true).selectpicker('refresh');
-  $('#htrAmount').prop('disabled', true);
-  $('#htrMax').prop('disabled', true);
-  $('#htrDestAddress').prop('disabled', true);
-  $('#htrSendBtn').prop('disabled', true);
-}
-
-async function onConnectHathorWalletClick() {
-  if (!window.HathorWallet) {
-    alert('Hathor wallet connector is still loading. Please wait a moment and try again.');
-    return;
-  }
-  if (window.HathorWallet.isConnected()) {
-    // Disconnect
-    await window.HathorWallet.disconnect();
-    $('#hathorWalletInfo').hide();
-    $('#connectHathorWallet').show();
-    disableHtrSendForm();
-    return;
-  }
-  const btn = $('#connectHathorWallet');
-  btn.prop('disabled', true).text('Connecting...');
-  try {
-    const { address: htrAddr } = await window.HathorWallet.connect(isTestnet);
-    $('#hathorWalletAddress').text(htrAddr ? truncateMiddle(htrAddr) : 'Connected');
-    $('#hathorWalletInfo').css('display', 'flex');
-    btn.hide();
-    enableHtrSendForm();
-    populateHtrTokenDropdown();
-    refreshHtrBalance();
-    if (htrAddr && $('#crossForm').is(':visible')) {
-      $('#hathorAddress').val(htrAddr);
-      handleHathorAddressChange();
-    }
-  } catch (err) {
-    btn.text('Connect Hathor').prop('disabled', false).show();
-    console.error('Hathor wallet connect failed', err);
-    $('#htrSendErrorMsg').text(`Could not connect Hathor wallet: ${err.message}`);
-    window.__ui.toast.show('htrSendError');
-  }
-}
-
-async function onHtrSendClick() {
-  window.__ui.toast.hide('htrSendSuccess');
-  window.__ui.toast.hide('htrSendError');
-  window.__ui.toast.hide('htrSendPending');
-
-  const amountStr = $('#htrAmount').val();
-  const evmDest = $('#htrDestAddress').val().trim();
-
-  // Field-level feedback stays here, next to the fields: the use case validates
-  // the same three things and refuses, but only this half knows which input to
-  // mark.
-  if (!amountStr || isNaN(parseFloat(amountStr)) || parseFloat(amountStr) <= 0) {
-    $('#htrAmount').addClass('is-invalid');
-    $('#htrAmountError').text('Enter a valid amount.');
-    return;
-  }
-  $('#htrAmount').removeClass('is-invalid');
-
-  if (!window.__domain.isEvmAddress(evmDest)) {
-    $('#htrDestAddress').addClass('is-invalid');
-    $('#htrSendErrorMsg').text('Enter a valid Arbitrum address (0x...).');
-    window.__ui.toast.show('htrSendError');
-    return;
-  }
-  $('#htrDestAddress').removeClass('is-invalid');
-
-  const btn = $('#htrSendBtn');
-  btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
-
-  // The wallet has to approve this over WalletConnect and does not raise a
-  // notification of its own, so a user who does not switch to it sees only a
-  // spinner and assumes the app is stuck. Sticky: it waits as long as the
-  // request does.
-  window.__ui.toast.show('htrSendPending', { autoDismiss: false });
-
-  try {
-    await window.__useCases.sendHathorTransfer({
-      tokenKey: $('#htrTokenSelect').val(),
-      amount: amountStr,
-      evmDestination: evmDest,
-    });
-
-    // Always show the Hathor→EVM transfers of the destination address; if an EVM
-    // wallet is connected, refresh its own transfers too.
-    //
-    // The Hathor network name comes from the config object rather than through
-    // `config`, which is null until an EVM wallet is connected — and this form
-    // works without one.
-    const hathorNetworkName = (isTestnet ? HTR_TESTNET_CONFIG : HTR_MAINNET_CONFIG).name;
-    activeAddresseth2HtrTxns = TXN_Storage.getAllTxns4Address(evmDest, hathorNetworkName);
-    if (address) {
-      activeAddresshtr2EthTxns = TXN_Storage.getAllTxns4Address(address, config.name);
-    }
-    showActiveAddressTXNs();
-
-    window.__ui.toast.show('htrSendSuccess');
-    // Switch to the HTR→ARB history tab so the user can track the tx
-    showEvmTxsnTabe();
-    location.hash = '';
-    location.hash = '#nav-eth-htr-tab';
-  } catch (err) {
-    console.error('HTR→ARB send failed', err);
-    $('#htrSendErrorMsg').text(err.message || 'Transaction failed. Please try again.');
-    window.__ui.toast.show('htrSendError');
-  } finally {
-    window.__ui.toast.hide('htrSendPending');
-    btn.prop('disabled', false).text('Send via Hathor Wallet');
-  }
-}
-
-// --------- HTR→ARB FUNCTIONS END ----------
+// The HTR→ARB form and the Hathor wallet button are one component now:
+// app/adapters/driving/ui/components/hathor-transfer-form.component.ts. It
+// announces what the rest of this page still has to react to; see the listeners
+// at the bottom of this file.
 
 // Network configs, TOKENS and the contract ABIs are now built in
 // app/config/{networks,tokens}.ts and app/adapters/driven/evm/abis.ts, and
@@ -1268,17 +1030,40 @@ async function onHtrSendClick() {
 // (and the race where updateNetwork could build a contract with an undefined
 // ABI) are gone.
 
-// Restore Hathor wallet session after main.js (module) finishes loading.
-window.addEventListener('hathorWalletRestored', function (e) {
-  const addr = e.detail.address;
-  if (!addr) return;
-  $('#hathorWalletAddress').text(truncateMiddle(addr));
-  $('#hathorWalletInfo').css('display', 'flex');
-  $('#connectHathorWallet').hide();
-  enableHtrSendForm();
-  populateHtrTokenDropdown();
-  if ($('#crossForm').is(':visible')) {
-    $('#hathorAddress').val(addr);
+/**
+ * What is left for this half to do when the Hathor form reports something.
+ *
+ * Both of these belong to components that do not exist yet — the ARB→HTR form
+ * owns the destination field, the history table owns the tables and the tab.
+ * When they land, these listeners move into them and the events stay as they
+ * are.
+ */
+window.addEventListener('hathorwallet:connected', function (event) {
+  const address = event.detail.address;
+  if (address && $('#crossForm').is(':visible')) {
+    $('#hathorAddress').val(address);
     handleHathorAddressChange();
   }
+});
+
+window.addEventListener('hathortransfer:sent', function (event) {
+  const { evmDestination } = event.detail;
+
+  // Always show the Hathor→EVM transfers of the destination address; if an EVM
+  // wallet is connected, refresh its own transfers too.
+  //
+  // The Hathor network name comes from the config object rather than through
+  // `config`, which is null until an EVM wallet is connected — and that form
+  // works without one.
+  const hathorNetworkName = (isTestnet ? HTR_TESTNET_CONFIG : HTR_MAINNET_CONFIG).name;
+  activeAddresseth2HtrTxns = TXN_Storage.getAllTxns4Address(evmDestination, hathorNetworkName);
+  if (address) {
+    activeAddresshtr2EthTxns = TXN_Storage.getAllTxns4Address(address, config.name);
+  }
+  showActiveAddressTXNs();
+
+  // Switch to the HTR→ARB history tab so the user can track the transaction.
+  showEvmTxsnTabe();
+  location.hash = '';
+  location.hash = '#nav-eth-htr-tab';
 });
