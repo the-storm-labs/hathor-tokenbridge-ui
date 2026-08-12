@@ -11,8 +11,18 @@ assume still work.
 
 ## Load
 
-1. Page loads with **no errors in the console**. (Warnings from CDN scripts are
-   pre-existing; new errors are not.)
+1. Page loads with **no errors in the console**, ignoring the four kinds below.
+   Anything else is ours.
+
+   | message | source | why it is not ours |
+   | --- | --- | --- |
+   | `MaxListenersExceededWarning`, `ObjectMultiplex - orphaned data` | `contentscript.js` | MetaMask's own content script, on every site |
+   | `Lit is in dev mode` | Reown AppKit | its bundled Lit; the production build does not warn |
+   | `emitting session_request:<id> without any listeners` | WalletConnect | a **response** arriving for a request whose page is gone — you sent an HTR→ARB transfer, reloaded before confirming, then confirmed in the wallet. The transaction went through; only the promise waiting for it did not survive. It clears once the queued response is delivered. |
+   | `Failed to load source map for bootstrap.min.css` | Vite dev server | fixed — if it comes back, someone re-vendored the CSS with its `sourceMappingURL` comment |
+
+   Note the third one only appears **after** a Hathor session exists. With no
+   stored session the page does not initialise WalletConnect at all.
 2. Header, transfer card, token list tab and info tab all render.
 3. `window.__ENV__` contains real URLs — **not** literal `%VITE_BRIDGE_API_URL%`.
    A `%` here means the page was deployed without a Vite build.

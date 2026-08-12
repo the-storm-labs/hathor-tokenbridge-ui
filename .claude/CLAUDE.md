@@ -148,6 +148,14 @@ Tokens: `config/tokens.ts`, one table per deployment. Read the comment at the to
 
 Both wallets pin 5.0.0 on master, so when those releases ship, flip `PREFER_WALLET_RPC_BALANCE` in `adapters/driven/hathor/walletconnect.adapter.ts`. The RPC path is already written and is the better answer — it covers the whole wallet, not just the one address the UI shows. Params are `{ network, tokens: [uid] }`; **never send `addressIndexes`** (answers `NotImplementedError`). Results come wrapped as `{ type, response: [...] }`. Spec: [openrpc.json](https://github.com/HathorNetwork/hathor-rpc-lib/blob/master/docs/openrpc.json).
 
+`restore()` checks the stored address **before** building the connector, and
+that ordering is load-bearing: initialising Reown opens a relay connection, boots
+Lit and the AppKit modal, and replays whatever WalletConnect has queued. Doing it
+unconditionally meant every visitor paid for it, including the ones who only use
+the ARB→HTR form — and the queued replay logged
+`emitting session_request:<id> without any listeners` on a page that had never
+seen a Hathor wallet.
+
 Until then the balance comes from the full node, in `adapters/driven/hathor/node-balance.adapter.ts`. **The node's `/v1a/thin_wallet/address_balance` endpoint is dead** — public nodes return 403 (Google LB, not CORS; curl gets the same), and so does `explorer-service`'s `node_api/` proxy. So the adapter sums unspent outputs from `/v1a/thin_wallet/address_history?addresses[]=`. Four things it must get right, all load-bearing: skip voided txs; skip authority outputs (`token_data & 0x80`); filter outputs down to our own address (history returns whole txs); count timelocked outputs as `locked`. Then follow `has_more`/`first_hash` pagination (150 txs/page).
 
 `explorer-service.hathor.network/address/balance?address=&token=` returns the same numbers in one call and is the oracle to verify against — but its CORS allowlist is `*.hathor.network`, so it is unusable from the browser without a server-side proxy.
@@ -177,6 +185,9 @@ where a contract could be built with an undefined ABI.
   ready block bound to elements no page has had since the rebuild in `de09fdd`;
   neither survived the component migration. If a "switch network" button is
   wanted, it is new work, not a restoration.
-- **The bundle is one 850 kB chunk**, almost all of it Reown's AppKit. Vite warns
-  on every build. Code-splitting the wallet connector behind a dynamic import is
-  the obvious fix and has not been done.
+- **The AppKit chunk is 725 kB.** It is loaded lazily — `main.ts` imports
+  `@reown/appkit-universal-connector` with a dynamic `import()`, so it is fetched
+  only when a Hathor wallet is connected, and the entry chunk is 129 kB. Vite
+  still warns about the size of the lazy chunk itself. **Do not make that import
+  static again**: it puts a whole Lit runtime into the first byte every visitor
+  downloads, for the one flow that needs it.

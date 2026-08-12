@@ -128,7 +128,23 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     this.preferences.clearHathorAddress()
   }
 
+  /**
+   * Reattaches to a persisted session, or reports there is none.
+   *
+   * The stored address is checked **before** the connector is built, and that
+   * ordering is the whole point. Initialising Reown opens a relay connection,
+   * boots Lit and the AppKit modal, and replays whatever WalletConnect has
+   * queued — so the previous version did all of that on every page load, for
+   * every visitor, including the ones who only ever use the ARB→HTR form and
+   * have never seen a Hathor wallet.
+   *
+   * Safe because `connect()` stores the address whenever the session has one,
+   * and every operation here needs an address to be useful: a session without
+   * one can neither show a balance nor name a sender.
+   */
   async restore(deployment: Deployment): Promise<HathorSession | null> {
+    if (!this.preferences.getHathorAddress()) return null
+
     try {
       const connector = await this.ensureConnector(deployment)
       // UniversalProvider reattaches to the last session during init.
