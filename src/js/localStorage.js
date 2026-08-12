@@ -29,62 +29,31 @@ const clone = (obj) => {
 }
 
 /**
- * Credit to: https://arjunphp.com/can-paginate-array-objects-javascript/
- */
-function Paginator(items, page = 1, per_page = 5) {
-    let offset = (page - 1) * per_page;
-    let data = items.slice(offset).slice(0, per_page);
-    let total_pages = Math.ceil(items.length / per_page);
-
-    return {
-        page,
-        per_page,
-        pre_page: page - 1 ? page - 1 : null,
-        next_page: (total_pages > page) ? page + 1 : null,
-        total: items.length,
-        total_pages,
-        data
-    };
-}
-
-/**
  * Poll given network for latest block number
  *
  * @param {Function} cb: callback function to call upon new value
  */
 async function poll4LastBlockNumber(cb) {
-    let interval = 30_000;
-    let number = await web3.eth.getBlockNumber();
-    cb(number);
-
-    let intervalId = setInterval(async () => {
-        console.log('updating...');
+    try {
+        let interval = 30_000;
         let number = await web3.eth.getBlockNumber();
         cb(number);
-    }, interval);
 
-    return intervalId;
+        let intervalId = setInterval(async () => {
+            console.log('updating...');
+            let number = await web3.eth.getBlockNumber();
+            cb(number);
+        }, interval);
+
+        return intervalId;
+    }
+    catch (err) {
+        console.error('Error while polling for last block number', err);
+        throw err;
+    }
 };
 
 
-
-async function waitForReceipt(txHash) {
-    let timeElapsed = 0;
-    let interval = 10_000;
-    return new Promise((resolve, reject) => {
-        const checkInterval = setInterval(async () => {
-            timeElapsed += interval;
-            let receipt = await web3.eth.getTransactionReceipt(txHash);
-            if (receipt != null) {
-                clearInterval(checkInterval);
-                resolve(receipt);
-            }
-            if (timeElapsed > 90_000) {
-                reject(new Error(`Operation took too long <a target="_blank" href="${config.explorer}/tx/${txHash}">check Tx on the explorer</a>`));
-            }
-        }, interval);
-    });
-}
 
 /**
  * Retry system with async / await

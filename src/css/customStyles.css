@@ -80,37 +80,6 @@ h6 {
   margin-bottom: 64px;
 }
 
-#claimTab {
-  max-width: 500px;
-  margin-bottom: 150px;
-}
-
-.claim-title {
-  text-align: center;
-  font-weight: 300;
-}
-
-.claim-table {
-  display: table;
-  width: 100%;
-}
-
-.claim-row {
-  display: table-row;
-}
-
-.claim-label {
-  display: table-cell;
-  text-align: right;
-  padding-right: 10px;
-  /* Adjust as needed */
-}
-
-.claim-value {
-  display: table-cell;
-  text-align: left;
-}
-
 #previousTxnsEmptyTab {
   display: none;
 }
@@ -511,6 +480,17 @@ a:hover {
   width: 1.2rem;
   height: 1.2rem;
   margin-right: 0.5rem;
+}
+
+.token-balance-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 4px;
+}
+
+.token-balance-label span {
+  color: #fff;
+  font-weight: 500;
 }
 
 .dropup .dropdown-toggle::after {

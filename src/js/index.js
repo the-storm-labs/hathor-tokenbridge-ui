@@ -1,51 +1,35 @@
-//User
-function truncateMiddle(str, start = 8, end = 6) {
-  if (!str || str.length <= start + end + 3) return str;
-  return str.slice(0, start) + '...' + str.slice(-end);
-}
-let address = "";
-let activeAddresseth2HtrTxns = [];
-let eth2HtrTablePage = 1;
-let eth2HtrPaginationObj = {};
-let activeAddresshtr2EthTxns = [];
-let htr2EthTablePage = 1;
-let htr2EthPaginationObj = {};
-let poolingIntervalId = null;
-//Network configuration
-let config = null;
-let isTestnet = window.location.href.includes("testnet");
-let allowTokensContract = null;
-let bridgeContract = null;
-let hathorFederationContract = null;
-let federationContract = null;
-let minTokensAllowed = 1;
-let maxTokensAllowed = 100_000;
-let maxDailyLimit = 1_000_000;
-let currentBlockNumber = null;
-// Selected Token To Cross
-let tokenContract = null;
-let isSideToken = false;
-let sideTokenAddress = null;
-let fee = 0;
-let feePercentage = 0;
-let feePercentageDivider = 10_000;
-let rLogin;
-let pollingLastBlockIntervalId = 0;
-let DateTime = luxon.DateTime;
+// Hathor-side precision is per token, read from TOKENS[...][31].decimals — see
+// app/config/tokens.ts. It is deliberately NOT a constant here: it differs from
+// the token's EVM decimals (USDC is 6 on Arbitrum, 2 on Hathor), and a future
+// token with a different precision must work by config alone.
+
+// truncateMiddle, toHathorTxId, matchLocalHathorTxn, Paginator and
+// validateHathorAddress now come from app/composition/legacy-bridge.ts.
+// Do not redeclare them here: a top-level declaration in this classic script
+// would shadow the window property and silently win.
+
+// Every mutable global that used to be declared here is now a slice of the
+// typed store in app/application/state, exposed back under its original name by
+// the accessors in legacy-bridge.ts (see STATE_ALIASES).
+//
+// So `config = null` below is still a plain assignment, but it now *is* a store
+// mutation that the new code can observe. Do not redeclare any of these: a
+// top-level declaration in this classic script shadows the window accessor and
+// the two halves silently stop sharing state.
+//
+// isTestnet likewise comes from resolveDeployment(). The old
+// href.includes("testnet") matched the word anywhere in the URL — a host or path
+// containing it silently switched the whole app to testnet contract addresses.
 const wallets = [];
 const LAST_CONNECTED_WALLET_KEY = 'lastConnectedWallet';
-const evmHost = !isTestnet ?
-  "https://arbitrum-mainnet.infura.io/v3/399500b5679b442eb991fefee1c5bfdc" :
-  "https://sepolia.infura.io/v3/399500b5679b442eb991fefee1c5bfdc";
-
-// const backendUrl = 'https://getexecutedevents-ndq4goklya-uc.a.run.app';
-// const backendUrl = 'http://localhost:5010/hathor-functions/us-central1/getTransactionsByReceiver'; // for testing locally
-const backendUrl = 'https://gettransactionsbyreceiver-pddhyxmhxa-uc.a.run.app';
 
 // pagination of active txs table
 const numberOfLines = 6;
 
 const requiredVotesToClaim = 4;
+// The Read API reports Hathor-side ProposalSigned events but not the threshold
+// they are counted against; the federation uses the same size as the EVM side.
+const requiredSignaturesToRelay = 4;
 
 $(document).ready(function () {
   new ClipboardJS(".copy");
@@ -78,8 +62,6 @@ $(document).ready(function () {
 
   $("#logIn").attr("onclick", "onLogInClick()");
 
-  $("#claimTab").hide();
-
   $("#claimTokens").click(function () {
     showEvmTxsnTabe();
     location.hash = "";
@@ -94,8 +76,10 @@ $(document).ready(function () {
     if (token) {
       tokenContract = new web3.eth.Contract(ERC20_ABI, token[config.networkId].address);
       tokenContract.methods.balanceOf(address).call().then(balance => {
-        $(".tokenAddress-label").text(`You own ${balance / Math.pow(10, token[config.networkId].decimals)}`);
-      });
+        const decimals = token[config.networkId].decimals;
+        const formatted = new BigNumber(balance).shiftedBy(-decimals).toFormat(4, BigNumber.ROUND_DOWN);
+        $('#evmTokenBalance').text(`${formatted} ${token[config.networkId].symbol}`);
+      }).catch(() => $('#evmTokenBalance').text('—'));
 
       $(".selectedToken").html(token[config.networkId].symbol);
       let html = `<a target="_blank" href="${config.crossToNetwork.explorer
@@ -111,6 +95,10 @@ $(document).ready(function () {
         "data-clipboard-text",
         token[config.crossToNetwork.networkId].address
       );
+
+      // Switching to a token Hathor represents more coarsely has to re-cap
+      // whatever is already typed.
+      clampCrossAmountToHathorPrecision();
 
       setInfoTab(token[config.networkId].address).then(() => {
         isAmountOk();
@@ -133,6 +121,12 @@ $(document).ready(function () {
     }
   });
 
+  // Clamp on 'input' rather than 'keypress' so pasting is covered too. It fires
+  // before 'keyup', so isAmountOk below already sees the clamped value.
+  $("#amount").on("input", function () {
+    clampCrossAmountToHathorPrecision();
+    isAmountOk();
+  });
   $("#amount").keyup(function (event) {
     isAmountOk();
     if (event.key === "Enter") {
@@ -179,6 +173,10 @@ $(document).ready(function () {
     if (dir === 'arb-to-htr') {
       $('#crossForm').show();
       $('#htrToArbForm').hide();
+      if (window.HathorWallet && window.HathorWallet.isConnected()) {
+        $('#hathorAddress').val(window.HathorWallet.getAddress());
+        handleHathorAddressChange();
+      }
     } else {
       $('#crossForm').hide();
       $('#htrToArbForm').show();
@@ -190,24 +188,39 @@ $(document).ready(function () {
   $('#connectHathorWallet').on('click', onConnectHathorWalletClick);
   $('#htrSendBtn').on('click', onHtrSendClick);
 
-  $('#htrTokenSelect').on('change', function () {
-    refreshHtrBalance();
-    validateHtrAmountInput();
+  $('#nav-htr-eth-tab, #nav-eth-htr-tab').on('shown.bs.tab', function () {
+    showActiveAddressTXNs();
   });
 
-  $('#htrAmount').on('input', validateHtrAmountInput);
+  $('#htrTokenSelect').on('change', function () {
+    refreshHtrBalance();
+    // Switching to a coarser token has to re-cap whatever is already typed.
+    clampHtrAmountToTokenPrecision();
+    validateHtrAmountInput();
+    const selectedKey = $(this).val();
+    const token = TOKENS.find(t => t.token === selectedKey);
+    if (token) {
+      setInfoTab(token[config.networkId].address);
+    }
+  });
+
+  // Cap the input at the selected token's precision. Handled on 'input' rather
+  // than 'keypress' so that pasting is covered too.
+  $('#htrAmount').on('input', function () {
+    clampHtrAmountToTokenPrecision();
+    validateHtrAmountInput();
+  });
+  $('#htrAmount').on('keypress', function (event) {
+    if (event.key !== '.' && (event.key < '0' || event.key > '9')) {
+      return false;
+    }
+  });
 
   $('#htrMax').on('click', async function () {
-    const selectedKey = $('#htrTokenSelect').val();
-    if (!selectedKey || !window.HathorWallet || !window.HathorWallet.isConnected()) return;
-    const token = TOKENS.find(t => t.token === selectedKey);
-    if (!token || !token[31] || !token[31].pureHtrAddress) return;
+    const token = selectedHathorToken();
+    if (!token || !window.HathorWallet || !window.HathorWallet.isConnected()) return;
     try {
-      const tokenUid = token[31].pureHtrAddress;
-      const balanceData = await window.HathorWallet.getBalance(tokenUid, isTestnet);
-      const available = (balanceData[tokenUid]?.available ?? 0);
-      const decimals = token[31].decimals;
-      $('#htrAmount').val((available / Math.pow(10, decimals)).toFixed(decimals));
+      $('#htrAmount').val(await fetchHathorBalance(token));
       validateHtrAmountInput();
     } catch (e) {
       console.error('Could not fetch max balance', e);
@@ -272,36 +285,6 @@ async function connectWallet(providerDetail) {
   }
 }
 
-function onLogInClick() {
-  showModal("Select a Wallet"); // Prepares the modal by showing the wallet list container
-  const walletList = $("#wallet-list");
-  walletList.empty();
-
-  // Give a brief moment for EIP-6963 wallets to announce themselves.
-  setTimeout(() => {
-    if (wallets.length === 0) {
-      // If no wallets are found, display a message within the list container.
-      $("#myModal .modal-title").html("No Wallets Found");
-      walletList.html('<li class="list-group-item">Please install a wallet extension like MetaMask.</li>');
-      return;
-    }
-
-    wallets.forEach(wallet => {
-      const walletItem = $(`
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-          <div>
-            <img src="${wallet.info.icon}" alt="${wallet.info.name}" width="30" height="30" class="mr-2">
-            ${wallet.info.name}
-          </div>
-          <button class="btn btn-primary btn-sm">Connect</button>
-        </li>
-      `);
-      walletItem.find('button').on('click', () => connectWallet(wallet));
-      walletList.append(walletItem);
-    });
-  }, 150); // A small delay to ensure wallet discovery.
-}
-
 function handleHathorAddressChange() {
   const hathorAddress = $("#hathorAddress").val();
   if (hathorAddress) {
@@ -320,218 +303,52 @@ function handleHathorAddressChange() {
 
 // CLAIMS
 
-async function fillHathorToEvmTxs() {
-  const walletAddress = address;
+/**
+ * Hathor→EVM transfers, as resolved by the load-transfer-history use case.
+ *
+ * Kept here so the render below can read the claim requests without going
+ * through `data-*` attributes. Replaced by component state in the next phase.
+ */
+let loadedHathorTransfers = [];
 
-  if (!walletAddress || walletAddress === "0x123456789") {
+async function fillHathorToEvmTxs() {
+  if (!address || address === "0x123456789") {
     return;
   }
 
-  const claims = await getPendingClaims();
+  // The use case owns what used to be getPendingClaims, resolveClaimStatus,
+  // the token lookup, the local-record matching and the persistence.
+  const { hathorToEvm, evmToHathor } = await window.__useCases.loadTransferHistory(address);
 
-  claims.forEach(prpsl => {
+  // Render from the resolved transfers rather than re-reading storage: only
+  // these carry the typed claim request and the amount scale.
+  loadedHathorTransfers = hathorToEvm;
+  activeAddresseth2HtrTxns = hathorToEvm;
+  activeAddresshtr2EthTxns = evmToHathor;
 
-    let tk = null;
-
-    for (let i = 0; i < TOKENS.length; i++) {
-
-      const tokenByNetwork = TOKENS[i][config.networkId];
-      const tokenByCrossNetwork = TOKENS[i][config.crossToNetwork.networkId];
-
-      if (tokenByNetwork == null || tokenByCrossNetwork == null) {
-        continue;
-      }
-
-      const tokensAddresses = [
-        tokenByCrossNetwork.hathorAddr,
-        tokenByNetwork.address,
-        tokenByCrossNetwork.address
-      ];
-
-      if (tokensAddresses.includes(prpsl.originalTokenAddress)) {
-        tk = TOKENS[i];
-        break;
-      }
-    }
-
-    if (!tk) {
-      return
-    };
-
-    TXN_Storage.addHathorTxn(address, config.crossToNetwork.name, {
-      transactionHash: prpsl.transactionHash,
-      token: tk[config.networkId].symbol,
-      amount: prpsl.amount / Math.pow(10, 18),
-      sender: prpsl.sender,
-      status: prpsl.status,
-      action: setStatusAction(prpsl.status, prpsl),
-      votes: prpsl.votes || 0,
-    });
-  }
-  );
-
-  updateActiveAddressTXNs(walletAddress);
   showActiveAddressTXNs();
 }
 
-async function getPendingClaims() {
 
-  const walletAddress = address;
-  if (!walletAddress) {
-    return [];
+
+
+
+/**
+ * Fetches the chain inputs and defers the decision to the domain.
+ * Replaces three byte-identical copies of this rule (approve, cross, claim).
+ */
+async function resolveGasPrice() {
+  const chainId = config.networkId;
+  const inputs = { averageGasPrice: undefined, latestBlockMinimumGasPrice: undefined };
+
+  if (window.__domain.needsLatestBlockMinimum(chainId)) {
+    const block = await web3.eth.getBlock("latest");
+    inputs.latestBlockMinimumGasPrice = block.minimumGasPrice;
+  } else {
+    inputs.averageGasPrice = await web3.eth.getGasPrice();
   }
 
-  try {
-    const resp = await fetch(backendUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ receiver: walletAddress, limit: 1000 })
-    });
-
-    if (!resp.ok) {
-      throw new Error(`External events fetch failed: ${resp.status} ${resp.statusText}`);
-    }
-
-    const payload = await resp.json();
-
-    // accept either an array response or an object with an `events` array
-    const events = Array.isArray(payload) ? payload : (Array.isArray(payload.events) ? payload.events : []);
-
-    // call existing handleTransferEvents for each event (keeps existing behavior)
-    return await Promise.all(events.map(handleTransferEvents));
-  } catch (err) {
-    console.error("Error fetching pending claims from external service", err);
-    return [];
-  }
-}
-
-function setStatusAction(status, tx) {
-  let action = "";
-
-  switch (status) {
-    case "processing_transfer":
-      action = `<span class="badge badge-warning"><i class="fas fa-hourglass-half mr-1"></i>Voting — in progress</span>`
-      break;
-    case "awaiting_claim":
-      action = `<button
-                      class="btn btn-primary claim-button"
-                      data-token="${tx.originalTokenAddress}"
-                      data-to="${tx.receiver}"
-                      data-amount="${tx.amount}"
-                      data-blockhash="${tx.transactionHash}"
-                      data-logindex="${tx.logIndex}"
-                      data-originchainid="${tx.originChainId}">
-                      Claim
-                  </button>`
-      break;
-    case "claimed":
-      action = `<span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>Claimed</span>`
-      break;
-  }
-
-  return action;
-}
-
-function mergeClaimAndProposal(claim, proposal) {
-  return {
-    originalTokenAddress: proposal.originalTokenAddress,
-    transactionHash: proposal.transactionHash,
-    amount: claim.amount,
-    value: proposal.value,
-    sender: proposal.sender,
-    receiver: proposal.receiver,
-    transactionType: proposal.transactionType,
-    transactionId: proposal.transactionId,
-    logIndex: claim.logIndex,
-    originChainId: claim.originChainId,
-    status: claim.status
-  }
-}
-
-function handleProposalEvents(event) {
-  const {
-    originalTokenAddress,
-    transactionHash,
-    value,
-    sender,
-    receiver,
-    transactionType,
-    transactionId
-  } = event.returnValues;
-
-  const hashedTx = Web3.utils.keccak256(transactionHash);
-
-  return {
-    sender,
-    originalTokenAddress,
-    receiver,
-    transactionHash: hashedTx,
-    value,
-    transactionType,
-    transactionId,
-    status: "processing_transfer"
-  };
-}
-
-async function handleTransferEvents(event) {
-  let {
-    transactionHash,
-    originalTokenAddress,
-    receiver,
-    amount,
-    blockHash,
-    logIndex,
-    originChainId,
-    destinationChainId,
-    votes,
-  } = event;
-
-  // Ensure amount is always a string for contract calls (avoid numbers causing ABI parsing errors)
-  if (amount == null) {
-    amount = '0';
-  } else if (typeof amount !== 'string') {
-    try {
-      amount = amount.toString();
-    } catch (e) {
-      amount = String(amount);
-    }
-  }
-
-  let transaction = {
-    sender: "",
-    originalTokenAddress,
-    receiver,
-    amount,
-    transactionHash: blockHash,
-    logIndex,
-    originChainId,
-    votes,
-    status: "processing_transfer"
-  };
-
-  if (votes < requiredVotesToClaim) { return transaction; }
-
-  const txDataHash = await bridgeContract.methods
-    .getTransactionDataHash(
-      receiver,
-      amount,
-      blockHash,
-      transactionHash,
-      logIndex,
-      originChainId,
-      destinationChainId
-    )
-    .call();
-
-  const isClaimed = await bridgeContract.methods
-    .isClaimed(txDataHash, txDataHash)
-    .call();
-
-  transaction.status = isClaimed ? "claimed" : "awaiting_claim";
-
-  return transaction;
+  return window.__domain.gasPriceFor(chainId, inputs);
 }
 
 async function waitForReceipt(txHash) {
@@ -651,18 +468,14 @@ async function getMaxBalance(event) {
   const decimals = token[config.networkId].decimals;
   return retry3Times(tokenContract.methods.balanceOf(address).call)
     .then(async (balance) => {
-      balanceBNs = new BigNumber(balance).shiftedBy(-decimals);
-      let maxWithdrawInWei = await retry3Times(allowTokensContract.methods.calcMaxWithdraw(tokenAddress).call);
-      let maxWithdraw = new BigNumber(web3.utils.fromWei(maxWithdrawInWei, 'ether'));
-      let maxValue = 0;
-      if (balanceBNs.isGreaterThan(maxWithdraw)) {
-        maxValue = maxWithdraw;
-      } else {
-        maxValue = balanceBNs;
-      }
-      let serviceFee = new BigNumber(maxValue).times(fee);
-      let value = maxValue.minus(serviceFee).toFixed(decimals, BigNumber.ROUND_DOWN);
-      $('#amount').val(value.toString());
+      const balanceBN = new BigNumber(balance).shiftedBy(-decimals);
+      const maxWithdrawInWei = await retry3Times(allowTokensContract.methods.calcMaxWithdraw(tokenAddress).call);
+      const maxWithdraw = new BigNumber(web3.utils.fromWei(maxWithdrawInWei, 'ether'));
+
+      // Computed at the token's EVM precision, then capped at what Hathor can
+      // represent — both steps truncate down, so Max never exceeds the balance.
+      $('#amount').val(window.__domain.maxTransferable(balanceBN, maxWithdraw, fee, decimals));
+      clampCrossAmountToHathorPrecision();
       $('#amount').keyup();
     });
 }
@@ -693,15 +506,7 @@ async function approveSpend() {
     }
 
     const decimals = token[config.networkId].decimals;
-    const splittedAmount = amount.split(".");
-    var amountWithDecimals = splittedAmount[0];
-    for (i = 0; i < decimals; i++) {
-      if (splittedAmount[1] && i < splittedAmount[1].length) {
-        amountWithDecimals += splittedAmount[1][i];
-      } else {
-        amountWithDecimals += "0";
-      }
-    }
+    const amountWithDecimals = window.__domain.toBaseUnits(amount, decimals);
 
     const amountBN = isUnlimitedApproval
       ? new BN(web3.utils.toWei(Number.MAX_SAFE_INTEGER.toString(), "ether"))
@@ -709,17 +514,7 @@ async function approveSpend() {
         .mul(new BN(feePercentageDivider))
         .div(new BN(feePercentageDivider - feePercentage));
 
-    var gasPriceParsed = 0;
-    if (config.networkId >= 30 && config.networkId <= 33) {
-      let block = await web3.eth.getBlock("latest");
-      gasPriceParsed = parseInt(block.minimumGasPrice);
-      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
-    } else {
-      let gasPriceAvg = await web3.eth.getGasPrice();
-      gasPriceParsed = parseInt(gasPriceAvg);
-      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
-    }
-    gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
+    const gasPrice = await resolveGasPrice();
 
     await new Promise((resolve, reject) => {
       tokenContract.methods
@@ -798,15 +593,7 @@ async function crossToken() {
     }
 
     const decimals = token[config.networkId].decimals;
-    const splittedAmount = amount.split(".");
-    var amountWithDecimals = splittedAmount[0];
-    for (i = 0; i < decimals; i++) {
-      if (splittedAmount[1] && i < splittedAmount[1].length) {
-        amountWithDecimals += splittedAmount[1][i];
-      } else {
-        amountWithDecimals += "0";
-      }
-    }
+    const amountWithDecimals = window.__domain.toBaseUnits(amount, decimals);
     const amountBN = new BN(amountWithDecimals)
       .mul(new BN(feePercentageDivider))
       .div(new BN(feePercentageDivider - feePercentage));
@@ -830,17 +617,7 @@ async function crossToken() {
       throw new Error(`Amount bigger than the daily limit. Daily limit left ${web3.utils.fromWei(maxWithdrawInWei, 'ether')} tokens`);
     }
 
-    var gasPriceParsed = 0;
-    if (config.networkId >= 30 && config.networkId <= 33) {
-      let block = await web3.eth.getBlock("latest");
-      gasPriceParsed = parseInt(block.minimumGasPrice);
-      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
-    } else {
-      let gasPriceAvg = await web3.eth.getGasPrice();
-      gasPriceParsed = parseInt(gasPriceAvg);
-      gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
-    }
-    const gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
+    const gasPrice = await resolveGasPrice();
 
     const receipt = await new Promise((resolve, reject) => {
       bridgeContract.methods
@@ -896,41 +673,44 @@ async function crossToken() {
   }
 }
 
+// Claim errors used to be written into #claimTab, which is permanently hidden —
+// so users never saw them. They now go to the same visible alert the transfer
+// flow uses.
 function errorClaim(error) {
-  $("#alert-danger-text_claim").html(error);
-  $("#alert-danger_claim").show();
-  $("#alert-danger_claim").focus();
+  $("#alert-danger-text").html(error);
+  $("#alert-danger").show();
+  $("#alert-danger").focus();
 }
 
-async function claimToken(to, amount, blockHash, logIndex, originChainId) {
-  cleanAlertErrorClaim();
-  cleanAlertSuccessClaim();
+/**
+ * Submits a claim.
+ *
+ * @param {{to: string, amount: string, blockHash: string, logIndex: number,
+ *          originChainId: number, destinationChainId: number}} claim
+ *        The typed request built by the load-transfer-history use case.
+ */
+async function claimToken(claim) {
+  cleanAlertError();
+  cleanAlertSuccess();
 
   if (!bridgeContract) {
     errorClaim("Connect your wallet!");
     return;
   }
 
-  var gasPriceParsed = 0;
-  if (config.networkId >= 30 && config.networkId <= 33) {
-    let block = await web3.eth.getBlock("latest");
-    gasPriceParsed = parseInt(block.minimumGasPrice);
-    gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.03;
-  } else {
-    let gasPriceAvg = await web3.eth.getGasPrice();
-    gasPriceParsed = parseInt(gasPriceAvg);
-    gasPriceParsed = gasPriceParsed <= 1 ? 1 : gasPriceParsed * 1.3;
-  }
-  const gasPrice = `0x${Math.ceil(gasPriceParsed).toString(16)}`;
+  const gasPrice = await resolveGasPrice();
 
   await bridgeContract.methods
     .claim({
-      to: to,
-      amount: amount,
-      blockHash: blockHash,
-      transactionHash: blockHash,
-      logIndex: logIndex,
-      originChainId: originChainId,
+      to: claim.to,
+      amount: claim.amount,
+      blockHash: claim.blockHash,
+      // A Hathor-origin transfer has no EVM block of its own, so the federation
+      // votes with the block hash in both slots. Building it any other way
+      // produces a hash that matches nothing on-chain.
+      transactionHash: claim.blockHash,
+      logIndex: claim.logIndex,
+      originChainId: claim.originChainId,
     })
     .send({ from: address, gasPrice: gasPrice, gas: 400_000 })
     .on('transactionHash', (hash) => {
@@ -954,15 +734,6 @@ function cleanAlertSuccess() {
 function cleanAlertError() {
   $("#alert-danger-text").html("");
   $("#alert-danger").hide();
-}
-
-function cleanAlertSuccessClaim() {
-  $("#success_claim").hide();
-}
-
-function cleanAlertErrorClaim() {
-  $("#alert-danger-text_claim").html("");
-  $("#alert-danger_claim").hide();
 }
 
 function crossTokenError(err) {
@@ -989,8 +760,7 @@ async function checkAllowance() {
   }
   $("#secondsPerBlock").text(config.secondsPerBlock);
   $("#amount").removeClass("ok");
-  let totalCost = fee == 0 ? parsedAmount : parsedAmount.dividedBy(1 - fee);
-  let serviceFee = totalCost.times(fee);
+  const { totalCost } = window.__domain.quote(amount, fee);
 
   let tokenToCross = $("#tokenAddress").val();
   let token = TOKENS.find((element) => element.token == tokenToCross);
@@ -1023,54 +793,64 @@ async function checkAllowance() {
   }
 }
 
+/**
+ * Hathor-side precision for the token selected in the ARB→HTR form, or null
+ * when the selection is not bridgeable to Hathor.
+ *
+ * Returning null matters: an unbridgeable token carries the placeholder
+ * `decimals: 0`, and clamping the input to zero decimals would make it
+ * impossible to type a fractional amount at all.
+ */
+function crossFormHathorDecimals() {
+  const selectedKey = $("#tokenAddress").val();
+  if (!selectedKey) return null;
+  const token = TOKENS.find(t => t.token === selectedKey);
+  if (!token || !token[31] || !token[31].pureHtrAddress) return null;
+  return token[31].decimals;
+}
+
+/**
+ * Cap #amount at the precision Hathor can actually represent.
+ *
+ * The destination chain truncates anything finer, so accepting it would just
+ * mislead the user about what arrives. Note this constrains the *input* only —
+ * approveSpend and crossToken still scale the amount by the token's EVM
+ * decimals, which is what the ERC20 and bridge contracts expect.
+ */
+function clampCrossAmountToHathorPrecision() {
+  const decimals = crossFormHathorDecimals();
+  if (decimals === null) return;
+
+  const input = $("#amount");
+  const current = input.val();
+  const clamped = window.__domain.clampDecimals(current, decimals);
+  if (clamped !== current) input.val(clamped);
+}
+
 async function isAmountOk() {
   cleanAlertSuccess();
-  let amount = $("#amount").val();
-  let parsedAmount = new BigNumber(amount || 0);
+  const amount = $("#amount").val();
 
   // Always calculate and display the fee and total cost
-  let totalCost = fee == 0 ? parsedAmount : parsedAmount.dividedBy(1 - fee);
-  let serviceFee = totalCost.times(fee);
-  $("#serviceFee").html(serviceFee.toFormat(6, BigNumber.ROUND_DOWN));
-  $("#totalCost").html(totalCost.toFormat(6, BigNumber.ROUND_DOWN));
+  const { totalCost, serviceFee } = window.__domain.quote(amount, fee);
+  $("#serviceFee").html(window.__domain.formatQuoteValue(serviceFee));
+  $("#totalCost").html(window.__domain.formatQuoteValue(totalCost));
 
-  // Now, perform validation if an amount is actually entered
-  if (amount === "") {
-    markInvalidAmount("Invalid amount");
+  const rejection = window.__domain.validateAmount(amount, totalCost, {
+    min: minTokensAllowed,
+    max: maxTokensAllowed,
+    feeRate: fee,
+  });
+
+  if (rejection) {
+    markInvalidAmount(window.__domain.rejectionMessage(rejection));
     disableApproveCross({ approvalDisable: true, doNotAskDisabled: true, crossDisabled: true });
     return;
   }
 
-  if (parsedAmount <= 0) {
-    markInvalidAmount("Must be bigger than 0");
-    disableApproveCross({ approvalDisable: true, doNotAskDisabled: true, crossDisabled: true });
-    return;
-  }
-
-  try {
-    if (totalCost < minTokensAllowed) {
-      throw new Error(
-        `Minimum amount ${minTokensAllowed - minTokensAllowed * fee} token`
-      );
-    }
-    if (totalCost > maxTokensAllowed) {
-      throw new Error(
-        `Max amount ${maxTokensAllowed - maxTokensAllowed * fee} tokens`
-      );
-    }
-
-    $(".amount .invalid-feedback").hide();
-    $("#amount").removeClass("is-invalid");
-    $("#amount").addClass("ok");
-  } catch (err) {
-    disableApproveCross({
-      approvalDisable: true,
-      doNotAskDisabled: true,
-      crossDisabled: true,
-    });
-
-    markInvalidAmount(err.message);
-  }
+  $(".amount .invalid-feedback").hide();
+  $("#amount").removeClass("is-invalid");
+  $("#amount").addClass("ok");
 }
 
 function markInvalidAmount(errorDescription) {
@@ -1080,40 +860,6 @@ function markInvalidAmount(errorDescription) {
   $("#amount").addClass("is-invalid");
   $("#amount").prop("disabled", false);
   $("#amount").removeClass("ok");
-}
-
-async function isInstalled() {
-  if (window.ethereum) {
-    window.ethereum.autoRefreshOnNetworkChange = false;
-    try {
-      const targetNetworkId = isTestnet ? SEPOLIA_CONFIG.networkId : ETH_CONFIG.networkId;
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x' + targetNetworkId.toString(16) }],
-      });
-
-      window.web3 = new Web3(window.ethereum);
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      const chainId = await web3.eth.net.getId();
-      await updateCallback(chainId, accounts);
-
-      window.ethereum.on("chainChanged", function (newChain) {
-        updateNetwork(newChain);
-        showActiveTxnsTab();
-      });
-      window.ethereum.on("accountsChanged", function (newAddresses) {
-        checkAllowance();
-        updateAddress(newAddresses)
-          .then((addr) => updateActiveAddressTXNs(addr))
-          .then(() => showActiveAddressTXNs());
-      });
-      return chainId;
-    } catch (error) {
-      throw new Error("Login failed. Please try again.");
-    }
-  } else {
-    throw new Error("MetaMask is not installed. Please install it to use this application.");
-  }
 }
 
 function onDisconnectEvmClick() {
@@ -1172,11 +918,6 @@ function disableApproveCross({
   $("#deposit").prop("disabled", crossDisabled);
 }
 
-function disableClaim({ searchDisable = true, claimDisabled = true }) {
-  $("#searchClaim").prop("disabled", searchDisable);
-  $("#claim").prop("disabled", claimDisabled);
-}
-
 function disableInputs(disable) {
   $("#tokenAddress").prop("disabled", disable);
   $("button[data-id='tokenAddress']").prop("disabled", disable);
@@ -1197,15 +938,6 @@ function onMetaMaskConnectionSuccess() {
     doNotAskDisabled: true,
     crossDisabled: true,
   });
-  disableClaim({
-    searchDisable: false,
-    claimDisabled: true,
-  });
-}
-
-function truncateAddress(address) {
-  if (!address) return "";
-  return `${address.slice(0, 7)}...${address.slice(-5)}`;
 }
 
 async function updateAddress(newAddresses) {
@@ -1214,7 +946,6 @@ async function updateAddress(newAddresses) {
   $("#evmNetwork").text(isTestnet ? "Sepolia" : "Arbitrum One");
   $("#logIn").hide();
   $("#transferTab").removeClass("disabled");
-  $("#claimTab").removeClass("disabled");
   $(".wallet-status.indicator").css('display', 'flex');
 
   if (config) {
@@ -1224,6 +955,17 @@ async function updateAddress(newAddresses) {
   return Promise.resolve(address);
 }
 
+/**
+ * Reloads both history lists straight from storage.
+ *
+ * Used when the account changes and the table must stop showing the previous
+ * account's transfers before the next poll runs.
+ *
+ * Storage records carry no claim request — that is resolved against the chain by
+ * the load-transfer-history use case. So rows rendered from here show no Claim
+ * button until the next poll, which is deliberate: a button built from
+ * unresolved data could point at a transfer that was already claimed.
+ */
 function updateActiveAddressTXNs() {
   activeAddresseth2HtrTxns = TXN_Storage.getAllTxns4Address(
     address,
@@ -1233,6 +975,9 @@ function updateActiveAddressTXNs() {
     address,
     config.name
   );
+  // Drop the resolved transfers too, so no stale index can resolve to a claim
+  // belonging to a different account.
+  loadedHathorTransfers = [];
 }
 
 function showActiveTxnsTab() {
@@ -1259,13 +1004,11 @@ function showHtrTxsnTabe() {
 
 function showActiveAddressTXNs() {
 
-  if (poolingIntervalId === null)
+  // Allow rendering Hathor-initiated txns even without EVM wallet/polling
+  if (poolingIntervalId === null && !activeAddresseth2HtrTxns.length)
     return;
 
-  if (
-    !address ||
-    (!activeAddresseth2HtrTxns.length && !activeAddresshtr2EthTxns.length)
-  ) {
+  if (!activeAddresseth2HtrTxns.length && !activeAddresshtr2EthTxns.length) {
     $("#previousTxnsEmptyTab").css("margin-bottom", "6em").show();
     $("#previousTxnsTab").hide();
     return;
@@ -1306,62 +1049,39 @@ function showActiveAddressTXNs() {
 
   let currentNetwork = $(".indicator span").text();
 
-  const processHtrTxn = (txn, config = {}) => {
-    const requiredVotes = 4;
-    const votesCount = Number(txn.votes) || 0;
 
-    // build 4 small segments, painting as many as votesCount
-    let segments = '';
-    for (let i = 1; i <= requiredVotes; i++) {
-      const filled = i <= votesCount;
-      // separator after the requiredVotes to emphasize threshold
-      if (i === requiredVotes + 1) {
-        segments += `<div style="width:6px; height:14px; margin:0 6px; border-left:2px solid rgba(0,0,0,0.12);"></div>`;
-      }
-      const bg = filled ? '#28a745' : '#e9ecef';
-      segments += `<div role="img" aria-label="vote ${i} ${filled ? 'filled' : 'empty'}" style="width:14px; height:14px; background:${bg}; border-radius:3px; margin-right:6px;"></div>`;
-    }
-
-    const votesHtml = `
-        <div class="d-flex align-items-center justify-content-end" style="gap:8px;">
-          <div style="display:flex; align-items:center">${segments}</div>
-          <small style="margin-left:8px;color:#6c757d; font-size:12px;">${votesCount}/${requiredVotes}</small>
-        </div>
-      `;
-
-    let htmlRow = `<tr class="black">
-        <td  class="align-middle">-</td>
-        <td class="align-middle">${txn.amount} ${txn.token}</td>
-        <td class="align-middle">${votesHtml}</td>
-        <td class="align-middle">${txn.action}</td>
-    </tr>`;
-
-    return htmlRow;
+  /**
+   * One Hathor-origin row.
+   *
+   * The markup now comes from app/adapters/driving/ui/templates. The claim
+   * request travels as an index into `loadedHathorTransfers` instead of a set of
+   * `data-*` attributes that setClaimButtons had to re-parse — an amount used to
+   * make a round trip through a string attribute before reaching a contract call.
+   */
+  const processHtrTxn = (txn, route) => {
+    // Identity, because these rows are the very objects the use case returned.
+    const claimIndex = txn.claim ? loadedHathorTransfers.indexOf(txn) : -1;
+    const action = window.__templates.transferStatusCell(
+      txn.status,
+      claimIndex >= 0 ? claimIndex : null
+    );
+    const explorer = route && route.crossToNetwork ? route.crossToNetwork.explorer : null;
+    return window.__templates.hathorTransferRow({ ...txn, action }, explorer);
   };
 
   const processTxn = (txn, config = {}) => {
     const { confirmations, secondsPerBlock, explorer } = config;
 
-    let elapsedBlocks = currentBlockNumber - txn.blockNumber;
-    let remainingBlocks2Confirmation = confirmations - elapsedBlocks;
-    let status = elapsedBlocks >= confirmations
+    const progress = window.__domain.confirmationProgress({
+      transactionBlock: txn.blockNumber,
+      currentBlock: currentBlockNumber,
+      required: confirmations,
+      secondsPerBlock,
+    });
+    const status = progress.confirmed
       ? `<span> Confirmed</span>`
       : `<span> Pending</span>`;
-
-    let confirmationTime = confirmations * secondsPerBlock;
-    let seconds2Confirmation =
-      remainingBlocks2Confirmation > 0
-        ? remainingBlocks2Confirmation * secondsPerBlock
-        : 0;
-
-    let hoursToConfirmation = Math.floor(seconds2Confirmation / 60 / 60);
-    let hoursToConfirmationStr =
-      hoursToConfirmation > 0 ? `${hoursToConfirmation}hs ` : ``;
-    let minutesToConfirmation =
-      Math.ceil(seconds2Confirmation / 60) - hoursToConfirmation * 60;
-    let humanTimeToConfirmation = elapsedBlocks >= confirmations
-      ? ``
-      : `| ~ ${hoursToConfirmationStr} ${minutesToConfirmation}mins`;
+    const humanTimeToConfirmation = progress.humanTimeRemaining;
 
     let txnExplorerLink = `${explorer}/tx/${txn.transactionHash}`;
     let shortTxnHash = `${txn.transactionHash.substring(
@@ -1372,7 +1092,7 @@ function showActiveAddressTXNs() {
     let htmlRow = `<tr class="black">
             <th scope="row"><a href="${txnExplorerLink}">${shortTxnHash}</a></th>
             <td>${txn.blockNumber}</td>
-            <td>${txn.amount} ${txn.tokenFrom}</td>
+            <td>${window.__templates.formatRowAmount(txn.amount, txn.amountDecimals ?? null, 2)} ${txn.tokenFrom}</td>
             <td>${status} ${humanTimeToConfirmation}</td>
         </tr>`;
 
@@ -1380,7 +1100,7 @@ function showActiveAddressTXNs() {
   };
 
   const activeAddressTXNseth2HtrRows = eth2HtrTxns.map((txn) => {
-    return processHtrTxn(txn, config.crossToNetwork);
+    return processHtrTxn(txn, config);
   });
   const activeAddressTXNshtr2EthRows = htr2EthTxns.map((txn) => {
     return processTxn(txn, config);
@@ -1401,17 +1121,20 @@ function setClaimButtons() {
         poolingIntervalId = null;
         button.setAttribute('disabled', 'true');
 
-        const to = button.getAttribute("data-to");
-        const amount = button.getAttribute("data-amount");
-        const blockHash = button.getAttribute("data-blockhash");
-        const logIndex = button.getAttribute("data-logindex");
-        const originChainId = button.getAttribute("data-originchainid");
+        // The button carries only its index. The claim parameters are the typed
+        // object the use case built — they no longer make a round trip through
+        // string attributes, where an amount could be truncated or a hash lost.
+        const index = Number(button.getAttribute("data-claim-index"));
+        const transfer = loadedHathorTransfers[index];
+        if (!transfer || !transfer.claim) {
+          errorClaim("This transfer can no longer be claimed. Reload and try again.");
+          startPoolingTxs();
+          return;
+        }
 
-        claimToken(to, amount, blockHash, logIndex, originChainId);
+        claimToken(transfer.claim);
       });
     });
-
-  $("#wait_claim_nomessage").hide();
 }
 
 async function updateCallback(chainId, accounts) {
@@ -1436,6 +1159,9 @@ async function updateNetworkConfig(config) {
 }
 
 async function updateNetwork(newNetwork) {
+
+  console.log(`Updating network to ${newNetwork}...`);
+
   cleanAlertSuccess();
   try {
     newNetwork = parseInt(newNetwork);
@@ -1513,22 +1239,7 @@ async function startPoolingTxs() {
 async function updateTokenAddressDropdown(networkId) {
   let selectHtml = "";
   for (let aToken of TOKENS) {
-    if (aToken[networkId] != undefined && address) {
-      try {
-        const tokenContract = new web3.eth.Contract(ERC20_ABI, aToken[networkId].address);
-        const balance = await tokenContract.methods.balanceOf(address).call();
-        const formattedBalance = new BigNumber(balance).shiftedBy(-aToken[networkId].decimals).toFormat(4, BigNumber.ROUND_DOWN);
-
-        selectHtml += `\n<option value="${aToken.token}" `;
-        selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol} <small class='text-muted'>(${formattedBalance})</small>">`;
-        selectHtml += `\n</option>`;
-      } catch (e) {
-        console.error(`Could not fetch balance for ${aToken[networkId].symbol}`, e);
-        selectHtml += `\n<option value="${aToken.token}" `;
-        selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol}">`;
-        selectHtml += `\n</option>`;
-      }
-    } else if (aToken[networkId] != undefined) {
+    if (aToken[networkId] != undefined) {
       selectHtml += `\n<option value="${aToken.token}" `;
       selectHtml += `data-content="<span><img src='${aToken.icon}' class='token-logo'></span>${aToken[networkId].symbol}">`;
       selectHtml += `\n</option>`;
@@ -1587,15 +1298,6 @@ function updateTokenListTab() {
   $("#tokenListTab").html(tabHtml);
 }
 
-async function getAccounts() {
-  let accounts = await web3.eth.getAccounts();
-  if (accounts.length === 0)
-    throw new Error(
-      "Nifty Wallet or MetaMask is Locked, please unlock it and Reload the page to continue"
-    );
-  return accounts;
-}
-
 // --------- HTR→ARB FUNCTIONS ----------
 
 function populateHtrTokenDropdown() {
@@ -1603,30 +1305,65 @@ function populateHtrTokenDropdown() {
   for (const token of TOKENS) {
     const htrData = token[31];
     if (!htrData || !htrData.pureHtrAddress) continue;
-    html += `<option value="${token.token}">${htrData.symbol || token.name}</option>`;
+    const symbol = htrData.symbol || token.name;
+    html += `<option value="${token.token}" data-content="<span><img src='${token.icon}' class='token-logo'></span>${symbol}"></option>`;
   }
   $('#htrTokenSelect').html(html).selectpicker('refresh');
 }
 
-async function refreshHtrBalance() {
+/**
+ * The token currently selected in the HTR→ARB form, or null.
+ *
+ * Its `[31].decimals` is the precision for every Hathor-side amount — the input,
+ * the balance display and the value actually sent. It comes from the token
+ * table, so a token with a different precision needs no code change.
+ */
+function selectedHathorToken() {
   const selectedKey = $('#htrTokenSelect').val();
-  if (!selectedKey || !window.HathorWallet || !window.HathorWallet.isConnected()) {
+  if (!selectedKey) return null;
+  const token = TOKENS.find(t => t.token === selectedKey);
+  if (!token || !token[31] || !token[31].pureHtrAddress) return null;
+  return token;
+}
+
+/** Available balance of `token` on Hathor, formatted at the token's precision. */
+async function fetchHathorBalance(token) {
+  const tokenUid = token[31].pureHtrAddress;
+  const balanceData = await window.HathorWallet.getBalance(tokenUid, isTestnet);
+  const available = balanceData[tokenUid]?.available ?? 0;
+  // String math: the old `available / 10**decimals` went through a float.
+  return window.__domain.fromBaseUnits(String(available), token[31].decimals);
+}
+
+async function refreshHtrBalance() {
+  const token = selectedHathorToken();
+  if (!token || !window.HathorWallet || !window.HathorWallet.isConnected()) {
     $('#htrTokenBalance').text('—');
     return;
   }
-  const token = TOKENS.find(t => t.token === selectedKey);
-  if (!token || !token[31] || !token[31].pureHtrAddress) return;
   try {
-    const tokenUid = token[31].pureHtrAddress;
-    const balanceData = await window.HathorWallet.getBalance(tokenUid, isTestnet);
-    const available = balanceData[tokenUid]?.available ?? 0;
-    const decimals = token[31].decimals;
-    const formatted = (available / Math.pow(10, decimals)).toFixed(decimals);
+    const formatted = await fetchHathorBalance(token);
     $('#htrTokenBalance').text(`${formatted} ${token[31].symbol || token.token}`);
   } catch (e) {
     console.error('refreshHtrBalance error', e);
     $('#htrTokenBalance').text('—');
   }
+}
+
+/**
+ * Trim #htrAmount to the selected token's decimal places.
+ *
+ * Only rewrites the field when it actually changed, so the caret is left alone
+ * while typing.
+ */
+function clampHtrAmountToTokenPrecision() {
+  const token = selectedHathorToken();
+  if (!token) return;
+
+  const input = $('#htrAmount');
+  const current = input.val();
+  const clamped = window.__domain.clampDecimals(current, token[31].decimals);
+  if (clamped !== current) input.val(clamped);
 }
 
 function validateHtrAmountInput() {
@@ -1680,6 +1417,10 @@ async function onConnectHathorWalletClick() {
     enableHtrSendForm();
     populateHtrTokenDropdown();
     refreshHtrBalance();
+    if (htrAddr && $('#crossForm').is(':visible')) {
+      $('#hathorAddress').val(htrAddr);
+      handleHathorAddressChange();
+    }
   } catch (err) {
     btn.text('Connect Hathor').prop('disabled', false).show();
     console.error('Hathor wallet connect failed', err);
@@ -1715,7 +1456,7 @@ async function onHtrSendClick() {
   $('#htrAmount').removeClass('is-invalid');
 
   const evmDest = $('#htrDestAddress').val().trim();
-  if (!evmDest || !/^0x[0-9a-fA-F]{40}$/.test(evmDest)) {
+  if (!window.__domain.isEvmAddress(evmDest)) {
     $('#htrDestAddress').addClass('is-invalid');
     $('#htrSendErrorMsg').text('Enter a valid Arbitrum address (0x...).');
     $('#htrSendError').show();
@@ -1731,8 +1472,15 @@ async function onHtrSendClick() {
     return;
   }
 
-  const decimals = token[31].decimals;
-  const amountUnits = Math.round(amountFloat * Math.pow(10, decimals));
+  // String math, truncating — never float. `Math.round(parseFloat(x) * 100)`
+  // rounds *up* past 2 decimals, so typing 2.999 used to send 3.00 HTR: more
+  // than the user asked for. Truncating also matches how the ARB→HTR side
+  // scales its amounts.
+  //
+  // BigInt strips the leading zeros toBaseUnits keeps ('0.5' -> '050'), so the
+  // wallet receives '50', exactly as before.
+  const hathorDecimals = token[31].decimals;
+  const amountUnits = BigInt(window.__domain.toBaseUnits(amountStr, hathorDecimals)).toString();
   const tokenUid = token[31].pureHtrAddress;
 
   const btn = $('#htrSendBtn');
@@ -1743,24 +1491,48 @@ async function onHtrSendClick() {
       bridgeHathorAddr, tokenUid, amountUnits, evmDest, isTestnet
     );
 
+    console.log('HTR→ARB send result', result);
+
+    if (!result || !result.response) {
+      throw new Error('Transaction sent but wallet returned no response');
+    }
+
+    const response = result.response;
+
     // Store in local transaction history (keyed by EVM destination, which the
     // polling system uses when querying the backend for updates)
     const evmNetworkName = config ? config.crossToNetwork.name : (isTestnet ? 'Golf' : 'Hathor Mainnet');
     TXN_Storage.addHathorTxn(evmDest, evmNetworkName, {
-      transactionHash: result.hash,
-      token: token[31].symbol || token.token,
-      amount: amountStr,
-      sender: window.HathorWallet.getAddress(),
-      status: 'processing_transfer',
-      action: `<span class="badge badge-warning">Submitted — awaiting votes</span>`,
-      votes: 0,
+      hathorTxId:      response.hash,
+      backendTxHash:   null,
+      displayedTxHash: response.hash,
+      transactionHash: response.hash,
+      // Formatted through the same helper the API-sourced rows use, at the same
+      // display precision, so this row does not visibly change when the API
+      // indexes it and takes over. Storing the raw input rendered "2 HTR"
+      // next to "2.0000 aHTR" for the very same transfer.
+      token:    (token[config.networkId] && token[config.networkId].symbol)
+                  || token[31].symbol || token.token,
+      // Scaled and displayed at the same Hathor precision, so this row is
+      // identical to the one the API produces for it a moment later.
+      amount:   BridgeAPI.formatAmount(amountUnits, hathorDecimals, hathorDecimals),
+      sender:   window.HathorWallet.getAddress(),
+      // The Hathor federation signs first; the API takes over this record's
+      // status once it indexes the transaction.
+      status:   BridgeAPI.STATUS.HATHOR_VOTING,
+      action:   `<span class="badge badge-warning">Submitted — awaiting signatures</span>`,
+      votes:    0,
+      signatures: 0,
+      blockNumber: null,
     });
 
-    // If the user also has an EVM wallet connected, refresh the transaction list
+    // Always load Hathor→EVM transactions for the destination address and display them
+    activeAddresseth2HtrTxns = TXN_Storage.getAllTxns4Address(evmDest, evmNetworkName);
+    // If EVM wallet is connected, also reload EVM-initiated transactions
     if (address) {
-      updateActiveAddressTXNs();
-      showActiveAddressTXNs();
+      activeAddresshtr2EthTxns = TXN_Storage.getAllTxns4Address(address, config.name);
     }
+    showActiveAddressTXNs();
 
     $('#htrSendSuccess').show();
     // Switch to HTR→ARB history tab so the user can track the tx
@@ -1778,192 +1550,16 @@ async function onHtrSendClick() {
 
 // --------- HTR→ARB FUNCTIONS END ----------
 
-// --------- CONFIGS ----------
-let SEPOLIA_CONFIG = {
-  networkId: 11155111,
-  name: "Sepolia",
-  bridge: "0xfc218f3feae75359eeb40d2490760f72faa01abd",
-  allowTokens: "0x68a26d1586c2eabc05c09a90d31c93994c5954b2",
-  federation: "0x91716baeca14f8d8be6c563c148ac158f23b973d",
-  explorer: "https://sepolia.etherscan.io",
-  explorerTokenTab: "#tokentxns",
-  confirmations: 10,
-  confirmationTime: "10 minutes",
-  secondsPerBlock: 5,
-};
-let HTR_TESTNET_CONFIG = {
-  networkId: 31,
-  name: "Golf",
-  federation: "0xcE0226ACcDFBd32Dd723F927330f1952fB993c0d",
-  explorer: "https://explorer.testnet.hathor.network",
-  explorerTokenTab: "token_detail",
-  confirmations: 2,
-  confirmationTime: "10 minutes",
-  secondsPerBlock: 30,
-  crossToNetwork: SEPOLIA_CONFIG,
-  // Hathor deposit address: send tokens here to initiate HTR→EVM bridge transfer
-  bridgeHathorAddress: 'wYr7GUqHFDCan2WBN1f6JPJYUWPtpVhb22',
-};
-SEPOLIA_CONFIG.crossToNetwork = HTR_TESTNET_CONFIG;
-
-// Replace with proper values contracts exist in mainnet
-let ETH_CONFIG = {
-  networkId: 42161,
-  name: "Arbitrum One",
-  bridge: "0xB85573bb0D1403Ed56dDF12540cc57662dfB3351",
-  allowTokens: "0x140ccdea1D96EcEDAdC2CD27713f452a50942A19",
-  federation: "0xE379DfB03E07ff4F1029698C219faB0B56a2bf67",
-  explorer: "https://arbiscan.io",
-  explorerTokenTab: "#tokentxns",
-  confirmations: 900,
-  confirmationTime: "10 minutes",
-  secondsPerBlock: 0.25,
-};
-let HTR_MAINNET_CONFIG = {
-  networkId: 31,
-  name: "Hathor Mainnet",
-  federation: "0xC2d2318dEa546D995189f14a0F9d39fB1f56D966",
-  explorer: "https://explorer.hathor.network",
-  explorerTokenTab: "token_detail",
-  confirmations: 2,
-  confirmationTime: "10 minutes",
-  secondsPerBlock: 30,
-  crossToNetwork: ETH_CONFIG,
-  // Hathor deposit address: send tokens here to initiate HTR→EVM bridge transfer
-  bridgeHathorAddress: 'hQj6skwZY9RT3bRvFuRjioJP5ZbLSRYeuD',
-};
-ETH_CONFIG.crossToNetwork = HTR_MAINNET_CONFIG;
-// --------- CONFIGS  END --------------
-
-// --------- ABI --------------
-let BRIDGE_ABI, ALLOW_TOKENS_ABI, ERC20_ABI, FEDERATION_ABI, HATHOR_FEDERATION_ABI;
-loadAbi('bridge', (abi) => { BRIDGE_ABI = abi; });
-loadAbi('allowtokens', (abi) => { ALLOW_TOKENS_ABI = abi; });
-loadAbi('erc20', (abi) => { ERC20_ABI = abi; });
-loadAbi('federation', (abi) => { FEDERATION_ABI = abi; });
-loadAbi('hathorFederation', (abi) => { HATHOR_FEDERATION_ABI = abi; });
-
-function loadAbi(abi, callback) {
-  fetch(`../abis/${abi}.json`)
-    .then(async (response) => {
-      const abi = await response.json()
-      callback(abi);
-    });
-};
-
-// --------- ABI  END --------------
-
-// --------- TOKENS --------------
-
-const USDC_TOKEN = {
-  token: "USDC",
-  name: "USDC",
-  icon: "./assets/img/usdc.png",
-  42161: {
-    symbol: "USDC",
-    address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-    decimals: 6,
-  },
-  11155111: {
-    symbol: "USDC",
-    address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-    decimals: 6,
-  },
-  31: !isTestnet ? {
-    symbol: "hUSDC",
-    address: "0x66981C5a01db0Df1De03A5Af4493437B98F5D49c",
-    hathorAddr: "0x00003b17e8d656e4612926d5d2c5a4d5b3e4536e6bebc61c76cb71a65b81986f",
-    pureHtrAddress: "00003b17e8d656e4612926d5d2c5a4d5b3e4536e6bebc61c76cb71a65b81986f",
-    decimals: 6,
-  } : {
-    symbol: "hUSDC",
-    address: "0xA3FBbF66380dEEce7b7f7dC4BEA6267c05bB383D",
-    hathorAddr: "0x000000006c82966f45145fdc6caef7676ecbbbe7a0e7fc3025b9b69e217db7d8",
-    pureHtrAddress: "000000006c82966f45145fdc6caef7676ecbbbe7a0e7fc3025b9b69e217db7d8",
-    decimals: 6,
-  },
-};
-
-const EVM_NATIVE_TOKEN = {
-  token: "SLT7",
-  name: "Storm Labs Token 7",
-  icon: "https://assets.coingecko.com/coins/images/279/standard/ethereum.png?1696501628",
-  11155111: {
-    symbol: "SLT7",
-    address: "0x97118caaE1F773a84462490Dd01FE7a3e7C4cdCd",
-    decimals: 18,
-  },
-  31: isTestnet ? {
-    symbol: "hSLT7",
-    address: "0xAF8aD2C33c2c9a48CD906A4c5952A835FeB25696",
-    hathorAddr: "0x000002c993795c9ef5b894571af2277aaf344438c2f8608a50daccc6ace7c0a1",
-    pureHtrAddress: "000002c993795c9ef5b894571af2277aaf344438c2f8608a50daccc6ace7c0a1",
-    decimals: 18,
-  } :
-    {
-      symbol: "",
-      address: "",
-      hathorAddr: "",
-      pureHtrAddress: "",
-      decimals: 0,
-    },
-};
-
-HATHOR_NATIVE_TOKEN = {
-  token: "aHTR",
-  name: "Hathor Token",
-  icon: "./assets/img/hathor.png",
-  42161: {
-    symbol: "aHTR",
-    address: "0x87ca1aC7697c1240518b464B02E92A856D81Aee1",
-    decimals: 18,
-  },
-  11155111: {
-    symbol: "aHTR",
-    address: "0x87ca1aC7697c1240518b464B02E92A856D81Aee1",
-    decimals: 18,
-  },
-  31: isTestnet ? {
-    symbol: "HTR",
-    address: "0xE3f0Ae350EE09657933CD8202A4dd563c5af941F",
-    hathorAddr: "00",
-    pureHtrAddress: "00",
-    decimals: 18,
-  } : {
-    symbol: "HTR",
-    address: "0xE3f0Ae350EE09657933CD8202A4dd563c5af941F",
-    hathorAddr: "00",
-    pureHtrAddress: "00",
-    decimals: 18,
-  },
-};
-
-TOGGER_TOKEN = {
-  token: "HTOG3",
-  name: "Hathor Togger 3",
-  icon: "./assets/img/hathor.png",
-  11155111: {
-    symbol: "hTOG3",
-    address: "0x245028F6D4C2F2527309EcaE5e82F0f9fb793b7b",
-    decimals: 18,
-  },
-  31: isTestnet ? {
-    symbol: "hTOG3",
-    address: "0x92Ef82Fd2Ae42aaF96b9cbE520a0AEeEF4490B7e",
-    hathorAddr: "0x00000187dbbc34f5dfd0dd894ea0758666c8f090922f9f5e347c4c3938a1dd1e",
-    pureHtrAddress: "00000187dbbc34f5dfd0dd894ea0758666c8f090922f9f5e347c4c3938a1dd1e",
-    decimals: 18,
-  } : {
-    symbol: "",
-    address: "",
-    hathorAddr: "",
-    pureHtrAddress: "",
-    decimals: 0,
-  },
-};
-
-const TOKENS = [USDC_TOKEN, EVM_NATIVE_TOKEN, HATHOR_NATIVE_TOKEN, TOGGER_TOKEN];
-// --------- TOKENS  END --------------
+// Network configs, TOKENS and the contract ABIs are now built in
+// app/config/{networks,tokens}.ts and app/adapters/driven/evm/abis.ts, and
+// published onto window by app/composition/legacy-bridge.ts.
+//
+// They must NOT be redeclared here: a top-level declaration in this classic
+// script creates a script-scope binding that shadows the window property.
+//
+// The ABIs are static imports now, so the old fire-and-forget loadAbi() fetches
+// (and the race where updateNetwork could build a contract with an undefined
+// ABI) are gone.
 
 // Restore Hathor wallet session after main.js (module) finishes loading.
 window.addEventListener('hathorWalletRestored', function (e) {
@@ -1974,4 +1570,8 @@ window.addEventListener('hathorWalletRestored', function (e) {
   $('#connectHathorWallet').hide();
   enableHtrSendForm();
   populateHtrTokenDropdown();
+  if ($('#crossForm').is(':visible')) {
+    $('#hathorAddress').val(addr);
+    handleHathorAddressChange();
+  }
 });
