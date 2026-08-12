@@ -1,4 +1,5 @@
 import type { Container } from './container'
+import { fromWei } from '../adapters/driven/evm/units'
 import { tokensFor } from '../config/tokens'
 import { validateHathorAddress } from '../domain/hathor-address'
 import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
@@ -27,7 +28,6 @@ export function createWriteUseCases(container: Container) {
   const { route, deployment, store } = container
 
   const tokens = tokensFor(deployment)
-  const fromWei = (value: string) => Web3.utils.fromWei(value, 'ether')
 
   const getAccount = () => store.getState().evmAddress
   const getFee = () => {

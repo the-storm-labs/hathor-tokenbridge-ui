@@ -1,5 +1,6 @@
 import type { Container } from './container'
 import { createWriteUseCases, type WriteUseCases } from './write-use-cases'
+import { fromWei, keccak256Text } from '../adapters/driven/evm/units'
 import { tokensFor } from '../config/tokens'
 import { createLoadTransferHistory } from '../application/use-cases/load-transfer-history'
 import {
@@ -25,11 +26,6 @@ import {
 export function createReadUseCases(container: Container) {
   const { route, deployment, store } = container
 
-  // web3's helpers are only available once the CDN script has run, so they are
-  // reached lazily rather than captured at construction.
-  const fromWei = (value: string) => Web3.utils.fromWei(value, 'ether')
-  const keccak256 = (value: string) => Web3.utils.keccak256(value)
-
   return {
     loadTransferHistory: createLoadTransferHistory({
       bridgeApi: container.bridgeApi,
@@ -41,7 +37,7 @@ export function createReadUseCases(container: Container) {
       history: container.transferHistory,
       tokens: tokensFor(deployment),
       route,
-      hash: keccak256,
+      hash: keccak256Text,
     }),
 
     loadBridgeParameters: withStoredParameters(
