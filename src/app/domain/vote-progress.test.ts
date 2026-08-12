@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { approvalProgress, REQUIRED_SIGNATURES_TO_RELAY, REQUIRED_VOTES_TO_CLAIM } from './vote-progress'
+import {
+  approvalProgress,
+  REQUIRED_SIGNATURES_TO_RELAY,
+  REQUIRED_VOTES_TO_CLAIM,
+} from './vote-progress'
 
 describe('approvalProgress', () => {
   it('counts Hathor signatures during the Hathor phase', () => {

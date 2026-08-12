@@ -1,11 +1,7 @@
 import { apiAmountDecimals } from '../../domain/api-amount'
 import type { BridgeTransfer } from '../../domain/model/transfer'
 import type { Token } from '../../domain/model/token'
-import {
-  matchLocalHathorTransfer,
-  resolveOriginSender,
-  toHathorTxId,
-} from '../../domain/tx-id'
+import { matchLocalHathorTransfer, resolveOriginSender, toHathorTxId } from '../../domain/tx-id'
 import type { ApiTransfer } from '../../ports/driven/bridge-api.port'
 import { TransferStatus } from '../../ports/driven/bridge-api.port'
 import type { StoredTransfer } from '../../ports/driven/transfer-history.port'

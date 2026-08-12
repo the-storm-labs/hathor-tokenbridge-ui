@@ -199,7 +199,9 @@ export class TransferHistory {
 
     // Optional call: jsdom has no layout, so it does not implement this.
     if (options.reveal) {
-      this.root.getElementById(shown.link)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      this.root
+        .getElementById(shown.link)
+        ?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
     }
   }
 
@@ -286,8 +288,14 @@ export class TransferHistory {
     const hathorPage = paginate(this.hathorOrigin, this.hathorPage, this.rowsPerPage)
     const evmPage = paginate(this.evmOrigin, this.evmPage, this.rowsPerPage)
 
-    this.write(TAB.hathor.body, hathorPage.data.map((transfer) => this.hathorRow(transfer)))
-    this.write(TAB.evm.body, evmPage.data.map((transfer) => this.evmRow(transfer)))
+    this.write(
+      TAB.hathor.body,
+      hathorPage.data.map((transfer) => this.hathorRow(transfer)),
+    )
+    this.write(
+      TAB.evm.body,
+      evmPage.data.map((transfer) => this.evmRow(transfer)),
+    )
 
     this.renderPager(this.active === 'hathor' ? hathorPage : evmPage)
   }
@@ -328,10 +336,7 @@ export class TransferHistory {
   }
 }
 
-export function mountTransferHistory(
-  root: Document,
-  deps: TransferHistoryDeps,
-): TransferHistory {
+export function mountTransferHistory(root: Document, deps: TransferHistoryDeps): TransferHistory {
   const history = new TransferHistory(root, deps)
   history.mount()
   return history

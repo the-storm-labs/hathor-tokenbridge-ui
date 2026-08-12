@@ -36,7 +36,9 @@ describe('storageKey — a compatibility contract with data already in browsers'
   })
 
   it('lowercases so address casing does not split a history in two', () => {
-    expect(storageKey(ADDRESS.toLowerCase(), NETWORK)).toBe(storageKey(ADDRESS.toUpperCase(), NETWORK))
+    expect(storageKey(ADDRESS.toLowerCase(), NETWORK)).toBe(
+      storageKey(ADDRESS.toUpperCase(), NETWORK),
+    )
   })
 
   it('replaces only the FIRST space, as the original did', () => {

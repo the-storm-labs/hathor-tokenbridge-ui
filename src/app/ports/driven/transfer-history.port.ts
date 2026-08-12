@@ -47,11 +47,7 @@ export interface TransferHistoryPort {
    * Insert or update a Hathor-origin transfer, collapsing every stored copy of
    * the same transfer into one.
    */
-  upsertHathorTransfer(
-    accountAddress: string,
-    networkName: string,
-    transfer: StoredTransfer,
-  ): void
+  upsertHathorTransfer(accountAddress: string, networkName: string, transfer: StoredTransfer): void
 
   /** Whether persistence is usable at all. */
   isAvailable(): boolean

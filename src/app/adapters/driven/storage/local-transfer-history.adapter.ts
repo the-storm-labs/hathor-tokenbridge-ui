@@ -1,4 +1,7 @@
-import type { StoredTransfer, TransferHistoryPort } from '../../../ports/driven/transfer-history.port'
+import type {
+  StoredTransfer,
+  TransferHistoryPort,
+} from '../../../ports/driven/transfer-history.port'
 
 /**
  * Transfer history backed by Web Storage. Ported from the TXN_Storage class.

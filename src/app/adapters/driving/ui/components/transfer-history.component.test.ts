@@ -1,9 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import {
-  mountTransferHistory,
-  type TransferHistoryDeps,
-} from './transfer-history.component'
+import { mountTransferHistory, type TransferHistoryDeps } from './transfer-history.component'
 import { ROUTES } from '../../../../config/networks'
 import { TransferStatus } from '../../../../ports/driven/bridge-api.port'
 import type { BridgeTransfer } from '../../../../domain/model/transfer'
@@ -144,7 +141,9 @@ describe('rendering', () => {
     const { history } = setup({
       loadHistory: async () => ({
         hathorToEvm: [hathorTransfer(), hathorTransfer({ transactionId: 'tx-2', claim: null })],
-        evmToHathor: [{ transactionHash: '0xfeed0000feed', blockNumber: 10, amount: '1.5', tokenFrom: 'USDC' }],
+        evmToHathor: [
+          { transactionHash: '0xfeed0000feed', blockNumber: 10, amount: '1.5', tokenFrom: 'USDC' },
+        ],
       }),
     })
     history.start()

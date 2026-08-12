@@ -43,12 +43,12 @@ describe('grossUpForFee', () => {
   })
 
   it('rejects a fee of 100% or more instead of returning nonsense', () => {
-    expect(() => grossUpForFee('1000', { feePercentage: 10_000, feePercentageDivider: 10_000 })).toThrow(
-      /Invalid bridge fee/,
-    )
-    expect(() => grossUpForFee('1000', { feePercentage: 20_000, feePercentageDivider: 10_000 })).toThrow(
-      /Invalid bridge fee/,
-    )
+    expect(() =>
+      grossUpForFee('1000', { feePercentage: 10_000, feePercentageDivider: 10_000 }),
+    ).toThrow(/Invalid bridge fee/)
+    expect(() =>
+      grossUpForFee('1000', { feePercentage: 20_000, feePercentageDivider: 10_000 }),
+    ).toThrow(/Invalid bridge fee/)
   })
 })
 

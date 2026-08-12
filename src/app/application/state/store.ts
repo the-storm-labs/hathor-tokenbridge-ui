@@ -35,7 +35,9 @@ export function createStore<S extends object>(initial: S): Store<S> {
       if (!changed) return
 
       state = { ...state, ...changes }
-      // Copied before iterating: a listener may unsubscribe during dispatch.
+      // Copied before iterating: a listener may unsubscribe during dispatch,
+      // which would mutate the set being walked.
+      // oxlint-disable-next-line no-useless-spread -- the copy is the point
       for (const listener of [...listeners]) listener(state)
     },
 

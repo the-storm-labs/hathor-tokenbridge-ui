@@ -37,7 +37,11 @@ describe('clampDecimals', () => {
   })
 
   it('agrees with toBaseUnits — what is shown is what is sent', () => {
-    for (const [value, decimals] of [['2.999', 2], ['0.123456', 3], ['5.5', 2]] as const) {
+    for (const [value, decimals] of [
+      ['2.999', 2],
+      ['0.123456', 3],
+      ['5.5', 2],
+    ] as const) {
       const clamped = clampDecimals(value, decimals)
       expect(toBaseUnits(clamped, decimals)).toBe(toBaseUnits(value, decimals))
     }

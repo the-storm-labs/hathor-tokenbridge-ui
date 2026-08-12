@@ -4,7 +4,11 @@ import { grossUpForFee, type FeeBasis } from '../../domain/approval-amount'
 import { findTokenByKey } from '../../domain/token-lookup'
 import { isOnEvm, type Token } from '../../domain/model/token'
 import type { BridgeRoute } from '../../domain/model/network'
-import type { AllowTokensPort, BridgeContractPort, Erc20Port } from '../../ports/driven/contracts.port'
+import type {
+  AllowTokensPort,
+  BridgeContractPort,
+  Erc20Port,
+} from '../../ports/driven/contracts.port'
 import type { EvmChainPort, EvmReceipt } from '../../ports/driven/evm-chain.port'
 import type { TransferHistoryPort } from '../../ports/driven/transfer-history.port'
 import { confirmTransaction } from './confirm-transaction'
@@ -67,10 +71,7 @@ export function createCrossToken(deps: CrossTokenDeps) {
 
     // What the contract must move: the amount the user wants to arrive, plus the
     // bridge's fee. The same value the allowance was checked against.
-    const amountUnits = grossUpForFee(
-      toBaseUnits(params.amount, token.evm.decimals),
-      deps.getFee(),
-    )
+    const amountUnits = grossUpForFee(toBaseUnits(params.amount, token.evm.decimals), deps.getFee())
 
     await assertSufficientBalance(deps, token, account, amountUnits)
     await assertWithinDailyLimit(deps, token, amountUnits)
@@ -88,11 +89,7 @@ export function createCrossToken(deps: CrossTokenDeps) {
       gasPrice,
     )
 
-    const receipt = await confirmTransaction(
-      deps.chain,
-      deps.route.evm.explorer,
-      transactionHash,
-    )
+    const receipt = await confirmTransaction(deps.chain, deps.route.evm.explorer, transactionHash)
 
     // Recorded under the EVM network name, which is the key the EVM→HTR history
     // tab reads. Fields and shape are the ones already in users' storage: the

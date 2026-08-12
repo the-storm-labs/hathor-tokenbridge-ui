@@ -105,7 +105,9 @@ export class WalletHeader {
 
     if (this.walletList) {
       this.walletList.innerHTML = wallets.map(walletRow).join('')
-      // Delegated, so the rows can be replaced without leaking handlers.
+      // Delegated, and assigned rather than added: re-opening the picker
+      // replaces this handler instead of stacking another one on top, which is
+      // what addEventListener would do every time the modal is opened.
       this.walletList.onclick = (event) => {
         const item = (event.target as HTMLElement | null)?.closest('[data-rdns]')
         const rdns = item?.getAttribute('data-rdns')
@@ -174,9 +176,7 @@ export class WalletHeader {
 
     if (!route) {
       this.showWrongNetwork()
-      this.fail(
-        `Wrong Network. Please connect your wallet to ${this.deps.route.evm.name}.`,
-      )
+      this.fail(`Wrong Network. Please connect your wallet to ${this.deps.route.evm.name}.`)
       return false
     }
 

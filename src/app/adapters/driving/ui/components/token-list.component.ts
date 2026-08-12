@@ -36,11 +36,7 @@ export function tokenListMarkup(tokens: readonly Token[], route: BridgeRoute): s
  * subscribe to. It is safe to call before `DOMContentLoaded` — a `type="module"`
  * script runs after the document is parsed, so the element already exists.
  */
-export function mountTokenList(
-  root: Document,
-  tokens: readonly Token[],
-  route: BridgeRoute,
-): void {
+export function mountTokenList(root: Document, tokens: readonly Token[], route: BridgeRoute): void {
   const element = root.getElementById('tokenListTab')
   if (!element) return
 

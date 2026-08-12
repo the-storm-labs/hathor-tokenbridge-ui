@@ -96,6 +96,7 @@ describe('watchBlockNumber', () => {
       scheduler,
       active: () => tasks.size,
       async tick() {
+        // oxlint-disable-next-line no-useless-spread -- a task may cancel itself
         for (const task of [...tasks]) task()
         await Promise.resolve()
         await Promise.resolve()

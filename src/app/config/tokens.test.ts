@@ -38,9 +38,10 @@ describe('token table shape', () => {
       for (const token of tokensFor(deployment)) {
         if (!isOnHathor(token)) continue
         const uid = token.hathor.pureHtrAddress
-        expect(uid === '00' || /^[0-9a-f]{64}$/.test(uid), `${deployment}/${token.key}: ${uid}`).toBe(
-          true,
-        )
+        expect(
+          uid === '00' || /^[0-9a-f]{64}$/.test(uid),
+          `${deployment}/${token.key}: ${uid}`,
+        ).toBe(true)
         // hathorAddr is the same UID, 0x-prefixed — except native HTR, which is
         // '00' in both fields.
         expect(token.hathor.hathorAddr).toBe(uid === '00' ? '00' : `0x${uid}`)
@@ -54,20 +55,27 @@ describe('per-deployment availability', () => {
     // SLT7 and HTOG3 never had a 42161 entry, so the mainnet dropdown skips
     // them. This is pre-existing behaviour, pinned here so it cannot change by
     // accident.
-    expect(tokensFor('mainnet').filter(isOnEvm).map((t) => t.key)).toEqual(['USDC', 'aHTR'])
+    expect(
+      tokensFor('mainnet')
+        .filter(isOnEvm)
+        .map((t) => t.key),
+    ).toEqual(['USDC', 'aHTR'])
   })
 
   it('exposes all four on the testnet EVM chain', () => {
-    expect(tokensFor('testnet').filter(isOnEvm).map((t) => t.key)).toEqual([
-      'USDC',
-      'SLT7',
-      'aHTR',
-      'HTOG3',
-    ])
+    expect(
+      tokensFor('testnet')
+        .filter(isOnEvm)
+        .map((t) => t.key),
+    ).toEqual(['USDC', 'SLT7', 'aHTR', 'HTOG3'])
   })
 
   it('offers only USDC and native HTR for HTR→ARB on mainnet', () => {
-    expect(tokensFor('mainnet').filter(isOnHathor).map((t) => t.key)).toEqual(['USDC', 'aHTR'])
+    expect(
+      tokensFor('mainnet')
+        .filter(isOnHathor)
+        .map((t) => t.key),
+    ).toEqual(['USDC', 'aHTR'])
   })
 })
 

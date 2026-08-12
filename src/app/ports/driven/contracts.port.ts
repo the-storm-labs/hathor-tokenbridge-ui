@@ -9,7 +9,13 @@ export interface Erc20Port {
   balanceOf(tokenAddress: string, owner: string): Promise<string>
   allowance(tokenAddress: string, owner: string, spender: string): Promise<string>
   /** @returns the transaction hash. */
-  approve(tokenAddress: string, spender: string, amount: string, from: string, gasPrice: string): Promise<string>
+  approve(
+    tokenAddress: string,
+    spender: string,
+    amount: string,
+    from: string,
+    gasPrice: string,
+  ): Promise<string>
 }
 
 /** Identifies a Hathor-origin transfer to the bridge contract. */

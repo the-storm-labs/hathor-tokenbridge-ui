@@ -22,7 +22,9 @@ describe('sumUnspentOutputs', () => {
   })
 
   it('ignores outputs already spent', () => {
-    const history = [{ outputs: [output({ value: 200, spent_by: '0xabc' }), output({ value: 50 })] }]
+    const history = [
+      { outputs: [output({ value: 200, spent_by: '0xabc' }), output({ value: 50 })] },
+    ]
     expect(sumUnspentOutputs(history, ADDRESS, HTR, NOW).available).toBe(50)
   })
 
@@ -34,7 +36,9 @@ describe('sumUnspentOutputs', () => {
   it("ignores counterparties' outputs", () => {
     // History returns whole transactions, so most outputs are not ours. Without
     // this filter a balance is wildly overstated.
-    const history = [{ outputs: [output({ value: 200, decoded: { address: OTHER } }), output({ value: 50 })] }]
+    const history = [
+      { outputs: [output({ value: 200, decoded: { address: OTHER } }), output({ value: 50 })] },
+    ]
     expect(sumUnspentOutputs(history, ADDRESS, HTR, NOW).available).toBe(50)
   })
 
@@ -44,7 +48,9 @@ describe('sumUnspentOutputs', () => {
   })
 
   it('ignores authority outputs, which carry no value', () => {
-    const history = [{ outputs: [output({ value: 200, token_data: 0b1000_0001 }), output({ value: 50 })] }]
+    const history = [
+      { outputs: [output({ value: 200, token_data: 0b1000_0001 }), output({ value: 50 })] },
+    ]
     expect(sumUnspentOutputs(history, ADDRESS, HTR, NOW).available).toBe(50)
   })
 
@@ -73,8 +79,13 @@ describe('HathorNodeBalanceAdapter', () => {
     ({ ok: true, status: 200, json: async () => body }) as Response
 
   it('queries the node for the deployment', async () => {
-    const fetchFn = vi.fn(async (_url: string) => page({ success: true, history: [], has_more: false }))
-    const adapter = new HathorNodeBalanceAdapter(fetchFn as unknown as typeof fetch, () => NOW * 1000)
+    const fetchFn = vi.fn(async (_url: string) =>
+      page({ success: true, history: [], has_more: false }),
+    )
+    const adapter = new HathorNodeBalanceAdapter(
+      fetchFn as unknown as typeof fetch,
+      () => NOW * 1000,
+    )
 
     await adapter.getBalance(ADDRESS, HTR, 'mainnet')
     expect(fetchFn.mock.calls[0]![0]).toContain('node1.mainnet.hathor.network')
@@ -99,7 +110,10 @@ describe('HathorNodeBalanceAdapter', () => {
         page({ success: true, history: [{ outputs: [output({ value: 23 })] }], has_more: false }),
       )
 
-    const adapter = new HathorNodeBalanceAdapter(fetchFn as unknown as typeof fetch, () => NOW * 1000)
+    const adapter = new HathorNodeBalanceAdapter(
+      fetchFn as unknown as typeof fetch,
+      () => NOW * 1000,
+    )
     expect(await adapter.getBalance(ADDRESS, HTR, 'mainnet')).toEqual({ available: 123, locked: 0 })
 
     expect(fetchFn.mock.calls[1]![0]).toContain('hash=HASH1')
@@ -110,7 +124,10 @@ describe('HathorNodeBalanceAdapter', () => {
     const fetchFn = vi.fn(async (_url: string) =>
       page({ success: true, history: [], has_more: true, first_hash: 'x' }),
     )
-    const adapter = new HathorNodeBalanceAdapter(fetchFn as unknown as typeof fetch, () => NOW * 1000)
+    const adapter = new HathorNodeBalanceAdapter(
+      fetchFn as unknown as typeof fetch,
+      () => NOW * 1000,
+    )
 
     await expect(adapter.getBalance(ADDRESS, HTR, 'mainnet')).rejects.toThrow(/incomplete/)
   })

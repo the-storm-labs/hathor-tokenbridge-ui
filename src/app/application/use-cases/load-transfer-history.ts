@@ -100,7 +100,14 @@ async function fetchRemote(deps: LoadTransferHistoryDeps, evmAddress: string) {
 async function checkClaim(
   deps: LoadTransferHistoryDeps,
   status: string | null,
-  record: { blockHash: string | null; receiver: string | null; amount: string; logIndex: number | null; originChainId: number | null; destinationChainId: number | null },
+  record: {
+    blockHash: string | null
+    receiver: string | null
+    amount: string
+    logIndex: number | null
+    originChainId: number | null
+    destinationChainId: number | null
+  },
 ): Promise<ClaimCheck> {
   if (!needsClaimCheck(status) || !deps.bridge) return 'unknown'
   if (!record.blockHash || !record.receiver || record.logIndex == null) return 'unknown'

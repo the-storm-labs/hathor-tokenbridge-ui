@@ -135,14 +135,16 @@ describe('matchLocalHathorTransfer', () => {
 
   it('still matches on the hashed id in backendTxHash', () => {
     const local = [{ hathorTxId: 'abc123' }]
-    expect(matchLocalHathorTransfer(local, { backendTxHash: 'hashed(abc123)' }, hash)).toBe(local[0])
+    expect(matchLocalHathorTransfer(local, { backendTxHash: 'hashed(abc123)' }, hash)).toBe(
+      local[0],
+    )
   })
 
   it('matches on the hashed id in originTransactionHash', () => {
     const local = [{ hathorTxId: 'abc123' }]
-    expect(
-      matchLocalHathorTransfer(local, { originTransactionHash: 'hashed(abc123)' }, hash),
-    ).toBe(local[0])
+    expect(matchLocalHathorTransfer(local, { originTransactionHash: 'hashed(abc123)' }, hash)).toBe(
+      local[0],
+    )
   })
 
   it('skips local records with no hathor id', () => {
@@ -154,7 +156,11 @@ describe('matchLocalHathorTransfer', () => {
 
   it('returns null when nothing matches', () => {
     expect(
-      matchLocalHathorTransfer([{ hathorTxId: 'abc123' }], { originTransactionHash: '0xdef' }, hash),
+      matchLocalHathorTransfer(
+        [{ hathorTxId: 'abc123' }],
+        { originTransactionHash: '0xdef' },
+        hash,
+      ),
     ).toBeNull()
     expect(matchLocalHathorTransfer([], { originTransactionHash: '0xabc' }, hash)).toBeNull()
   })

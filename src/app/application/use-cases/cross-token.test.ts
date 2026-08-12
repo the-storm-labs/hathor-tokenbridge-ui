@@ -36,7 +36,11 @@ function setup(overrides: Record<string, unknown> = {}) {
   }
 
   const deps = {
-    erc20: { balanceOf: async () => usdc(1_000), allowance: async () => '0', approve: async () => '' },
+    erc20: {
+      balanceOf: async () => usdc(1_000),
+      allowance: async () => '0',
+      approve: async () => '',
+    },
     bridge: { receiveTokensTo },
     allowTokens: { calcMaxWithdraw: async () => wei(10_000) },
     chain,
@@ -120,7 +124,11 @@ describe('crossToken', () => {
 
   it('rejects an amount above the balance, reporting it in whole tokens', async () => {
     const { receiveTokensTo, crossToken } = setup({
-      erc20: { balanceOf: async () => usdc(5), allowance: async () => '0', approve: async () => '' },
+      erc20: {
+        balanceOf: async () => usdc(5),
+        allowance: async () => '0',
+        approve: async () => '',
+      },
     })
 
     await expect(crossToken(request({ amount: '10' }))).rejects.toThrow(

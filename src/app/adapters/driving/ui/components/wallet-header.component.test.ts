@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import {
-  mountWalletHeader,
-  WALLET_EVENT,
-  type WalletHeaderDeps,
-} from './wallet-header.component'
+import { mountWalletHeader, WALLET_EVENT, type WalletHeaderDeps } from './wallet-header.component'
 import { ROUTES, routeForChainId } from '../../../../config/networks'
 
 const ROUTE = ROUTES.mainnet

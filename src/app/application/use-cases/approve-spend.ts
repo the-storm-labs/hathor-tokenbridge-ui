@@ -45,11 +45,9 @@ export function createApproveSpend(deps: ApproveSpendDeps) {
     if (!token || !isOnEvm(token)) throw new Error('Choose a token to cross')
     if (!params.amount) throw new Error('Complete the Amount field')
 
-    const amount = approvalAmount(
-      toBaseUnits(params.amount, token.evm.decimals),
-      deps.getFee(),
-      { unlimited: params.unlimited },
-    )
+    const amount = approvalAmount(toBaseUnits(params.amount, token.evm.decimals), deps.getFee(), {
+      unlimited: params.unlimited,
+    })
 
     const gasPrice = await deps.resolveGasPrice()
 

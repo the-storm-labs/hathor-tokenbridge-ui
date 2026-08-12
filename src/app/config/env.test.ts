@@ -15,7 +15,10 @@ describe('resolveDeployment', () => {
   it('honours the ?testnet query param', () => {
     // The footer link points at ./index.html?testnet — a supported entry point.
     expect(
-      resolveDeployment(fakeLocation('https://hathorbridge.xyz/index.html?testnet'), fakeDocument()),
+      resolveDeployment(
+        fakeLocation('https://hathorbridge.xyz/index.html?testnet'),
+        fakeDocument(),
+      ),
     ).toBe('testnet')
   })
 
@@ -57,7 +60,10 @@ describe('resolveDeployment', () => {
       resolveDeployment(fakeLocation('https://testnet-preview.web.app/'), fakeDocument()),
     ).toBe('mainnet')
     expect(
-      resolveDeployment(fakeLocation('https://hathorbridge.xyz/docs/testnet/guide'), fakeDocument()),
+      resolveDeployment(
+        fakeLocation('https://hathorbridge.xyz/docs/testnet/guide'),
+        fakeDocument(),
+      ),
     ).toBe('mainnet')
     expect(
       resolveDeployment(fakeLocation('https://hathorbridge.xyz/#testnet'), fakeDocument()),

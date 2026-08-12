@@ -28,7 +28,11 @@ describe('paginate', () => {
   })
 
   it('handles an exact multiple', () => {
-    const page = paginate(Array.from({ length: 12 }, (_, i) => i), 2, 6)
+    const page = paginate(
+      Array.from({ length: 12 }, (_, i) => i),
+      2,
+      6,
+    )
     expect(page.total_pages).toBe(2)
     expect(page.next_page).toBeNull()
     expect(page.data).toHaveLength(6)

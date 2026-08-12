@@ -268,9 +268,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
 
     // Wallets wrap handler results as { type, response }; tolerate a bare array
     // from an older build.
-    const balances = Array.isArray(result)
-      ? result
-      : (result as { response?: unknown })?.response
+    const balances = Array.isArray(result) ? result : (result as { response?: unknown })?.response
     if (!Array.isArray(balances)) {
       throw new Error('htr_getBalance returned an unexpected payload')
     }

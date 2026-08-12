@@ -24,9 +24,7 @@ export interface TransferQuote {
  * @param feeRate  Fractional rate (0.002 = 0.2%), i.e. the global `fee`.
  */
 export function quote(amount: string | BigNumber, feeRate: number): TransferQuote {
-  const parsedAmount = BigNumber.isBigNumber(amount)
-    ? amount
-    : new BigNumber(amount || 0)
+  const parsedAmount = BigNumber.isBigNumber(amount) ? amount : new BigNumber(amount || 0)
 
   // The `feeRate === 0` short-circuit is preserved: dividing by (1 - 0) would
   // give the same value, but keeping it avoids introducing any division at all

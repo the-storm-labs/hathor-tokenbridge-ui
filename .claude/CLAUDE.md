@@ -10,12 +10,29 @@ npm run build      # Build to public/ (Firebase hosting dir)
 npm run preview    # Preview the build locally
 npm run typecheck  # tsc --noEmit over src/app and src/types
 npm run test       # Vitest (watch); `npm test -- --run` for one pass
-npm run ci         # typecheck + tests + build, the same order CI uses
+npm run lint       # oxlint + prettier --check
+npm run format     # prettier --write
+npm run ci         # lint + typecheck + tests + build, the same order CI uses
 ```
 
 Deploy happens in CI (`.github/workflows/firebase-hosting-merge.yml`) and runs a real build with the `VITE_*` secrets. Do **not** reintroduce a `cp -r src/* public/` deploy: `src/` is source, `public/` is build output and is gitignored.
 
-There is no linter. `docs/smoke-checklist.md` is the manual safety net — there are no end-to-end tests, so run it in full before shipping UI changes, on both pages.
+The linter is **oxlint**, not ESLint: this project is on TypeScript 7, and
+typescript-eslint still declares `peer typescript <6.1.0`. oxlint is a single
+binary with no TypeScript peer dependency, so it works today; revisit ESLint when
+typescript-eslint supports TS 7. Only the `correctness` category is on — the
+other categories are opinions this codebase has already decided against
+deliberately, and turning them on produced twenty complaints about intentional
+code. Three deliberate patterns carry an inline `oxlint-disable-next-line` with
+the reason.
+
+Prettier is configured to the style the code already had (no semicolons, single
+quotes, width 100), so adopting it touched 26 of 116 files and only rewrapped
+lines. Markdown and `.github` are ignored: Prettier rewraps prose and reflows
+YAML, which churns hand-tuned tables for no gain.
+
+`docs/smoke-checklist.md` is the manual safety net — there are no end-to-end
+tests, so run it in full before shipping UI changes, on both pages.
 
 ## Architecture
 

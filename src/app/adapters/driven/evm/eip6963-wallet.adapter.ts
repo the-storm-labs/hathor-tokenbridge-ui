@@ -34,6 +34,8 @@ export class Eip6963WalletAdapter implements EvmWalletPort {
       if (!detail?.info?.rdns) return
 
       this.wallets.set(detail.info.rdns, detail)
+      // Copied before iterating: a waiter resolves and removes itself.
+      // oxlint-disable-next-line no-useless-spread -- the copy is the point
       for (const notify of [...this.waiters]) notify()
     })
 

@@ -79,6 +79,4 @@ const unavailableMarkup = () =>
   `<span class="text-muted" style="font-size:0.85em;">Not available</span>`
 
 const unavailableCell = (tag: 'th' | 'td') =>
-  tag === 'th'
-    ? `<th scope="row">${unavailableMarkup()}</th>`
-    : `<td>${unavailableMarkup()}</td>`
+  tag === 'th' ? `<th scope="row">${unavailableMarkup()}</th>` : `<td>${unavailableMarkup()}</td>`

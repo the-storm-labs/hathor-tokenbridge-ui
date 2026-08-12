@@ -185,8 +185,7 @@ export class ViemAllowTokensAdapter implements AllowTokensPort {
       [tokenAddress],
     )
     const limit = (Array.isArray(result) ? result[1] : undefined) as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
 
     return {
       min: asString(limit?.['min']),
@@ -215,12 +214,7 @@ export class ViemFederationAdapter implements FederationPort {
   ) {}
 
   async getMembers(): Promise<string[]> {
-    const members = await readContract(
-      this.clients(),
-      ABIS.federation,
-      this.address,
-      'getMembers',
-    )
+    const members = await readContract(this.clients(), ABIS.federation, this.address, 'getMembers')
     return Array.isArray(members) ? members.map(asString) : []
   }
 
