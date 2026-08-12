@@ -20,9 +20,6 @@
 // isTestnet likewise comes from resolveDeployment(). The old
 // href.includes("testnet") matched the word anywhere in the URL — a host or path
 // containing it silently switched the whole app to testnet contract addresses.
-const wallets = [];
-const LAST_CONNECTED_WALLET_KEY = 'lastConnectedWallet';
-
 // pagination of active txs table
 const numberOfLines = 6;
 
@@ -159,12 +156,8 @@ $(document).ready(function () {
     );
   });
   updateTokenListTab();
-  // EIP-6963 Wallet Discovery
-  function onAnnouncement(event) {
-    wallets.push(event.detail);
-  }
-  window.addEventListener('eip6963:announceProvider', onAnnouncement);
-  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  // Wallet discovery (EIP-6963) is the adapter's; it starts listening when the
+  // module graph loads, which is before this ready block runs.
   autoConnectWallet();
 
   // ---- HTR→ARB direction: event wiring ----
@@ -228,61 +221,60 @@ $(document).ready(function () {
   });
 });
 
-function autoConnectWallet() {
-  const lastConnectedWalletName = localStorage.getItem(LAST_CONNECTED_WALLET_KEY);
-  if (lastConnectedWalletName) {
-    let attempts = 0;
-    const maxAttempts = 10; // Try for 1 second (10 * 100ms)
-    const intervalId = setInterval(() => {
-      const providerDetail = wallets.find(w => w.info.name === lastConnectedWalletName);
-      if (providerDetail) {
-        clearInterval(intervalId);
-        connectWallet(providerDetail);
-      } else {
-        attempts++;
-        if (attempts >= maxAttempts) {
-          clearInterval(intervalId);
-          console.log("Auto-connect failed: wallet not found.");
-        }
-      }
-    }, 100);
+/**
+ * Reconnects the wallet used last, if it is still installed.
+ *
+ * The polling loop this replaces asked a mutable array every 100ms, ten times,
+ * and gave up silently — so a wallet that injected late left the page looking
+ * disconnected for no stated reason. Discovery now resolves the wait itself.
+ */
+async function autoConnectWallet() {
+  const reconnected = await window.__useCases.reconnectEvmWallet();
+  if (reconnected) {
+    await onWalletConnected(reconnected.wallet, reconnected.connection);
   }
 }
 
-async function connectWallet(providerDetail) {
-  const provider = providerDetail.provider;
+async function connectWallet(wallet) {
   try {
-    // Use the specific provider object to request accounts
-    const accounts = await provider.request({ method: 'eth_requestAccounts' });
-    window.web3 = new Web3(provider);
-    const chainId = await web3.eth.net.getId();
-    await updateCallback(chainId, accounts);
-
-    localStorage.setItem(LAST_CONNECTED_WALLET_KEY, providerDetail.info.name);
-
-    provider.on("chainChanged", (newChain) => {
-      updateNetwork(newChain);
-      showActiveTxnsTab();
-    });
-    provider.on("accountsChanged", (newAddresses) => {
-      if (newAddresses.length === 0) {
-        onMetaMaskConnectionError({ message: "Wallet disconnected. Please connect again." });
-      } else {
-        checkAllowance();
-        updateAddress(newAddresses)
-          .then((addr) => updateActiveAddressTXNs(addr))
-          .then(() => showActiveAddressTXNs());
-      }
-    });
-    provider.on("disconnect", (error) => {
-      console.error("Wallet disconnected:", error);
-      onMetaMaskConnectionError({ message: "Wallet connection lost. Please reload the page and connect again." });
-    });
+    const connection = await window.__useCases.connectEvmWallet(wallet.rdns);
+    await onWalletConnected(wallet, connection);
     $('#myModal').modal('hide');
   } catch (error) {
-    console.error(`Connection failed for ${providerDetail.info.name}:`, error);
+    console.error(`Connection failed for ${wallet.name}:`, error);
     onMetaMaskConnectionError({ message: `Connection failed: ${error.message}` });
   }
+}
+
+/**
+ * Adopts a connection: builds the web3 instance the legacy code reads, brings the
+ * page up to date, and subscribes to the provider's own events.
+ */
+async function onWalletConnected(wallet, connection) {
+  window.web3 = new Web3(connection.provider);
+  await updateCallback(connection.chainId, connection.accounts);
+
+  const events = window.__useCases.walletEvents(wallet.rdns);
+  if (!events) return;
+
+  events.onChainChanged((newChain) => {
+    updateNetwork(newChain);
+    showActiveTxnsTab();
+  });
+  events.onAccountsChanged((newAddresses) => {
+    if (newAddresses.length === 0) {
+      onMetaMaskConnectionError({ message: "Wallet disconnected. Please connect again." });
+    } else {
+      checkAllowance();
+      updateAddress(newAddresses)
+        .then((addr) => updateActiveAddressTXNs(addr))
+        .then(() => showActiveAddressTXNs());
+    }
+  });
+  events.onDisconnect((error) => {
+    console.error("Wallet disconnected:", error);
+    onMetaMaskConnectionError({ message: "Wallet connection lost. Please reload the page and connect again." });
+  });
 }
 
 function handleHathorAddressChange() {
@@ -333,50 +325,16 @@ async function fillHathorToEvmTxs() {
 
 
 
-/**
- * Fetches the chain inputs and defers the decision to the domain.
- * Replaces three byte-identical copies of this rule (approve, cross, claim).
- */
-async function resolveGasPrice() {
-  const chainId = config.networkId;
-  const inputs = { averageGasPrice: undefined, latestBlockMinimumGasPrice: undefined };
-
-  if (window.__domain.needsLatestBlockMinimum(chainId)) {
-    const block = await web3.eth.getBlock("latest");
-    inputs.latestBlockMinimumGasPrice = block.minimumGasPrice;
-  } else {
-    inputs.averageGasPrice = await web3.eth.getGasPrice();
-  }
-
-  return window.__domain.gasPriceFor(chainId, inputs);
-}
-
-async function waitForReceipt(txHash) {
-  let timeElapsed = 0;
-  let interval = 10_000;
-  return new Promise((resolve, reject) => {
-    const checkInterval = setInterval(async () => {
-      timeElapsed += interval;
-      let receipt = await web3.eth.getTransactionReceipt(txHash);
-      if (receipt != null) {
-        clearInterval(checkInterval);
-        resolve(receipt);
-      }
-      if (timeElapsed > 90_000) {
-        reject(
-          new Error(
-            `Operation took too long <a target="_blank" href="${config.explorer}/tx/${txHash}">check Tx on the explorer</a>`
-          )
-        );
-      }
-    }, interval);
-  });
-}
+// resolveGasPrice and waitForReceipt now live in the application layer: the gas
+// rule is one function in domain/gas-price.ts fed by the chain port, and the
+// receipt wait is confirmTransaction, which also stopped leaking its polling
+// interval on the timeout path.
 
 function onLogInClick() {
   const walletList = $("#wallet-list");
   walletList.empty(); // Clear previous list
 
+  const wallets = window.__useCases.discoveredWallets();
   if (wallets.length === 0) {
     showModal("No Wallets Found", "Please install a wallet extension like MetaMask.");
     return;
@@ -386,8 +344,8 @@ function onLogInClick() {
     const walletItem = $(`
       <li class="list-group-item d-flex justify-content-between align-items-center">
         <div>
-          <img src="${wallet.info.icon}" alt="${wallet.info.name}" width="30" height="30" class="mr-2">
-          ${wallet.info.name}
+          <img src="${wallet.icon}" alt="${wallet.name}" width="30" height="30" class="mr-2">
+          ${wallet.name}
         </div>
         <button class="btn btn-primary btn-sm">Connect</button>
       </li>
@@ -480,64 +438,30 @@ async function getMaxBalance(event) {
     });
 }
 
+/**
+ * Step one of the ARB→HTR flow.
+ *
+ * The button state is all that is left here: the amount arithmetic, the fee
+ * gross-up, the gas price and the wait for the receipt are the approveSpend use
+ * case's, which is also what publishes a revert as an error instead of a
+ * silently successful approval.
+ */
 async function approveSpend() {
   const approveButton = $("#approve");
   const originalButtonText = approveButton.html();
   approveButton.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Approving...');
 
+  if ($("#amount").hasClass("is-invalid")) {
+    crossTokenError("Invalid Amount");
+    approveButton.html(originalButtonText);
+    return;
+  }
+
   try {
-    var tokenToCross = $("#tokenAddress").val();
-    var token = TOKENS.find((element) => element.token == tokenToCross);
-    if (!token) {
-      crossTokenError("Choose a token to cross");
-      return;
-    }
-    const isUnlimitedApproval = $("#doNotAskAgain").prop("checked");
-    const BN = web3.utils.BN;
-    const amount = $("#amount").val();
-
-    if (!amount) {
-      crossTokenError("Complete the Amount field");
-      return;
-    }
-    if ($("#amount").hasClass("is-invalid")) {
-      crossTokenError("Invalid Amount");
-      return;
-    }
-
-    const decimals = token[config.networkId].decimals;
-    const amountWithDecimals = window.__domain.toBaseUnits(amount, decimals);
-
-    const amountBN = isUnlimitedApproval
-      ? new BN(web3.utils.toWei(Number.MAX_SAFE_INTEGER.toString(), "ether"))
-      : new BN(amountWithDecimals)
-        .mul(new BN(feePercentageDivider))
-        .div(new BN(feePercentageDivider - feePercentage));
-
-    const gasPrice = await resolveGasPrice();
-
-    await new Promise((resolve, reject) => {
-      tokenContract.methods
-        .approve(
-          bridgeContract.options.address,
-          amountBN.mul(new BN(101)).div(new BN(100)).toString()
-        )
-        .send(
-          { from: address, gasPrice: gasPrice, gas: 400_000 },
-          async (err, txHash) => {
-            if (err) return reject(err);
-            try {
-              let receipt = await waitForReceipt(txHash);
-              if (receipt.status) {
-                resolve(receipt);
-              } else {
-                reject(new Error(`Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`));
-              }
-            } catch (err) {
-              reject(err);
-            }
-          }
-        );
+    await window.__useCases.approveSpend({
+      tokenKey: $("#tokenAddress").val(),
+      amount: $("#amount").val(),
+      unlimited: $("#doNotAskAgain").prop("checked"),
     });
 
     disableApproveCross({
@@ -558,6 +482,14 @@ async function approveSpend() {
   }
 }
 
+/**
+ * Step two of the ARB→HTR flow.
+ *
+ * What remains is the form and the alerts. The balance check, the daily-limit
+ * check, the destination validation, the fee gross-up and the history record all
+ * belong to the crossToken use case now — including the limit comparison, which
+ * was previously unreachable for tokens whose EVM precision is not 18.
+ */
 async function crossToken() {
   const convertButton = $("#deposit");
   const originalButtonText = convertButton.html();
@@ -566,94 +498,22 @@ async function crossToken() {
   try {
     cleanAlertError();
     cleanAlertSuccess();
-    var tokenToCross = $("#tokenAddress").val();
-    var token = TOKENS.find((element) => element.token == tokenToCross);
-    if (!token) {
-      throw new Error("Choose a token to cross");
-    }
-    const tokenAddress = token[config.networkId].address;
-    tokenContract = new web3.eth.Contract(ERC20_ABI, tokenAddress);
-    const BN = web3.utils.BN;
 
-    const amount = $("#amount").val();
-    if (!amount) {
-      throw new Error("Complete the Amount field");
-    }
     if ($("#amount").hasClass("is-invalid")) {
       throw new Error("Invalid Amount");
     }
 
-    const hathorAddress = $("#hathorAddress").val();
-    if (!hathorAddress) {
-      throw new Error("Inform the hathor address!");
-    }
-
-    if (!validateHathorAddress(hathorAddress)) {
-      throw new Error("Invalid Hathor address!");
-    }
-
-    const decimals = token[config.networkId].decimals;
-    const amountWithDecimals = window.__domain.toBaseUnits(amount, decimals);
-    const amountBN = new BN(amountWithDecimals)
-      .mul(new BN(feePercentageDivider))
-      .div(new BN(feePercentageDivider - feePercentage));
-
     disableInputs(true);
 
-    const balance = await retry3Times(tokenContract.methods.balanceOf(address).call);
-    const balanceBN = new BN(balance);
-    if (balanceBN.lt(amountBN)) {
-      const showBalance = new BigNumber(balance);
-      throw new Error(
-        `Insuficient Balance in your account, your current balance is ${showBalance.shiftedBy(
-          -decimals
-        )} ${token[config.networkId].symbol}`
-      );
-    }
-
-    let maxWithdrawInWei = await retry3Times(allowTokensContract.methods.calcMaxWithdraw(tokenAddress).call);
-    const maxWithdraw = new BN(maxWithdrawInWei);
-    if (amountBN.gt(maxWithdraw)) {
-      throw new Error(`Amount bigger than the daily limit. Daily limit left ${web3.utils.fromWei(maxWithdrawInWei, 'ether')} tokens`);
-    }
-
-    const gasPrice = await resolveGasPrice();
-
-    const receipt = await new Promise((resolve, reject) => {
-      bridgeContract.methods
-        .receiveTokensTo(31, tokenAddress, hathorAddress, amountBN.toString())
-        .send(
-          { from: address, gasPrice: gasPrice, gas: 600_000 },
-          async (err, txHash) => {
-            if (err) return reject(err);
-            try {
-              let receipt = await waitForReceipt(txHash);
-              if (receipt.status) {
-                resolve(receipt);
-              } else {
-                reject(new Error(`Execution failed <a target="_blank" href="${config.explorer}/tx/${txHash}">see Tx</a>`));
-              }
-            } catch (err) {
-              reject(err);
-            }
-          }
-        );
+    const { receives } = await window.__useCases.crossToken({
+      tokenKey: $("#tokenAddress").val(),
+      amount: $("#amount").val(),
+      hathorAddress: $("#hathorAddress").val(),
     });
 
     $("#confirmationTime").text(config.confirmationTime);
-    $("#receive").text(
-      `${amount} ${token[config.crossToNetwork.networkId].symbol}`
-    );
+    $("#receive").text(receives);
     $("#success").show();
-    disableInputs(false);
-
-    TXN_Storage.addTxn(address, config.name, {
-      networkId: config.networkId,
-      tokenFrom: token[config.networkId].symbol,
-      tokenTo: token[config.crossToNetwork.networkId].symbol,
-      amount,
-      ...receipt,
-    });
 
     updateActiveAddressTXNs(address);
     showActiveTxnsTab();
@@ -663,7 +523,6 @@ async function crossToken() {
       doNotAskDisabled: true,
       crossDisabled: true,
     });
-
   } catch (err) {
     console.error(err);
     crossTokenError(`Couldn't cross the tokens. ${err.message}`);
@@ -683,48 +542,26 @@ function errorClaim(error) {
 }
 
 /**
- * Submits a claim.
+ * Submits a claim and reports the outcome.
  *
- * @param {{to: string, amount: string, blockHash: string, logIndex: number,
- *          originChainId: number, destinationChainId: number}} claim
+ * @param {import('../app/ports/driven/contracts.port').ClaimRequest} claim
  *        The typed request built by the load-transfer-history use case.
  */
 async function claimToken(claim) {
   cleanAlertError();
   cleanAlertSuccess();
 
-  if (!bridgeContract) {
-    errorClaim("Connect your wallet!");
-    return;
+  try {
+    await window.__useCases.claimTransfer(claim);
+  } catch (err) {
+    // A reverted claim used to look like a successful one: the send promise was
+    // awaited and the receipt status never checked, so the row simply never
+    // changed and the user was left guessing.
+    console.error(err);
+    errorClaim(`Couldn't claim the tokens. ${err.message}`);
+  } finally {
+    startPoolingTxs();
   }
-
-  const gasPrice = await resolveGasPrice();
-
-  await bridgeContract.methods
-    .claim({
-      to: claim.to,
-      amount: claim.amount,
-      blockHash: claim.blockHash,
-      // A Hathor-origin transfer has no EVM block of its own, so the federation
-      // votes with the block hash in both slots. Building it any other way
-      // produces a hash that matches nothing on-chain.
-      transactionHash: claim.blockHash,
-      logIndex: claim.logIndex,
-      originChainId: claim.originChainId,
-    })
-    .send({ from: address, gasPrice: gasPrice, gas: 400_000 })
-    .on('transactionHash', (hash) => {
-      console.log(`txHash: ${hash}`);
-    })
-    .on('receipt', (receipt) => {
-      console.log(receipt);
-      startPoolingTxs();
-    })
-    .on('error', (error, receipt) => {
-      console.log(error);
-      console.log(receipt);
-      startPoolingTxs();
-    });
 }
 
 function cleanAlertSuccess() {
@@ -863,7 +700,7 @@ function markInvalidAmount(errorDescription) {
 }
 
 function onDisconnectEvmClick() {
-  localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
+  window.__useCases.forgetEvmWallet();
   $("#logIn").show();
   $("#transferTab").addClass("disabled");
   $(".wallet-status").hide();
@@ -877,7 +714,7 @@ function onDisconnectEvmClick() {
 
 function onMetaMaskConnectionError(err) {
   console.log(err);
-  localStorage.removeItem(LAST_CONNECTED_WALLET_KEY);
+  window.__useCases.forgetEvmWallet();
   showModal("Connect wallet", `<p>${err.message}</p>`);
   $("#logIn").attr("onclick", "onLogInClick()");
   $("#logIn").text("Connect wallet");
@@ -1433,29 +1270,19 @@ async function onHtrSendClick() {
   $('#htrSendSuccess').hide();
   $('#htrSendError').hide();
 
-  const selectedKey = $('#htrTokenSelect').val();
-  if (!selectedKey) {
-    $('#htrSendErrorMsg').text('Please select a token.');
-    $('#htrSendError').show();
-    return;
-  }
-  const token = TOKENS.find(t => t.token === selectedKey);
-  if (!token || !token[31] || !token[31].pureHtrAddress) {
-    $('#htrSendErrorMsg').text('Selected token is not available on Hathor.');
-    $('#htrSendError').show();
-    return;
-  }
-
   const amountStr = $('#htrAmount').val();
-  const amountFloat = parseFloat(amountStr);
-  if (!amountStr || isNaN(amountFloat) || amountFloat <= 0) {
+  const evmDest = $('#htrDestAddress').val().trim();
+
+  // Field-level feedback stays here, next to the fields: the use case validates
+  // the same three things and refuses, but only this half knows which input to
+  // mark.
+  if (!amountStr || isNaN(parseFloat(amountStr)) || parseFloat(amountStr) <= 0) {
     $('#htrAmount').addClass('is-invalid');
     $('#htrAmountError').text('Enter a valid amount.');
     return;
   }
   $('#htrAmount').removeClass('is-invalid');
 
-  const evmDest = $('#htrDestAddress').val().trim();
   if (!window.__domain.isEvmAddress(evmDest)) {
     $('#htrDestAddress').addClass('is-invalid');
     $('#htrSendErrorMsg').text('Enter a valid Arbitrum address (0x...).');
@@ -1464,78 +1291,31 @@ async function onHtrSendClick() {
   }
   $('#htrDestAddress').removeClass('is-invalid');
 
-  const hathorConfig = isTestnet ? HTR_TESTNET_CONFIG : HTR_MAINNET_CONFIG;
-  const bridgeHathorAddr = hathorConfig.bridgeHathorAddress;
-  if (!bridgeHathorAddr || bridgeHathorAddr.startsWith('HATHOR_')) {
-    $('#htrSendErrorMsg').text('Bridge Hathor deposit address is not configured.');
-    $('#htrSendError').show();
-    return;
-  }
-
-  // String math, truncating — never float. `Math.round(parseFloat(x) * 100)`
-  // rounds *up* past 2 decimals, so typing 2.999 used to send 3.00 HTR: more
-  // than the user asked for. Truncating also matches how the ARB→HTR side
-  // scales its amounts.
-  //
-  // BigInt strips the leading zeros toBaseUnits keeps ('0.5' -> '050'), so the
-  // wallet receives '50', exactly as before.
-  const hathorDecimals = token[31].decimals;
-  const amountUnits = BigInt(window.__domain.toBaseUnits(amountStr, hathorDecimals)).toString();
-  const tokenUid = token[31].pureHtrAddress;
-
   const btn = $('#htrSendBtn');
   btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
 
   try {
-    const result = await window.HathorWallet.sendBridgeTx(
-      bridgeHathorAddr, tokenUid, amountUnits, evmDest, isTestnet
-    );
-
-    console.log('HTR→ARB send result', result);
-
-    if (!result || !result.response) {
-      throw new Error('Transaction sent but wallet returned no response');
-    }
-
-    const response = result.response;
-
-    // Store in local transaction history (keyed by EVM destination, which the
-    // polling system uses when querying the backend for updates)
-    const evmNetworkName = config ? config.crossToNetwork.name : (isTestnet ? 'Golf' : 'Hathor Mainnet');
-    TXN_Storage.addHathorTxn(evmDest, evmNetworkName, {
-      hathorTxId:      response.hash,
-      backendTxHash:   null,
-      displayedTxHash: response.hash,
-      transactionHash: response.hash,
-      // Formatted through the same helper the API-sourced rows use, at the same
-      // display precision, so this row does not visibly change when the API
-      // indexes it and takes over. Storing the raw input rendered "2 HTR"
-      // next to "2.0000 aHTR" for the very same transfer.
-      token:    (token[config.networkId] && token[config.networkId].symbol)
-                  || token[31].symbol || token.token,
-      // Scaled and displayed at the same Hathor precision, so this row is
-      // identical to the one the API produces for it a moment later.
-      amount:   BridgeAPI.formatAmount(amountUnits, hathorDecimals, hathorDecimals),
-      sender:   window.HathorWallet.getAddress(),
-      // The Hathor federation signs first; the API takes over this record's
-      // status once it indexes the transaction.
-      status:   BridgeAPI.STATUS.HATHOR_VOTING,
-      action:   `<span class="badge badge-warning">Submitted — awaiting signatures</span>`,
-      votes:    0,
-      signatures: 0,
-      blockNumber: null,
+    await window.__useCases.sendHathorTransfer({
+      tokenKey: $('#htrTokenSelect').val(),
+      amount: amountStr,
+      evmDestination: evmDest,
     });
 
-    // Always load Hathor→EVM transactions for the destination address and display them
-    activeAddresseth2HtrTxns = TXN_Storage.getAllTxns4Address(evmDest, evmNetworkName);
-    // If EVM wallet is connected, also reload EVM-initiated transactions
+    // Always show the Hathor→EVM transfers of the destination address; if an EVM
+    // wallet is connected, refresh its own transfers too.
+    //
+    // The Hathor network name comes from the config object rather than through
+    // `config`, which is null until an EVM wallet is connected — and this form
+    // works without one.
+    const hathorNetworkName = (isTestnet ? HTR_TESTNET_CONFIG : HTR_MAINNET_CONFIG).name;
+    activeAddresseth2HtrTxns = TXN_Storage.getAllTxns4Address(evmDest, hathorNetworkName);
     if (address) {
       activeAddresshtr2EthTxns = TXN_Storage.getAllTxns4Address(address, config.name);
     }
     showActiveAddressTXNs();
 
     $('#htrSendSuccess').show();
-    // Switch to HTR→ARB history tab so the user can track the tx
+    // Switch to the HTR→ARB history tab so the user can track the tx
     showEvmTxsnTabe();
     location.hash = '';
     location.hash = '#nav-eth-htr-tab';

@@ -18,6 +18,33 @@ import { ABIS } from './abis'
 
 const asString = (value: unknown): string => (value == null ? '' : String(value))
 
+/**
+ * Submits a write and resolves as soon as the transaction has a hash.
+ *
+ * Awaiting `send()` instead would resolve on the *receipt*, which reads more
+ * naturally but hides the hash until the transaction is mined — and the hash is
+ * what the app needs to link to the explorer, to poll, and to report a revert
+ * against. Waiting is the caller's decision (see confirmTransaction), which is
+ * also what the ports promise: these methods return a transaction hash.
+ */
+function submit(method: Web3ContractMethod, options: SendOptions): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const sent = method.send(options)
+
+    sent.on('transactionHash', resolve)
+    sent.on('error', reject)
+    // A wallet that rejects before producing a hash rejects the promise itself,
+    // and without this handler that becomes an unhandled rejection.
+    sent.catch(reject)
+  })
+}
+
+interface SendOptions {
+  readonly from: string
+  readonly gasPrice: string
+  readonly gas: number
+}
+
 export class Web3Erc20Adapter implements Erc20Port {
   constructor(private readonly getWeb3: () => Web3Instance | null) {}
 
@@ -36,10 +63,11 @@ export class Web3Erc20Adapter implements Erc20Port {
     from: string,
     gasPrice: string,
   ): Promise<string> {
-    const receipt = await this.contract(tokenAddress)
-      .methods['approve']!(spender, amount)
-      .send({ from, gasPrice, gas: 400_000 })
-    return receipt.transactionHash
+    return submit(this.contract(tokenAddress).methods['approve']!(spender, amount), {
+      from,
+      gasPrice,
+      gas: 400_000,
+    })
   }
 
   private contract(tokenAddress: string): Web3Contract {
@@ -83,17 +111,17 @@ export class Web3BridgeAdapter implements BridgeContractPort {
   }
 
   async claim(request: ClaimRequest, from: string, gasPrice: string): Promise<string> {
-    const receipt = await this.contract()
-      .methods['claim']!({
+    return submit(
+      this.contract().methods['claim']!({
         to: request.to,
         amount: request.amount,
         blockHash: request.blockHash,
         transactionHash: request.blockHash,
         logIndex: request.logIndex,
         originChainId: request.originChainId,
-      })
-      .send({ from, gasPrice, gas: 400_000 })
-    return receipt.transactionHash
+      }),
+      { from, gasPrice, gas: 400_000 },
+    )
   }
 
   async receiveTokensTo(
@@ -106,15 +134,15 @@ export class Web3BridgeAdapter implements BridgeContractPort {
     from: string,
     gasPrice: string,
   ): Promise<string> {
-    const receipt = await this.contract()
-      .methods['receiveTokensTo']!(
+    return submit(
+      this.contract().methods['receiveTokensTo']!(
         params.destinationChainId,
         params.tokenAddress,
         params.to,
         params.amount,
-      )
-      .send({ from, gasPrice, gas: 600_000 })
-    return receipt.transactionHash
+      ),
+      { from, gasPrice, gas: 600_000 },
+    )
   }
 
   private contract(): Web3Contract {

@@ -11,6 +11,21 @@ import { isOnEvm, isOnHathor, type Token } from './model/token'
  * Ported from findTokenByBridgeAddress, which read the `config` global for the
  * chain ids and would throw outright when nothing was connected.
  */
+/**
+ * Finds the token a form is talking about.
+ *
+ * The key is the `<option value>` of both token dropdowns, which is how every
+ * write path identifies its token: the UI hands over a string, never an object.
+ */
+export function findTokenByKey(
+  tokens: readonly Token[],
+  key: string | null | undefined,
+): Token | null {
+  if (!key) return null
+
+  return tokens.find((token) => token.key === key) ?? null
+}
+
 export function findTokenByBridgeAddress(
   tokens: readonly Token[],
   bridgeAddress: string | null | undefined,

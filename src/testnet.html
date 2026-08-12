@@ -188,7 +188,39 @@
                                         class="btn btn-primary btn-lg btn-block mt-2">Convert
                                         tokens</button>
                                 </div>
-                            </form>
+                                <!--
+                                  Success and error feedback for the ARB→HTR flow.
+
+                                  These blocks existed until the page was rebuilt in
+                                  "chore: base changes" (de09fdd) and were dropped there, while
+                                  index.js kept writing to #success, #receive, #confirmationTime,
+                                  #alert-danger and #alert-danger-text. jQuery writes to an empty
+                                  set silently, so every transfer error and every success message
+                                  has been invisible since then — including claim errors, which
+                                  now use this same area.
+                                -->
+                                <div id="success" class="mt-3 align-center text-center alert alert-dismissible fade show"
+                                    style="display:none;">
+                                    <div class="outline-rounded">
+                                        <div style="font-size: 32px;"><i class="fas fa-check"></i></div>
+                                        <div>You will receive <span id="receive" class="black"></span> in your wallet in
+                                            approximately <span id="confirmationTime"></span></div>
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <div id="alert-danger" class="alert alert-danger alert-dismissible fade show"
+                                        role="alert" style="display:none" tabindex="-1">
+                                        <h4 class="alert-heading">Ups! there was an error</h4>
+                                        <p id="alert-danger-text"></p>
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                                        </form>
 
                             <!-- HTR→ARB transfer form (shown when direction toggle = HTR→ARB) -->
                             <div id="htrToArbForm" style="display:none;">
@@ -375,6 +407,10 @@
                         </button>
                     </div>
                     <div class="modal-body">
+                        <div id="modal-message-content" style="display: none;"></div>
+                        <ul id="wallet-list" class="list-group">
+                            <!-- Wallets will be dynamically inserted here -->
+                        </ul>
                     </div>
                 </div>
             </div>

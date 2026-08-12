@@ -9,7 +9,7 @@ import { API_AMOUNT_DECIMALS } from '../config/constants'
 import type { BridgeRoute } from '../domain/model/network'
 import type { Deployment } from '../domain/model/deployment'
 import type { Token } from '../domain/model/token'
-import { validateHathorAddress, type AddressCrypto } from '../domain/hathor-address'
+import { validateHathorAddress } from '../domain/hathor-address'
 import { toBaseUnits, fromBaseUnits, clampDecimals } from '../domain/amount-math'
 import { quote, formatQuoteValue, maxTransferable } from '../domain/fee-math'
 import { gasPriceFor, needsLatestBlockMinimum } from '../domain/gas-price'
@@ -27,6 +27,8 @@ import { validateAmount, rejectionMessage } from '../domain/limits'
 import { isEvmAddress } from '../domain/evm-address'
 import { apiAmountDecimals } from '../domain/api-amount'
 import { createReadUseCases } from './use-cases'
+import { createWriteUseCases } from './write-use-cases'
+import { CdnCryptoAdapter } from '../adapters/driven/crypto/cdn-crypto.adapter'
 import { hathorTransferRow } from '../adapters/driving/ui/templates/hathor-transfer-row'
 import { transferStatusCell } from '../adapters/driving/ui/templates/transfer-status'
 import { formatRowAmount } from '../adapters/driving/ui/templates/amount'
@@ -52,28 +54,8 @@ import type { AppState } from '../application/state/app-state'
  * This file grows through the migration and is deleted with js/index.js.
  */
 
-declare const bs58: { decode(value: string): Uint8Array }
-declare const CryptoJS: {
-  SHA256(message: unknown): unknown
-  enc: { Hex: { parse(hex: string): unknown; stringify(words: unknown): string } }
-}
-
-const toHex = (bytes: Uint8Array): string =>
-  Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
-
-const fromHex = (hex: string): Uint8Array =>
-  Uint8Array.from(hex.match(/.{2}/g) ?? [], (byte) => parseInt(byte, 16))
-
-/**
- * Adapts the bs58 and CryptoJS CDN globals to the crypto the address validator
- * needs. This is the only place the domain touches them; it moves into a proper
- * adapter in Phase 4.
- */
-const cdnCrypto: AddressCrypto = {
-  decodeBase58: (value) => bs58.decode(value),
-  sha256: (bytes) =>
-    fromHex(CryptoJS.enc.Hex.stringify(CryptoJS.SHA256(CryptoJS.enc.Hex.parse(toHex(bytes))))),
-}
+/** The bs58 + CryptoJS translation now lives in its own adapter. */
+const cdnCrypto = new CdnCryptoAdapter()
 
 /**
  * Rebuilds the circular config pair the legacy code reads as `config` and
@@ -290,9 +272,11 @@ export function installLegacyBridge(container: Container): void {
 
   bindStateAccessors(container.store, deployment, legacyConfigForRoute)
 
-  // Read-path use cases and the row templates, for index.js to delegate to
-  // while its DOM code still lives there.
-  const useCases = createReadUseCases(container)
+  // Use cases and the row templates, for index.js to delegate to while its DOM
+  // code still lives there. Read and write are composed separately — they need
+  // different things from the store — and published as one object because the
+  // legacy call sites do not care which half a call belongs to.
+  const useCases = { ...createReadUseCases(container), ...createWriteUseCases(container) }
 
   Object.assign(window, publishLegacyServices(container), {
     // --- config, in the shape index.js still reads ---
