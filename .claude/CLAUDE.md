@@ -255,10 +255,12 @@ because Vite's HTML parser does see those. Note that assets under 4 kB become
 `data:` URIs rather than files in `public/assets/`, so an emitted-file check is
 not how you verify one shipped — decode the data URI, or look at the page.
 
-`css/scrollbar-plugin.css` is dead: nothing has emitted `.mCSB_container` markup
-since jQuery left, and it is the source of the build's `mCSB_buttons.png` warning
-— a sprite that is not in the repo. It can go whenever someone wants the warning
-gone.
+The build has no asset warnings, and should stay that way — each one is a file
+the page asks for and will not get. `css/scrollbar-plugin.css` was the last, a
+malihu jQuery scrollbar stylesheet whose every selector was `.mCSB_*` /
+`.mCustom*`: nothing has emitted that markup since jQuery left, and it referenced
+an `mCSB_buttons.png` sprite that is not in the repo. Deleted, with its `<link>`
+in both pages.
 
 ## Known gaps
 
