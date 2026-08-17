@@ -89,6 +89,8 @@ export const TOAST = {
   hathorSendPending: 'htrSendPending',
   hathorSendSuccess: 'htrSendSuccess',
   hathorSendError: 'htrSendError',
+  /** A seven-day session ran out, or the wallet ended it from its own side. */
+  hathorSessionExpired: 'htrSessionExpired',
 } as const
 
 /**

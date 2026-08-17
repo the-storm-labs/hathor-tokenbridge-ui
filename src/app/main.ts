@@ -48,4 +48,7 @@ void ui.walletHeader.reconnect()
 void (async () => {
   const session = await container.hathorWallet.restore(container.deployment)
   if (session?.address) ui.hathorForm.showConnected(session.address)
+  // A session that ran out is not the same as never having had one: the header
+  // was about to show a wallet that cannot sign anything, so say why it did not.
+  else if (session?.expired) ui.hathorForm.showDisconnected({ expired: true })
 })()

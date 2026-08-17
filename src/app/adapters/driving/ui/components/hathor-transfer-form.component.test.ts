@@ -37,6 +37,9 @@ function setup(overrides: Partial<HathorTransferFormDeps> = {}) {
   document.body.innerHTML = MARKUP
 
   let connected = false
+  // What the adapter would call when the session dies on its own; the tests
+  // fire it by hand.
+  const sessionLost: Array<() => void> = []
   const wallet = {
     connect: vi.fn(async () => {
       connected = true
@@ -47,6 +50,11 @@ function setup(overrides: Partial<HathorTransferFormDeps> = {}) {
     }),
     getAddress: () => (connected ? 'HDeadbeefDeadbeefDeadbeefDeadbeefXX' : null),
     isConnected: () => connected,
+    onSessionLost: (listener: () => void) => void sessionLost.push(listener),
+  }
+  const loseSession = () => {
+    connected = false
+    for (const listener of sessionLost) listener()
   }
 
   const deps: HathorTransferFormDeps = {
@@ -62,7 +70,7 @@ function setup(overrides: Partial<HathorTransferFormDeps> = {}) {
   }
 
   const form = mountHathorTransferForm(document, deps)
-  return { form, deps, wallet }
+  return { form, deps, wallet, loseSession }
 }
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
@@ -122,6 +130,7 @@ describe('connecting', () => {
         disconnect: async () => {},
         getAddress: () => null,
         isConnected: () => false,
+        onSessionLost: () => {},
       },
     })
 
@@ -284,5 +293,37 @@ describe('a restored session', () => {
     expect(wallet.connect).not.toHaveBeenCalled()
     expect(el('hathorWalletInfo').style.display).toBe('flex')
     expect(heard).toHaveBeenCalledOnce()
+  })
+})
+
+describe('a session that ends on its own', () => {
+  it('drops the header and says why', async () => {
+    const { deps, loseSession } = setup()
+    const heard = vi.fn()
+    window.addEventListener(HATHOR_FORM_EVENT.disconnected, heard)
+
+    el<HTMLButtonElement>('connectHathorWallet').click()
+    await settle()
+    expect(el('hathorWalletInfo').style.display).toBe('flex')
+
+    loseSession()
+
+    expect(el('hathorWalletInfo').style.display).toBe('none')
+    expect(el('connectHathorWallet').style.display).toBe('')
+    expect(el('htrAmount').hasAttribute('disabled')).toBe(true)
+    expect(deps.toasts.show).toHaveBeenCalledWith(TOAST.hathorSessionExpired)
+    expect(heard).toHaveBeenCalledOnce()
+  })
+
+  it('stays quiet when the user is the one disconnecting', async () => {
+    const { deps } = setup()
+
+    el<HTMLButtonElement>('connectHathorWallet').click()
+    await settle()
+    el<HTMLButtonElement>('disconnectHathorWallet').click()
+    await settle()
+
+    expect(el('hathorWalletInfo').style.display).toBe('none')
+    expect(deps.toasts.show).not.toHaveBeenCalledWith(TOAST.hathorSessionExpired)
   })
 })

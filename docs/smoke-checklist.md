@@ -72,18 +72,24 @@ assume still work.
 23. The Hathor address appears in the header.
 24. Reloading the page **restores** the Hathor session.
 25. Disconnect clears it.
+26. An **expired** session loads as disconnected, with the session-expired toast.
+    Sessions live seven days, so force it rather than wait — in the console,
+    `s = JSON.parse(localStorage['wc@2:client:0.3:session']); s.forEach(x => x.expiry = Math.floor(Date.now()/1000) - 3600); localStorage['wc@2:client:0.3:session'] = JSON.stringify(s)`,
+    then reload. **Connect Hathor** must still pair from there.
+27. Disconnecting the dApp **from the Hathor wallet app** drops the header on its
+    own, without a reload.
 
 ## HTR→ARB transfer
 
-26. The direction toggle switches the form.
-27. Hathor token dropdown populates.
-28. Selecting a token shows its Hathor balance.
-29. **Max** fills the amount from the balance.
-30. An invalid EVM destination address is rejected.
-31. **Send** submits, and the transaction appears in the HTR→ARB history tab.
+28. The direction toggle switches the form.
+29. Hathor token dropdown populates.
+30. Selecting a token shows its Hathor balance.
+31. **Max** fills the amount from the balance.
+32. An invalid EVM destination address is rejected.
+33. **Send** submits, and the transaction appears in the HTR→ARB history tab.
 
 ## Info tab
 
-32. All seven config values render: min, max, daily limit, fee, federator count,
+34. All seven config values render: min, max, daily limit, fee, federator count,
     federators required, crossing period. The crossing period shows **before**
     any wallet is connected.

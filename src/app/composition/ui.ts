@@ -103,6 +103,7 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
       disconnect: () => container.hathorWallet.disconnect(),
       getAddress: () => container.hathorWallet.getAddress(),
       isConnected: () => container.hathorWallet.isConnected(),
+      onSessionLost: (listener) => container.hathorWallet.onSessionLost(listener),
     },
 
     // Reading the limits needs contracts, so it needs a wallet on a supported

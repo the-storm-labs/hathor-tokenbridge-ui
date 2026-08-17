@@ -61,6 +61,29 @@ const HATHOR_METHODS = [
  */
 const PREFER_WALLET_RPC_BALANCE = false
 
+/**
+ * Margin on the expiry check.
+ *
+ * A session with a minute left is not worth restoring: it survives the page load
+ * and then dies in the middle of the next transfer, which is exactly the failure
+ * the check exists to prevent.
+ */
+const EXPIRY_SKEW_MS = 60_000
+
+/**
+ * Renew a session that has less than this left.
+ *
+ * WalletConnect sessions live seven days — `SESSION_EXPIRY` in
+ * @walletconnect/sign-client — and nothing renews them: not this app, not
+ * Reown's UniversalConnector. So a wallet connected on a Monday is silently dead
+ * the next Monday. Extending on restore means anyone who opens the page inside
+ * the window never reaches that point.
+ */
+const EXTEND_WHEN_UNDER_MS = 2 * 24 * 60 * 60 * 1000
+
+const SESSION_EXPIRED_MESSAGE =
+  'Your Hathor wallet session expired. Reconnect your wallet and try again.'
+
 export interface WalletConnectConfig {
   readonly projectId: string
   readonly appUrl: string
@@ -71,15 +94,44 @@ export interface WalletConnectConfig {
 interface UniversalConnectorLike {
   connect(): Promise<{ session: WalletConnectSession }>
   disconnect(): Promise<void>
-  provider?: {
-    session?: WalletConnectSession
-    client?: { request(args: unknown): Promise<unknown> }
-  }
+  provider?: ProviderLike
+}
+
+interface ProviderLike {
+  session?: WalletConnectSession
+  client?: SignClientLike
+  on?(event: string, listener: (payload?: unknown) => void): void
+}
+
+/** Everything optional but `request`: a stub in a test provides only that. */
+interface SignClientLike {
+  request(args: unknown): Promise<unknown>
+  extend?(params: { topic: string }): Promise<unknown>
+  on?(event: string, listener: (payload: { topic?: string }) => void): void
 }
 
 interface WalletConnectSession {
   readonly topic: string
+  /**
+   * Unix **seconds**, per `SessionTypes.Struct` — not milliseconds. Seven days
+   * out from when the session was opened, unless something extends it.
+   */
+  readonly expiry?: number
   readonly namespaces?: { hathor?: { accounts?: string[] } }
+}
+
+/**
+ * Whether a stored session is still worth using.
+ *
+ * A missing `expiry` counts as live on purpose: it means a shape this adapter
+ * does not recognise, and signing the user out over a field we failed to read is
+ * worse than the failure this guards against. Every real session carries one.
+ */
+function isLive(session: WalletConnectSession | null | undefined): boolean {
+  if (!session) return false
+  if (typeof session.expiry !== 'number') return true
+
+  return session.expiry * 1000 - EXPIRY_SKEW_MS > Date.now()
 }
 
 interface UniversalConnectorFactory {
@@ -91,6 +143,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
   private session: WalletConnectSession | null = null
   private address: string | null = null
   private rpcRequestId = 0
+  private readonly sessionLostListeners: Array<() => void> = []
 
   constructor(
     private readonly connectorFactory: UniversalConnectorFactory,
@@ -105,6 +158,10 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
 
   isConnected(): boolean {
     return this.session !== null
+  }
+
+  onSessionLost(listener: () => void): void {
+    this.sessionLostListeners.push(listener)
   }
 
   async connect(deployment: Deployment): Promise<HathorSession> {
@@ -154,10 +211,24 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
         return null
       }
 
+      if (!isLive(session)) {
+        // The SDK does prune expired sessions, but only on a heartbeat pulse and
+        // only while the relay is connected — and UniversalProvider reads the
+        // store before the first pulse. So a session days past its expiry is
+        // still sitting there, and adopting it is what made the page look
+        // connected while every transfer hung for the five minutes a session
+        // request waits before the relay gives up on it.
+        console.info('Hathor WalletConnect session expired; reconnect required')
+        this.preferences.clearHathorAddress()
+        return { address: null, expired: true }
+      }
+
       this.adoptSession(session)
       // A session with no accounts still means "connected"; fall back to the
       // address we stored so the UI is not blank.
       if (!this.address) this.address = this.preferences.getHathorAddress()
+
+      this.extendIfExpiringSoon(connector, session)
 
       return { address: this.address }
     } catch (error) {
@@ -232,7 +303,75 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
       ],
     })
 
+    this.watchSessionLifecycle(this.connector)
     return this.connector
+  }
+
+  /**
+   * Subscribes to the three ways a session ends without this page being touched:
+   * the expirer reaping it, the wallet deleting it, the provider dropping the
+   * connection.
+   *
+   * Without these the header goes on claiming a session that no longer exists,
+   * and the first thing the user learns is a transfer that fails. Every call is
+   * optional-chained and wrapped, because a provider that emits none of them — a
+   * stub in a test, a future SDK — must not take the connection down with it.
+   */
+  private watchSessionLifecycle(connector: UniversalConnectorLike): void {
+    const provider = connector.provider
+    if (!provider) return
+
+    try {
+      provider.on?.('session_delete', () => this.handleSessionLost())
+      provider.on?.('disconnect', () => this.handleSessionLost())
+      // The expirer reports on the SignClient, not on the provider.
+      provider.client?.on?.('session_expire', ({ topic }) => {
+        if (!topic || topic === this.session?.topic) this.handleSessionLost()
+      })
+    } catch (error) {
+      console.warn('Could not subscribe to WalletConnect session events:', error)
+    }
+  }
+
+  /**
+   * Drops the session and tells whoever is listening.
+   *
+   * Guarded on there being one, because the SDK can report a single death twice
+   * — a `session_expire` and a `session_delete` for the same topic — and the
+   * page must not announce a disconnect it has already announced.
+   */
+  private handleSessionLost(): void {
+    if (!this.session) return
+
+    this.session = null
+    this.address = null
+    this.preferences.clearHathorAddress()
+    for (const listener of this.sessionLostListeners) listener()
+  }
+
+  /**
+   * Pushes a nearly-spent session back out to a full term.
+   *
+   * Deliberately not awaited: `wc_sessionExtend` is a relay round trip that
+   * needs the wallet reachable, and a restore must neither wait on nor fail
+   * because of a phone that is asleep. Worst case the renewal does not happen
+   * and the session expires exactly as it would have.
+   */
+  private extendIfExpiringSoon(
+    connector: UniversalConnectorLike,
+    session: WalletConnectSession,
+  ): void {
+    if (typeof session.expiry !== 'number') return
+    if (session.expiry * 1000 - Date.now() > EXTEND_WHEN_UNDER_MS) return
+
+    try {
+      const extended = connector.provider?.client?.extend?.({ topic: session.topic })
+      void Promise.resolve(extended).catch((error: unknown) =>
+        console.warn('Could not extend the Hathor session:', error),
+      )
+    } catch (error) {
+      console.warn('Could not extend the Hathor session:', error)
+    }
   }
 
   /** Session accounts look like `hathor:mainnet:H<address>`. */
@@ -250,6 +389,16 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     const provider = this.connector?.provider
     const session = provider?.session
     if (!provider || !session) throw new Error('No active WalletConnect session')
+
+    // Checked here as well as on restore, because a session can reach its expiry
+    // while the page is open. Without this the request goes to the relay and
+    // sits there for the five minutes `wc_sessionRequest` waits before
+    // rejecting — behind a pending toast that is deliberately sticky, so the
+    // user watches a spinner for five minutes and then gets "Request expired".
+    if (!isLive(session)) {
+      this.handleSessionLost()
+      throw new Error(SESSION_EXPIRED_MESSAGE)
+    }
 
     return provider.client!.request({
       topic: session.topic,

@@ -182,6 +182,37 @@ Until then the balance comes from the full node, in `adapters/driven/hathor/node
 
 `explorer-service.hathor.network/address/balance?address=&token=` returns the same numbers in one call and is the oracle to verify against — but its CORS allowlist is `*.hathor.network`, so it is unusable from the browser without a server-side proxy.
 
+### Session expiry
+
+**A WalletConnect session lives seven days** (`SESSION_EXPIRY = SEVEN_DAYS` in
+`@walletconnect/sign-client`) and nothing renews it on its own — not this app,
+not Reown's `UniversalConnector`. So a wallet left connected over a week is dead
+on the next visit, and *nothing in the SDK reliably tells you*: the expirer only
+prunes on a heartbeat pulse and only while the relay is connected, while
+`UniversalProvider` reads `session.getAll()[0]` straight out of storage during
+init, before the first pulse. `provider.session` therefore hands back sessions
+that expired days ago.
+
+That is why `session.expiry` (unix **seconds**) is checked by hand, in `isLive()`,
+in **two** places: on `restore()`, and again in `rpcRequest()` because a session
+can lapse with the page still open. Skipping the second check is what made a
+transfer hang for five minutes — `wc_sessionRequest`'s ttl — behind a pending
+toast that deliberately never auto-dismisses, and then fail with
+`Request expired`. A missing `expiry` counts as **live**: it means a shape the
+adapter does not recognise, and signing the user out over an unread field is
+worse than the bug.
+
+`restore()` returns three things, not two: a session, `null` when there was never
+one, and `{ address: null, expired: true }` when there was one and it lapsed —
+only the third earns the `#htrSessionExpired` toast. Mid-session deaths arrive
+through `onSessionLost`, fed by `session_delete`/`disconnect` on the provider and
+`session_expire` on the SignClient; `handleSessionLost()` is guarded because the
+SDK reports one death on several of those at once.
+
+`extendIfExpiringSoon()` renews anything with under two days left, fire-and-forget
+— `wc_sessionExtend` is a relay round trip that needs the phone awake, and a
+restore must neither wait on it nor fail because of it.
+
 ### Vite build
 
 Root is `src/`, output `../public/`, two HTML entry points, one module graph.

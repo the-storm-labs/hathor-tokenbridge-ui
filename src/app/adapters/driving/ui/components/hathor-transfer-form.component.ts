@@ -38,6 +38,8 @@ export interface HathorWalletFacade {
   disconnect(): Promise<void>
   getAddress(): string | null
   isConnected(): boolean
+  /** The session ended on its own: it expired, or the wallet dropped it. */
+  onSessionLost(listener: () => void): void
 }
 
 export interface HathorTransferFormDeps {
@@ -125,6 +127,11 @@ export class HathorTransferForm {
 
     this.maxButton?.addEventListener('click', () => void this.fillMax())
 
+    // A session can end while the page is open — it reaches its seven-day
+    // expiry, or the user disconnects the dApp from the wallet itself. Nothing
+    // else would notice, and the header would keep claiming a connection.
+    this.deps.wallet.onSessionLost(() => this.showDisconnected({ expired: true }))
+
     // Each form shows and hides itself: the toggle is shared, the two halves of
     // its effect are not. The destination is prefilled from the connected EVM
     // account each time, since the user may have connected since.
@@ -151,13 +158,28 @@ export class HathorTransferForm {
     this.emit(HATHOR_FORM_EVENT.connected, { address })
   }
 
+  /**
+   * Shows the form as disconnected, and tells the rest of the page.
+   *
+   * Public for the same reason `showConnected` is: the session can end without
+   * anyone clicking anything here, and the composition root routes that back in.
+   *
+   * @param options.expired raises the toast that says why. A session that simply
+   *        ran out looks identical to one the user ended, and without the
+   *        message the page appears to have logged them out for no reason.
+   */
+  showDisconnected(options: { readonly expired?: boolean } = {}): void {
+    this.reflectConnection(null)
+    if (options.expired) this.deps.toasts.show(TOAST.hathorSessionExpired)
+    this.emit(HATHOR_FORM_EVENT.disconnected, {})
+  }
+
   // --- connection ----------------------------------------------------------
 
   private async toggleConnection(): Promise<void> {
     if (this.deps.wallet.isConnected()) {
       await this.deps.wallet.disconnect()
-      this.reflectConnection(null)
-      this.emit(HATHOR_FORM_EVENT.disconnected, {})
+      this.showDisconnected()
       return
     }
 

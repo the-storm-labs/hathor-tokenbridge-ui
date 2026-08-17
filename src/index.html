@@ -649,6 +649,23 @@
           <h4 class="alert-heading">Ups! there was an error</h4>
           <p id="htrSendErrorMsg"></p>
         </div>
+        <!--
+          A WalletConnect session lives seven days and nothing renews it, so a
+          wallet left connected over a week is dropped on the next visit. Without
+          this the page just appears to have logged the user out.
+        -->
+        <div
+          id="htrSessionExpired"
+          class="toast-item alert alert-warning"
+          role="status"
+          style="display: none"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 class="alert-heading">Hathor wallet session expired</h4>
+          <p>Your wallet has been disconnected. Connect it again to continue.</p>
+        </div>
       </div>
       <!-- Modal -->
       <div id="myModal" class="modal fade" tabindex="-1" role="dialog">

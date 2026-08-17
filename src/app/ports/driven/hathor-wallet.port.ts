@@ -8,6 +8,13 @@ export interface TokenBalance {
 
 export interface HathorSession {
   readonly address: string | null
+  /**
+   * Set when a stored session was found but had already run out.
+   *
+   * It is the difference between "you were never connected" and "you were, and
+   * you are not any more" — only the second one is worth telling the user about.
+   */
+  readonly expired?: boolean
 }
 
 export interface SendBridgeTransferParams {
@@ -24,8 +31,23 @@ export interface SendBridgeTransferParams {
 export interface HathorWalletPort {
   connect(deployment: Deployment): Promise<HathorSession>
   disconnect(): Promise<void>
-  /** Reattach to a persisted WalletConnect session, or null if there is none. */
+  /**
+   * Reattach to a persisted WalletConnect session.
+   *
+   * @returns the session, `{ address: null, expired: true }` when there was one
+   *          and it had run out, or null when there was never one to reattach to.
+   */
   restore(deployment: Deployment): Promise<HathorSession | null>
+
+  /**
+   * Called when a live session ends without anyone asking: it reaches its
+   * expiry, the wallet deletes it, or the provider drops the connection.
+   *
+   * A WalletConnect session lives seven days and nothing renews it on its own,
+   * so this is not an edge case — it is what happens to every wallet left
+   * connected over a week.
+   */
+  onSessionLost(listener: () => void): void
 
   /**
    * Balance of a single token. Does not require an active session — it reads the
