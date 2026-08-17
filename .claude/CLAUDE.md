@@ -17,6 +17,22 @@ npm run ci         # lint + typecheck + tests + build, the same order CI uses
 
 Deploy happens in CI (`.github/workflows/firebase-hosting-merge.yml`) and runs a real build with the `VITE_*` secrets. Do **not** reintroduce a `cp -r src/* public/` deploy: `src/` is source, `public/` is build output and is gitignored.
 
+Three Firebase Hosting targets, one build, distinguished only by `channelId`:
+`live` on merge to main, an auto-named channel per PR
+(`firebase-hosting-pull-request.yml`), and `staging` on demand
+(`firebase-hosting-staging.yml`, `workflow_dispatch`, 30-day default). A preview
+channel serves at the **root** of its own subdomain, which is why staging needs
+no config of its own — the artifact is the production one. **GitHub Pages was
+considered and rejected**: a project site serves under `/<repo>/`, and the build
+emits absolute `/assets/...` while `appUrl`/`appIcon` come from
+`window.location.origin` (`composition/container.ts`), so a subpath breaks the
+asset graph and the icon the Hathor wallet shows on its approval screen.
+
+Note that `workflow_dispatch` only appears in the Actions tab when the workflow
+file is on the **default branch**, and that the merge workflow's `paths` include
+`.github/workflows/**` — so landing a workflow change on main also redeploys
+production.
+
 The linter is **oxlint**, not ESLint: this project is on TypeScript 7, and
 typescript-eslint still declares `peer typescript <6.1.0`. oxlint is a single
 binary with no TypeScript peer dependency, so it works today; revisit ESLint when

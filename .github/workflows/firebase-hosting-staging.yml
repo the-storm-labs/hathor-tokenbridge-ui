@@ -1,0 +1,85 @@
+# Publishes a branch to a named Firebase preview channel, on demand.
+#
+# The environment people test in before anything reaches production. A preview
+# channel serves at the root of its own subdomain
+# (hathor-bridge-website--staging-<hash>.web.app), so the artifact deployed here
+# is byte-for-byte the one that ships — no base path, no build-mode difference.
+# GitHub Pages was the alternative and would have needed both: the build emits
+# absolute /assets/... paths, and appUrl/appIcon are derived from
+# window.location.origin, which is wrong under a project-site subpath.
+#
+# Manual on purpose. Testers should not have the page change under them halfway
+# through a run, so a new build goes up when someone decides it does.
+#
+# workflow_dispatch only appears in the Actions tab when this file is on the
+# default branch — but once it is there, the run happens against whichever branch
+# you pick, using that branch's version of this file.
+name: Deploy to a Firebase staging channel
+
+on:
+  workflow_dispatch:
+    inputs:
+      expires:
+        description: "How long the channel lives (Firebase caps this at 30d)"
+        required: false
+        default: "30d"
+      channelId:
+        description: "Channel name. Redeploying the same name replaces it in place."
+        required: false
+        default: "staging"
+
+jobs:
+  build_and_deploy_staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test -- --run
+      # The API URL is inlined into the bundle by Vite, so an empty secret does
+      # not fail the build — it ships an app that quietly cannot reach the Read
+      # API. Checked before building rather than grepped for afterwards.
+      - name: Check the build secrets are set
+        run: |
+          if [ -z "$VITE_BRIDGE_API_URL" ]; then
+            echo "::error::VITE_BRIDGE_API_URL is empty; the build would ship an app that cannot reach the Read API."
+            exit 1
+          fi
+        env:
+          VITE_BRIDGE_API_URL: ${{ secrets.VITE_BRIDGE_API_URL }}
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BRIDGE_API_URL: ${{ secrets.VITE_BRIDGE_API_URL }}
+          VITE_EVM_HOST_MAINNET: ${{ secrets.VITE_EVM_HOST_MAINNET }}
+          VITE_EVM_HOST_TESTNET: ${{ secrets.VITE_EVM_HOST_TESTNET }}
+      # `channelId` is the only thing separating this from the production
+      # workflow, which passes `live`. A named channel is isolated: deploying
+      # here cannot touch the site that is up.
+      #
+      # No `repoToken`: the action's auto-comment needs a pull request, and a
+      # manual dispatch has none. The URL goes to the job summary instead.
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        id: deploy
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HATHOR_BRIDGE_WEBSITE }}
+          projectId: hathor-bridge-website
+          channelId: ${{ inputs.channelId }}
+          expires: ${{ inputs.expires }}
+      - name: Report the URL
+        run: |
+          {
+            echo "## Staging channel \`${{ inputs.channelId }}\`"
+            echo
+            echo "**${{ steps.deploy.outputs.details_url }}**"
+            echo
+            echo "Built from \`${{ github.ref_name }}\` (\`${{ github.sha }}\`)."
+            echo "Expires ${{ steps.deploy.outputs.expire_time_formatted }}."
+            echo
+            echo "Run \`docs/smoke-checklist.md\` against it, on both \`/index.html\` and \`/testnet.html\`."
+          } >> "$GITHUB_STEP_SUMMARY"
