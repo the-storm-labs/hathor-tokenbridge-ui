@@ -1,3 +1,21 @@
+/*
+   The WalletConnect modal's own stacking order.
+
+   `<w3m-modal>` declares `z-index: var(--w3m-z-index)`, and AppKit only defines
+   that variable when the host app passes it in `themeVariables` — which
+   `UniversalConnector.init` has no option for. An undefined `var()` with no
+   fallback is invalid at computed-value time, so the modal fell back to
+   `z-index: auto` and every positioned element with a positive z-index painted
+   over the QR code: Bootstrap gives `.input-group-append .btn` (Max) a 2 and the
+   active `.btn-group > .btn` (the direction toggle) a 1.
+
+   1080 sits above Bootstrap's modal (1050) and backdrop (1040) and below
+   `.toast-area` (1090), which is deliberately the topmost layer on the page.
+*/
+:root {
+  --w3m-z-index: 1080;
+}
+
 /* Styles for the connected wallet button */
 .wallet-status.indicator.badge-outline {
   background-color: #1f1f1f;
@@ -483,10 +501,27 @@ a:hover {
   background-color: #dc3545;
 }
 
+/*
+   One frame for every token icon.
+ 
+   The artwork does not agree with itself: USDC is a filled blue disc that reads
+   as large, Hathor is a dark disc that disappears into the dark theme and reads
+   as small. Both files are 64x64 and edge-to-edge, so setting a box was never
+   enough — the frame is what makes them the same shape, and the light backing is
+   what makes a dark logo legible here.
+ 
+   object-fit keeps a future non-square icon from being stretched instead of
+   letterboxed.
+*/
 .token-logo {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
   margin-right: 0.5rem;
+  object-fit: contain;
+  border-radius: 50%;
+  background-color: #fff;
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 
 .token-balance-label {
@@ -961,4 +996,77 @@ table.table td {
 
 .token-select-item.active {
   background-color: #1f1f1f;
+}
+
+/* --------------------------------------------------------------------------
+   Transfer form layout
+   -------------------------------------------------------------------------- */
+
+/* Token and amount are one decision, so they sit side by side rather than
+   stacking into two full-width rows with a gap between them. */
+.transfer-row {
+  align-items: flex-start;
+}
+
+.transfer-row .form-group {
+  margin-bottom: 1rem;
+}
+
+/* One height for the whole row. The dropdown keeps its larger type, so it is
+   the tallest control and everything beside it is matched to it rather than
+   the other way round — `1.5em` would have resolved against each control's own
+   font size and produced three different heights. */
+.transfer-row .token-select-toggle,
+.transfer-row .form-control,
+.transfer-row .input-group-append .btn {
+  height: 2.75rem;
+}
+
+.transfer-row .form-control {
+  line-height: 1.5;
+}
+
+/* The destination question and what will arrive are two statements, so they get
+   a line each — the token chip used to wrap and sit alone under the sentence.
+   The gap is explicit because flex collapses the whitespace that separated the
+   label from the token. */
+.receive-line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Centred both ways: the label sits against the box rather than beside it when
+   Bootstrap's default left alignment stretches it across the card. */
+.approve-remember {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 0;
+}
+
+.approve-remember .custom-control-input {
+  position: static;
+  width: auto;
+  margin: 0 0.5rem 0 0;
+  align-self: center;
+  opacity: 1;
+  z-index: auto;
+  /* Checked state in the theme's own purple rather than the browser's blue. */
+  accent-color: #71258f;
+}
+
+.approve-remember .custom-control-label {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+/* Bootstrap draws the box with ::before/::after on the label; with a real
+   checkbox visible next to it, those would be a second one. */
+.approve-remember .custom-control-label::before,
+.approve-remember .custom-control-label::after {
+  display: none;
 }

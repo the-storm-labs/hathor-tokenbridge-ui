@@ -252,43 +252,45 @@
                   </div>
                 </div>
                 <form id="crossForm" name="crossForm">
-                  <div class="form-group">
-                    <label for="tokenAddress">Select token</label>
-                    <select
-                      id="tokenAddress"
-                      name="tokenAddress"
-                      data-width="100%"
-                      title="Select token"
-                      disabled
-                      required
-                    >
-                      <!-- Dinamic content made with JS -->
-                    </select>
-                    <small class="token-balance-label">
-                      Balance: <span id="evmTokenBalance">—</span>
-                    </small>
-                  </div>
-                  <div class="form-group">
-                    <label for="amount">Amount</label>
-                    <div class="input-group">
-                      <input
-                        name="amount"
-                        id="amount"
-                        class="form-control"
-                        placeholder="0.0"
+                  <!-- Token and amount are one decision, so they share a row. -->
+                  <div class="form-row transfer-row">
+                    <div class="form-group col-sm-6">
+                      <label for="tokenAddress">Select token</label>
+                      <select
+                        id="tokenAddress"
+                        name="tokenAddress"
+                        title="Select token"
+                        disabled
                         required
-                      />
-                      <div class="input-group-append">
-                        <button id="max" class="btn btn-secondary" type="button">Max</button>
-                      </div>
+                      >
+                        <!-- Dinamic content made with JS -->
+                      </select>
+                      <small class="token-balance-label">
+                        Balance: <span id="evmTokenBalance">—</span>
+                      </small>
                     </div>
-                    <!--
+                    <div class="form-group col-sm-6">
+                      <label for="amount">Amount</label>
+                      <div class="input-group">
+                        <input
+                          name="amount"
+                          id="amount"
+                          class="form-control"
+                          placeholder="0.0"
+                          required
+                        />
+                        <div class="input-group-append">
+                          <button id="max" class="btn btn-secondary" type="button">Max</button>
+                        </div>
+                      </div>
+                      <!--
                                       The amount rejections used to be written into
                                       `.amount .invalid-feedback`, a selector that matches nothing
                                       in this page — so an amount below the minimum or over the
                                       daily limit was refused with no explanation at all.
                                     -->
-                    <div class="invalid-feedback" id="amountError"></div>
+                      <div class="invalid-feedback" id="amountError"></div>
+                    </div>
                   </div>
                   <div class="form-group">
                     <div class="fees mt-2">
@@ -305,7 +307,7 @@
                     <label class="hathorAddress-label" for="hathorAddress"
                       >Which Hathor Address do you want to send the tokens to:</label
                     >
-                    <small class="token-balance-label">
+                    <small class="token-balance-label receive-line">
                       You will receive: <span id="willReceiveToken">—</span>
                     </small>
                     <div class="input-group">
@@ -332,7 +334,7 @@
                       <button disabled id="approve" class="btn btn-primary btn-lg btn-block">
                         Approve
                       </button>
-                      <div class="custom-control custom-checkbox mt-2 text-left">
+                      <div class="custom-control custom-checkbox mt-2 approve-remember">
                         <input
                           type="checkbox"
                           class="custom-control-input"
@@ -357,36 +359,33 @@
 
                 <!-- HTR→ARB transfer form (shown when direction toggle = HTR→ARB) -->
                 <div id="htrToArbForm" style="display: none">
-                  <div class="form-group">
-                    <label for="htrTokenSelect">Select token</label>
-                    <select
-                      id="htrTokenSelect"
-                      data-width="100%"
-                      title="Select token"
-                      disabled
-                      required
-                    ></select>
-                    <small class="token-balance-label">
-                      Balance: <span id="htrTokenBalance">—</span>
-                    </small>
-                  </div>
-                  <div class="form-group">
-                    <label for="htrAmount">Amount</label>
-                    <div class="input-group">
-                      <input
-                        id="htrAmount"
-                        class="form-control"
-                        placeholder="0.0"
-                        type="text"
-                        disabled
-                      />
-                      <div class="input-group-append">
-                        <button id="htrMax" class="btn btn-secondary" type="button" disabled>
-                          Max
-                        </button>
-                      </div>
+                  <!-- Same row as the other direction, so the two forms match. -->
+                  <div class="form-row transfer-row">
+                    <div class="form-group col-sm-6">
+                      <label for="htrTokenSelect">Select token</label>
+                      <select id="htrTokenSelect" title="Select token" disabled required></select>
+                      <small class="token-balance-label">
+                        Balance: <span id="htrTokenBalance">—</span>
+                      </small>
                     </div>
-                    <div class="invalid-feedback" id="htrAmountError"></div>
+                    <div class="form-group col-sm-6">
+                      <label for="htrAmount">Amount</label>
+                      <div class="input-group">
+                        <input
+                          id="htrAmount"
+                          class="form-control"
+                          placeholder="0.0"
+                          type="text"
+                          disabled
+                        />
+                        <div class="input-group-append">
+                          <button id="htrMax" class="btn btn-secondary" type="button" disabled>
+                            Max
+                          </button>
+                        </div>
+                      </div>
+                      <div class="invalid-feedback" id="htrAmountError"></div>
+                    </div>
                   </div>
                   <div class="form-group">
                     <label for="htrDestAddress">Destination Arbitrum address</label>
