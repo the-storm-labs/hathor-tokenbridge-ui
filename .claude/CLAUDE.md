@@ -244,6 +244,22 @@ checks for before building.
 The ABIs are static imports (`adapters/driven/evm/abis.ts`), which is what killed
 the race where a contract could be built with an undefined ABI.
 
+**Any asset a module needs must be `import`ed, never named as a path string.**
+There is no `publicDir` here, so nothing is copied verbatim: a string like
+`'./assets/img/usdc.png'` is invisible to the bundler, the file is never emitted,
+and it 404s. It **works in `npm run dev`** — Vite serves `src/` as the document
+root there, so the path happens to resolve — and fails only once deployed, which
+is the worst place to find out. That is exactly how the token icons in
+`config/tokens.ts` broke. `<img src>` in the HTML files is fine either way,
+because Vite's HTML parser does see those. Note that assets under 4 kB become
+`data:` URIs rather than files in `public/assets/`, so an emitted-file check is
+not how you verify one shipped — decode the data URI, or look at the page.
+
+`css/scrollbar-plugin.css` is dead: nothing has emitted `.mCSB_container` markup
+since jQuery left, and it is the source of the build's `mCSB_buttons.png` warning
+— a sprite that is not in the repo. It can go whenever someone wants the warning
+gone.
+
 ## Known gaps
 
 - **`VITE_BRIDGE_API_URL`**: no testnet deployment of the Read API is known;

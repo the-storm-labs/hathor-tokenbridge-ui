@@ -2,6 +2,23 @@ import type { Deployment } from '../domain/model/deployment'
 import type { Token, TokenOnHathor } from '../domain/model/token'
 
 /**
+ * Icons as **imports**, not as path strings.
+ *
+ * These used to read `'./assets/img/usdc.png'`, which is a plain string as far
+ * as the bundler is concerned: nothing links it to a file, so the image was
+ * never emitted and `/assets/img/` did not exist in the build. It worked in
+ * `npm run dev` — Vite serves `src/` as the document root there, so the path
+ * happened to resolve — and 404'd in every deployed build. The `<img>` tags in
+ * the HTML were fine throughout, because Vite's HTML parser does see those.
+ *
+ * Importing makes the file part of the graph: Vite emits it with a content hash
+ * and hands back the final URL, which is also absolute, so it no longer depends
+ * on the path of the page doing the asking.
+ */
+import usdcIcon from '../../assets/img/usdc.png'
+import hathorIcon from '../../assets/img/hathor.png'
+
+/**
  * Bridgeable tokens, ported verbatim from index.js.
  *
  * The original baked the `isTestnet` global into each token literal with a
@@ -55,7 +72,7 @@ const MAINNET_TOKENS: readonly Token[] = [
   {
     key: 'USDC',
     name: 'USDC',
-    icon: './assets/img/usdc.png',
+    icon: usdcIcon,
     evm: { symbol: 'USDC', address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6 },
     hathor: {
       symbol: 'hUSDC',
@@ -76,7 +93,7 @@ const MAINNET_TOKENS: readonly Token[] = [
   {
     key: 'aHTR',
     name: 'Hathor Token',
-    icon: './assets/img/hathor.png',
+    icon: hathorIcon,
     evm: { symbol: 'aHTR', address: '0x87ca1aC7697c1240518b464B02E92A856D81Aee1', decimals: 18 },
     hathor: {
       symbol: 'HTR',
@@ -89,7 +106,7 @@ const MAINNET_TOKENS: readonly Token[] = [
   {
     key: 'HTOG3',
     name: 'Hathor Togger 3',
-    icon: './assets/img/hathor.png',
+    icon: hathorIcon,
     evm: null,
     hathor: NOT_ON_HATHOR,
   },
@@ -99,7 +116,7 @@ const TESTNET_TOKENS: readonly Token[] = [
   {
     key: 'USDC',
     name: 'USDC',
-    icon: './assets/img/usdc.png',
+    icon: usdcIcon,
     evm: { symbol: 'USDC', address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', decimals: 6 },
     hathor: {
       symbol: 'hUSDC',
@@ -125,7 +142,7 @@ const TESTNET_TOKENS: readonly Token[] = [
   {
     key: 'aHTR',
     name: 'Hathor Token',
-    icon: './assets/img/hathor.png',
+    icon: hathorIcon,
     evm: { symbol: 'aHTR', address: '0x87ca1aC7697c1240518b464B02E92A856D81Aee1', decimals: 18 },
     hathor: {
       symbol: 'HTR',
@@ -138,7 +155,7 @@ const TESTNET_TOKENS: readonly Token[] = [
   {
     key: 'HTOG3',
     name: 'Hathor Togger 3',
-    icon: './assets/img/hathor.png',
+    icon: hathorIcon,
     evm: { symbol: 'hTOG3', address: '0x245028F6D4C2F2527309EcaE5e82F0f9fb793b7b', decimals: 18 },
     hathor: {
       symbol: 'hTOG3',
