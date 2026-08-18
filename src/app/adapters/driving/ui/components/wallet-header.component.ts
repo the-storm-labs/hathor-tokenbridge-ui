@@ -122,8 +122,12 @@ export class WalletHeader {
   private async connect(wallet: DiscoveredWallet): Promise<void> {
     try {
       const connection = await this.deps.connect(wallet.rdns)
-      await this.adopt(wallet, connection)
-      if (this.modal) hideModal(this.modal)
+      const adopted = await this.adopt(wallet, connection)
+      // Only on success: adopt() already opened its own message modal (e.g.
+      // "Wrong Network") on failure, and closing it here — synchronously,
+      // same tick, no repaint in between — made it flash open and shut
+      // before the user could ever see it.
+      if (adopted && this.modal) hideModal(this.modal)
     } catch (error) {
       console.error(`Connection failed for ${wallet.name}:`, error)
       this.fail(`Connection failed: ${messageOf(error)}`)
@@ -132,14 +136,15 @@ export class WalletHeader {
 
   // --- the connection lifecycle -------------------------------------------
 
-  private async adopt(wallet: DiscoveredWallet, connection: EvmConnection): Promise<void> {
+  /** @returns whether the connection was adopted, or rejected (wrong network). */
+  private async adopt(wallet: DiscoveredWallet, connection: EvmConnection): Promise<boolean> {
     this.deps.adoptProvider(connection.provider)
 
-    if (!this.applyChain(connection.chainId)) return
+    if (!this.applyChain(connection.chainId)) return false
     this.applyAccount(connection.accounts[0] ?? '')
 
     const events = this.deps.walletEvents(wallet.rdns)
-    if (!events) return
+    if (!events) return true
 
     events.onChainChanged((chainId) => {
       // These handlers outlive the connection: dropping a wallet does not
@@ -163,6 +168,8 @@ export class WalletHeader {
     events.onDisconnect(() => {
       this.fail('Wallet connection lost. Please reload the page and connect again.')
     })
+
+    return true
   }
 
   /**

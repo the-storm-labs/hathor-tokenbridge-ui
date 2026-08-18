@@ -155,6 +155,12 @@ describe('the wrong network', () => {
       true,
     )
     expect(el('modal-message-content').textContent).toContain('Arbitrum One')
+    // Regression: connect() used to hideModal() unconditionally right after
+    // adopt() returned, which closed this very message in the same tick it
+    // was opened — the user never had a chance to see why the connection
+    // was refused.
+    expect(el('myModal').classList.contains('show')).toBe(true)
+    expect(el('myModal').style.display).toBe('block')
   })
 })
 
