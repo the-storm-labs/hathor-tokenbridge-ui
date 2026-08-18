@@ -6,6 +6,7 @@ import { isOnHathor, type Token } from '../../../../domain/model/token'
 import { truncateMiddle } from '../../../../domain/tx-id'
 import type { SendHathorTransferParams } from '../../../../application/use-cases/send-hathor-transfer'
 import { TOAST } from '../toasts'
+import { bindPopover, type Popover } from '../popover'
 import type { TokenSelect } from './token-select.component'
 
 /**
@@ -23,6 +24,14 @@ import type { TokenSelect } from './token-select.component'
  * they listen for those events; when they become components, the listeners move
  * with them and nothing here changes.
  */
+
+/**
+ * How much of the address the header trigger shows before "…" — more than
+ * `truncateMiddle`'s own default, tested against the narrowest phone widths
+ * this app supports so the row never overflows. The popover it opens has
+ * room to show the address in full instead.
+ */
+const TRIGGER_ADDRESS_CHARS = { start: 12, end: 8 } as const
 
 /** Events this component publishes on the window. */
 export const HATHOR_FORM_EVENT = {
@@ -68,12 +77,22 @@ export class HathorTransferForm {
   private readonly maxButton: HTMLButtonElement | null
   private readonly sendButton: HTMLButtonElement | null
   private readonly connectButton: HTMLButtonElement | null
+  /**
+   * The `#connectHathorWallet` label lives in its own span, not the button's
+   * `textContent`: the button also holds the compact icon shown on narrow
+   * screens, and writing to the button directly would wipe that markup out.
+   */
+  private readonly connectButtonLabel: HTMLElement | null
   private readonly disconnectButton: HTMLElement | null
+  private readonly copyAddressButton: HTMLElement | null
   private readonly walletInfo: HTMLElement | null
   private readonly walletAddress: HTMLElement | null
+  private readonly walletMenuAddress: HTMLElement | null
   private readonly balance: HTMLElement | null
   private readonly amountError: HTMLElement | null
   private readonly sendError: HTMLElement | null
+  /** Null on a page with no trigger/menu pair — nothing opens, nothing closes. */
+  private readonly popover: Popover | null
 
   constructor(
     private readonly root: Document,
@@ -88,12 +107,21 @@ export class HathorTransferForm {
     this.maxButton = byId<HTMLButtonElement>('htrMax')
     this.sendButton = byId<HTMLButtonElement>('htrSendBtn')
     this.connectButton = byId<HTMLButtonElement>('connectHathorWallet')
+    this.connectButtonLabel =
+      this.connectButton?.querySelector('.wallet-connect-btn__label') ?? null
     this.disconnectButton = byId('disconnectHathorWallet')
+    this.copyAddressButton = byId('copyHathorAddress')
     this.walletInfo = byId('hathorWalletInfo')
     this.walletAddress = byId('hathorWalletAddress')
+    this.walletMenuAddress = byId('hathorWalletMenuAddress')
     this.balance = byId('htrTokenBalance')
     this.amountError = byId('htrAmountError')
     this.sendError = byId('htrSendErrorMsg')
+
+    const trigger = byId('hathorWalletTrigger')
+    const menu = byId('hathorWalletMenu')
+    this.popover =
+      trigger && menu ? bindPopover(trigger, menu, { onClose: () => this.resetCopyLabel() }) : null
   }
 
   mount(): void {
@@ -101,6 +129,7 @@ export class HathorTransferForm {
 
     this.connectButton?.addEventListener('click', () => void this.toggleConnection())
     this.disconnectButton?.addEventListener('click', () => void this.toggleConnection())
+    this.copyAddressButton?.addEventListener('click', () => void this.copyAddress())
     this.sendButton?.addEventListener('click', () => void this.send())
 
     if (this.tokenSelect) {
@@ -176,6 +205,41 @@ export class HathorTransferForm {
 
   // --- connection ----------------------------------------------------------
 
+  /**
+   * Sets the button's visible label and its accessible name together: the
+   * compact, icon-only layout for narrow screens hides the label span, and a
+   * hidden span drops out of the accessible name too, so the button needs its
+   * own `aria-label` to stay announced.
+   */
+  private setConnectLabel(text: string): void {
+    if (this.connectButtonLabel) this.connectButtonLabel.textContent = text
+    this.connectButton?.setAttribute('aria-label', text)
+  }
+
+  /**
+   * Copies the full address (never the truncated display text) and swaps the
+   * button's own label to confirm it. There is no timer to revert it:
+   * `resetCopyLabel` runs whenever the menu closes instead, so the label is
+   * never stale the next time it opens.
+   */
+  private async copyAddress(): Promise<void> {
+    const address = this.deps.wallet.getAddress()
+    if (!address) return
+    try {
+      await navigator.clipboard.writeText(address)
+    } catch (error) {
+      console.error('Copying the address failed', error)
+      return
+    }
+    const label = this.copyAddressButton?.querySelector('span')
+    if (label) label.textContent = 'Copied!'
+  }
+
+  private resetCopyLabel(): void {
+    const label = this.copyAddressButton?.querySelector('span')
+    if (label) label.textContent = 'Copy address'
+  }
+
   private async toggleConnection(): Promise<void> {
     if (this.deps.wallet.isConnected()) {
       await this.deps.wallet.disconnect()
@@ -184,11 +248,9 @@ export class HathorTransferForm {
     }
 
     const button = this.connectButton
-    const label = button?.textContent ?? 'Connect Hathor'
-    if (button) {
-      button.disabled = true
-      button.textContent = 'Connecting...'
-    }
+    const label = this.connectButtonLabel?.textContent ?? 'Connect Hathor'
+    if (button) button.disabled = true
+    this.setConnectLabel('Connecting...')
 
     try {
       const { address } = await this.deps.wallet.connect()
@@ -196,9 +258,9 @@ export class HathorTransferForm {
     } catch (error) {
       if (button) {
         button.disabled = false
-        button.textContent = label
         button.style.display = ''
       }
+      this.setConnectLabel(label)
       console.error('Hathor wallet connect failed', error)
       this.fail(`Could not connect Hathor wallet: ${messageOf(error)}`)
     }
@@ -209,14 +271,20 @@ export class HathorTransferForm {
     const connected = address !== null
 
     if (this.walletAddress) {
-      this.walletAddress.textContent = address ? truncateMiddle(address) : ''
+      this.walletAddress.textContent = address
+        ? truncateMiddle(address, TRIGGER_ADDRESS_CHARS.start, TRIGGER_ADDRESS_CHARS.end)
+        : ''
     }
+    // The popover has room the header trigger doesn't — no reason to
+    // truncate the one place meant for reading or copying the whole thing.
+    if (this.walletMenuAddress) this.walletMenuAddress.textContent = address ?? ''
     if (this.walletInfo) this.walletInfo.style.display = connected ? 'flex' : 'none'
     if (this.connectButton) {
       this.connectButton.style.display = connected ? 'none' : ''
       this.connectButton.disabled = false
-      this.connectButton.textContent = 'Connect Hathor'
     }
+    this.setConnectLabel('Connect Hathor')
+    if (!connected) this.popover?.close()
 
     this.setEnabled(connected)
     if (connected) {

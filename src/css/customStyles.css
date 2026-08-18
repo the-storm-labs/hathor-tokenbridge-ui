@@ -35,6 +35,141 @@
   background-color: #444;
 }
 
+/*
+ * The connected-wallet menu: click the address to reveal "Copy address" and
+ * "Disconnect", instead of a lone "×" button sitting next to it. Replaces
+ * #logIn/#connectHathorWallet's sibling — see wallet-header.component.ts and
+ * hathor-transfer-form.component.ts, wired through adapters/driving/ui/popover.ts.
+ */
+.wallet-menu-anchor {
+  position: relative;
+}
+
+.wallet-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px;
+  margin: -4px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.wallet-menu-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/*
+ * The network's own icon (Arbitrum's hexagon, Hathor's mark) instead of the
+ * generic wallet glyph both triggers used to share — nothing distinguished
+ * one connected row from the other at a glance.
+ */
+.wallet-trigger-icon {
+  display: block;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+}
+
+/*
+ * The network name line ("Arbitrum One" / "Hathor") is gone — the icon next
+ * to it already says which network this is. That also removes the reason
+ * the two rows didn't line up: both icons are the same fixed size, so with
+ * only one line left, "0x…" and "HT…" start at the same x with nothing to
+ * line up by hand, and truncateMiddle's shared defaults already make the
+ * two addresses the same length.
+ *
+ * The `!important`s guard against a real-world case, not a hypothetical one:
+ * a wallet extension (confirmed with MetaMask installed) recognises "0x…"
+ * text anywhere on any page as an Ethereum address and injects its own
+ * margin/padding/position onto that element to hang a hover affordance off
+ * it — invisible here, but enough to knock the EVM address out of line with
+ * the Hathor one, which has no "0x" prefix for it to match. A plain rule
+ * loses that fight since the extension's stylesheet loads after ours; only
+ * `!important` reliably wins it back.
+ */
+.wallet-trigger-address {
+  font-family: monospace;
+  font-size: 11px;
+  color: white;
+  white-space: nowrap;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+}
+
+.wallet-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 200px;
+  max-width: min(280px, calc(100vw - 24px));
+  background-color: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 12px;
+  text-align: left;
+}
+
+.wallet-menu__header {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.wallet-menu__header strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.wallet-menu__address {
+  font-family: monospace;
+  font-size: 13px;
+  color: #fff;
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+
+.wallet-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 6px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wallet-menu__item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.wallet-menu__item i {
+  width: 14px;
+  text-align: center;
+}
+
+.wallet-menu__item--danger {
+  color: #ff6b6b;
+}
+
+.wallet-menu__item--danger:hover {
+  background-color: rgba(255, 107, 107, 0.12);
+}
+
 body {
   font-family: "Poppins", sans-serif !important;
   font-size: 16px !important;
@@ -387,6 +522,90 @@ a:hover {
 
 .navbar-item {
   margin-top: 0px;
+}
+
+/*
+ * #logIn and #connectHathorWallet used to sit inside a Bootstrap
+ * `.navbar-collapse.collapse` with no `.navbar-toggler` to ever add `.show` —
+ * Bootstrap's JS is gone from this app, so that block was `display: none` on
+ * every viewport under 992px (real mobile, a narrowed window, a MetaMask
+ * popup shrinking the visible page) with nothing on the page able to reveal
+ * it again. The `collapse` class was dropped from the markup; `#logIn` and
+ * `#connectHathorWallet` are reachable at every width now.
+ *
+ * Bootstrap's `.navbar-collapse` also carries `flex-basis: 100%`: paired with
+ * a toggler, that's what makes the reopened menu drop down as a full-width
+ * panel below the brand. There is no toggler here, so with the collapse
+ * always visible that rule instead forced it onto its own full-width row
+ * under the Storm Labs logo on every narrow screen — the opposite of the
+ * desktop layout, where it sits beside the logo. `.navbar` still keeps
+ * Bootstrap's `flex-wrap: wrap` as a fallback for widths too narrow to fit
+ * both, but sized to its content `#navbarResponsive` fits next to the logo
+ * from phone widths up, same as desktop.
+ *
+ * `margin-left: auto` moves here rather than staying only on the inner
+ * `.navbar-item`: once this box is content-sized it has no spare width of
+ * its own for that inner margin to consume, so on the rare screen too
+ * narrow to fit both (where `.navbar`'s wrap puts this box on its own line)
+ * it fell back to hugging the left edge instead of the right one.
+ */
+#navbarResponsive {
+  flex-basis: auto;
+  flex-grow: 0;
+  width: auto;
+  margin-left: auto;
+}
+
+.wallet-connect-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wallet-connect-btn__compact {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wallet-connect-btn__compact .fa-plug {
+  font-size: 13px;
+}
+
+.wallet-connect-btn__network-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  /*
+   * `body .btn` above (line 52) sets 24px of horizontal padding at a
+   * specificity a bare `.wallet-connect-btn` can't out-rank by source order
+   * alone — it silently kept its padding here, squeezing the icon-only
+   * content into the few pixels left inside a 52px-wide button. Matching its
+   * `body .btn` shape is what actually wins the cascade.
+   */
+  body .wallet-connect-btn {
+    width: 52px !important;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .wallet-connect-btn__label {
+    display: none;
+  }
+
+  .wallet-connect-btn__compact {
+    display: inline-flex;
+  }
+
+  .wallet-row {
+    width: auto !important;
+    justify-content: flex-end;
+  }
 }
 
 .nav-tabs .nav-link {

@@ -8,6 +8,7 @@ import type {
 } from '../../../../ports/driven/evm-wallet.port'
 import type { ReconnectedWallet } from '../../../../application/use-cases/connect-evm-wallet'
 import { hideModal, showModal } from '../modal'
+import { bindPopover, type Popover } from '../popover'
 
 /**
  * The EVM wallet: the connect button, the wallet picker, the address and
@@ -21,6 +22,14 @@ import { hideModal, showModal } from '../modal'
  * The web3 instance is no longer built here and left on `window` for adapters to
  * read back: the provider is handed to the container, which owns it.
  */
+
+/**
+ * How much of the address the header trigger shows before "…" — more than
+ * `truncateMiddle`'s own default, tested against the narrowest phone widths
+ * this app supports so the row never overflows. The popover it opens has
+ * room to show the address in full instead.
+ */
+const TRIGGER_ADDRESS_CHARS = { start: 12, end: 8 } as const
 
 /** Events this component publishes on the window. */
 export const WALLET_EVENT = {
@@ -52,33 +61,56 @@ export interface WalletHeaderDeps {
 
 export class WalletHeader {
   private readonly logIn: HTMLElement | null
+  /**
+   * The `#logIn` label lives in its own span, not the button's `textContent`:
+   * the button also holds the compact icon shown on narrow screens, and
+   * writing to the button directly would wipe that markup out.
+   */
+  private readonly logInLabel: HTMLElement | null
   private readonly disconnectButton: HTMLElement | null
+  private readonly copyAddressButton: HTMLElement | null
   private readonly address: HTMLElement | null
   private readonly network: HTMLElement | null
+  private readonly walletMenuAddress: HTMLElement | null
+  private readonly walletMenuProvider: HTMLElement | null
   private readonly status: NodeListOf<HTMLElement>
   private readonly transferTab: HTMLElement | null
   private readonly modal: HTMLElement | null
   private readonly walletList: HTMLElement | null
+  /** Null on a page with no trigger/menu pair — nothing opens, nothing closes. */
+  private readonly popover: Popover | null
   /** The connected account, so a chain switch can re-announce it. */
   private account = ''
+  /** e.g. "MetaMask" — for the menu's "Connected with …" line. */
+  private walletName = ''
 
   constructor(
     private readonly root: Document,
     private readonly deps: WalletHeaderDeps,
   ) {
     this.logIn = root.getElementById('logIn')
+    this.logInLabel = this.logIn?.querySelector('.wallet-connect-btn__label') ?? null
     this.disconnectButton = root.getElementById('disconnectEvmWallet')
+    this.copyAddressButton = root.getElementById('copyEvmAddress')
     this.address = root.getElementById('address')
     this.network = root.getElementById('evmNetwork')
+    this.walletMenuAddress = root.getElementById('evmWalletMenuAddress')
+    this.walletMenuProvider = root.getElementById('evmWalletProvider')
     this.status = root.querySelectorAll<HTMLElement>('.wallet-status')
     this.transferTab = root.getElementById('transferTab')
     this.modal = root.getElementById('myModal')
     this.walletList = root.getElementById('wallet-list')
+
+    const trigger = root.getElementById('evmWalletTrigger')
+    const menu = root.getElementById('evmWalletMenu')
+    this.popover =
+      trigger && menu ? bindPopover(trigger, menu, { onClose: () => this.resetCopyLabel() }) : null
   }
 
   mount(): void {
     this.logIn?.addEventListener('click', () => this.openWalletPicker())
     this.disconnectButton?.addEventListener('click', () => this.disconnect())
+    this.copyAddressButton?.addEventListener('click', () => void this.copyAddress())
 
     this.showDisconnected()
   }
@@ -138,6 +170,7 @@ export class WalletHeader {
 
   /** @returns whether the connection was adopted, or rejected (wrong network). */
   private async adopt(wallet: DiscoveredWallet, connection: EvmConnection): Promise<boolean> {
+    this.walletName = wallet.name
     this.deps.adoptProvider(connection.provider)
 
     if (!this.applyChain(connection.chainId)) return false
@@ -196,8 +229,18 @@ export class WalletHeader {
     this.account = address
     this.deps.setAccount(address)
 
-    if (this.address) this.address.textContent = truncateMiddle(address)
+    if (this.address) {
+      this.address.textContent = truncateMiddle(
+        address,
+        TRIGGER_ADDRESS_CHARS.start,
+        TRIGGER_ADDRESS_CHARS.end,
+      )
+    }
     if (this.network) this.network.textContent = this.deps.route.evm.name
+    // The popover has room the header trigger doesn't — no reason to
+    // truncate the one place meant for reading or copying the whole thing.
+    if (this.walletMenuAddress) this.walletMenuAddress.textContent = address
+    if (this.walletMenuProvider) this.walletMenuProvider.textContent = this.walletName
     if (this.logIn) this.logIn.style.display = 'none'
     for (const element of this.status) element.style.display = 'flex'
     this.transferTab?.classList.remove('disabled')
@@ -232,11 +275,39 @@ export class WalletHeader {
   private showDisconnected(): void {
     if (this.logIn) {
       this.logIn.style.display = ''
-      this.logIn.textContent = 'Connect EVM'
+      // The compact, icon-only layout for narrow screens hides the label
+      // span, and a hidden span drops out of the accessible name too, so the
+      // button needs its own `aria-label` to stay announced.
+      this.logIn.setAttribute('aria-label', 'Connect EVM')
     }
+    if (this.logInLabel) this.logInLabel.textContent = 'Connect EVM'
     if (this.address) this.address.textContent = '0x00000...'
+    this.popover?.close()
     for (const element of this.status) element.style.display = 'none'
     this.transferTab?.classList.add('disabled')
+  }
+
+  /**
+   * Copies the full address (never the truncated display text) and swaps the
+   * button's own label to confirm it, the way the menu in the reference design
+   * does. There is no timer to revert it: `resetCopyLabel` runs whenever the
+   * menu closes instead, so the label is never stale the next time it opens.
+   */
+  private async copyAddress(): Promise<void> {
+    if (!this.account) return
+    try {
+      await navigator.clipboard.writeText(this.account)
+    } catch (error) {
+      console.error('Copying the address failed', error)
+      return
+    }
+    const label = this.copyAddressButton?.querySelector('span')
+    if (label) label.textContent = 'Copied!'
+  }
+
+  private resetCopyLabel(): void {
+    const label = this.copyAddressButton?.querySelector('span')
+    if (label) label.textContent = 'Copy address'
   }
 
   private showNetwork(route: BridgeRoute): void {
