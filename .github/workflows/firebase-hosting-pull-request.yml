@@ -20,21 +20,27 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm run test -- --run
+      # The API URL is inlined into the bundle by Vite, so an empty secret does
+      # not fail the build — it ships an app that quietly cannot reach the Read
+      # API. Checked before building rather than grepped for afterwards, which
+      # is what the %VITE_*% placeholder check used to do.
+      - name: Check the build secrets are set
+        run: |
+          if [ -z "$VITE_BRIDGE_API_URL" ]; then
+            echo "::error::VITE_BRIDGE_API_URL is empty; the build would ship an app that cannot reach the Read API."
+            exit 1
+          fi
+        env:
+          VITE_BRIDGE_API_URL: ${{ secrets.VITE_BRIDGE_API_URL }}
       - name: Build
         run: npm run build
         env:
           VITE_BRIDGE_API_URL: ${{ secrets.VITE_BRIDGE_API_URL }}
           VITE_EVM_HOST_MAINNET: ${{ secrets.VITE_EVM_HOST_MAINNET }}
           VITE_EVM_HOST_TESTNET: ${{ secrets.VITE_EVM_HOST_TESTNET }}
-      - name: Fail if env placeholders were not substituted
-        run: |
-          if grep -rq '%VITE_' public/*.html; then
-            echo "::error::Unsubstituted %VITE_*% placeholder in the build output."
-            grep -rn '%VITE_' public/*.html
-            exit 1
-          fi
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
