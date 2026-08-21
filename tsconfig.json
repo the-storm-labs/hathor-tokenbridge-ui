@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    "strict": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+
+    // Nothing outside src/app is JavaScript any more: no classic scripts, no
+    // CDN globals, no hand-rolled ambient declarations.
+    "allowJs": false,
+    "checkJs": false,
+
+    // "node" is for test files only (node:crypto in the address test); the app
+    // code itself must never import a node builtin.
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src/app"],
+  "exclude": ["public", "node_modules"]
+}

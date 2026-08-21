@@ -1,441 +1,724 @@
 <!doctype html>
-<html lang="en">
-
-<head>
+<html data-deployment="mainnet" lang="en">
+  <head>
     <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
     <!-- Libraries CSS Files -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.2/css/all.css"
-        integrity="sha384-Ex0vLvgbKZTFlqEetkjk2iUgM+H5udpQKFKjBoGFwPaHRGhiWyVI6jLz/3fBm5ht" crossorigin="anonymous">
-    <link rel="stylesheet" href="./css/scrollbar-plugin.css" crossorigin="anonymous">
-    <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css"
-        integrity="sha384-2SvkxRa9G/GlZMyFexHk+WN9p0n2T+r38dvBmw5l2/J3gjUcxs9R1GwKs0seeSh3" crossorigin="anonymous">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.2/css/all.css"
+      integrity="sha384-Ex0vLvgbKZTFlqEetkjk2iUgM+H5udpQKFKjBoGFwPaHRGhiWyVI6jLz/3fBm5ht"
+      crossorigin="anonymous"
+    />
 
     <!-- Bootstrap core CSS -->
-    <link rel="stylesheet" href="./css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="./css/bootstrap.min.css" crossorigin="anonymous" />
 
     <!-- Favicons -->
-    <link rel="icon" type="image/png" sizes="32x32" href="./assets/img/favicons/favicon-16x16.png"
-        crossorigin="anonymous">
-    <link rel="icon" type="image/png" sizes="16x16" href="./assets/img/favicons/favicon-16x16.png"
-        crossorigin="anonymous">
-    <link rel="shortcut icon" href="./assets/img/favicons/favicon-16x16.png" crossorigin="anonymous">
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./assets/img/favicons/favicon-16x16.png"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./assets/img/favicons/favicon-16x16.png"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="shortcut icon"
+      href="./assets/img/favicons/favicon-16x16.png"
+      crossorigin="anonymous"
+    />
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap"
+      rel="stylesheet"
+    />
 
     <!-- SEO -->
     <title>Token Bridge between Hathor and Arbitrum One</title>
-    <meta name=”description” content=”The Token Bridge between Hathor and Arbitrum One allows to cross ERC20 tokens back
-        and forth between the two blockchains.”>
-    <meta name="keywords" content="Token, Bridge, Hathor, Ethereum, blockchain, token, crypto, ERC20, Arbitrum">
-    <meta name="author" content="The Storm Labs">
+    <meta
+      name="”description”"
+      content="”The"
+      Token
+      Bridge
+      between
+      Hathor
+      and
+      Arbitrum
+      One
+      allows
+      to
+      cross
+      ERC20
+      tokens
+      back
+      and
+      forth
+      between
+      the
+      two
+      blockchains.”
+    />
+    <meta
+      name="keywords"
+      content="Token, Bridge, Hathor, Ethereum, blockchain, token, crypto, ERC20, Arbitrum"
+    />
+    <meta name="author" content="The Storm Labs" />
     <!-- Custom Styles -->
-    <link href="./css/customStyles.css" rel="stylesheet">
-    <link href="./css/dark-theme.css" rel="stylesheet">
-</head>
+    <link href="./css/customStyles.css" rel="stylesheet" />
+    <link href="./css/dark-theme.css" rel="stylesheet" />
+  </head>
 
-<body>
+  <body>
     <section id="main">
-        <!-- Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark align-items-center">
-            <div class="container d-flex  align-items-center" style="line-height: normal;">
-                <a class="navbar-brand" href="/">
-                    <img src="./assets/storm-labs-reduced-logo.png" class="logo alt="">
-                    </a>
-                    <div class=" navbar-collapse collapse" id="navbarResponsive">
-                    <div class="navbar-item ml-auto">
-                        <button id="logIn" type="button" class="btn btn-primary badge-pill" style="width: 170px;">
-                            Connect wallet
-                        </button>
-                        <div class="wallet-status navbar-item indicator badge-outline badge-pill"
-                            style="display: none;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 14 14"
-                                fill="white" class="w-5 h-5 fill-foreground">
-                                <g clip-path="url(#clip0_434_1586)">
-                                    <path
-                                        d="M12.1509 2H1.85167C0.829068 2 0 2.82907 0 3.85167V10.5496C0 11.5722 0.829068 12.4013 1.85167 12.4013H12.1509C13.1735 12.4013 14.0026 11.5722 14.0026 10.5496V3.85167C14.0026 2.82907 13.1735 2 12.1509 2ZM12.4752 5.43396C12.4752 5.63273 12.3157 5.79227 12.1169 5.79227H8.49468C8.32991 5.79227 8.1756 5.8995 8.13637 6.05903C8.01607 6.57426 7.55315 6.9561 7.00131 6.9561C6.44947 6.9561 5.98655 6.57164 5.86624 6.05903C5.82963 5.89688 5.67271 5.79227 5.50794 5.79227H1.88567C1.6869 5.79227 1.52737 5.63273 1.52737 5.43396V4.19951C1.52737 3.80198 1.84906 3.48029 2.24659 3.48029H11.756C12.1536 3.48029 12.4752 3.80198 12.4752 4.19951V5.43396Z">
-                                    </path>
-                                </g>
-                                <defs>
-                                    <clipPath id="clip0_434_1586">
-                                        <rect width="14" height="14" fill="white"></rect>
-                                    </clipPath>
-                                </defs>
-                            </svg>
-                            <span aria-describedby="tooltip-status"></span>
-                        </div>
-                        <div class="wallet-status navbar-item badge-pill text-truncate"
-                            style="width: 170px; display: none;">
-                            <span id="address">0x123456789</span>
-                        </div>
+      <!-- Navigation -->
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark align-items-center">
+        <div class="container d-flex align-items-center" style="line-height: normal">
+          <a class="navbar-brand" href="/">
+            <img src="./assets/storm-labs-reduced-logo.png" class="logo" alt="" />
+          </a>
+          <div class="navbar-collapse" id="navbarResponsive">
+            <div class="navbar-item ml-auto d-flex flex-column align-items-end" style="gap: 4px">
+              <!-- EVM Wallet -->
+              <div class="d-flex align-items-center wallet-row" style="gap: 6px; width: 200px">
+                <button
+                  id="logIn"
+                  type="button"
+                  class="btn btn-primary badge-pill btn-sm wallet-connect-btn"
+                  style="width: 200px; white-space: nowrap"
+                  aria-label="Connect EVM"
+                >
+                  <span class="wallet-connect-btn__compact" aria-hidden="true">
+                    <i class="fas fa-plug"></i>
+                    <img
+                      src="./assets/img/arbitrum.svg"
+                      class="wallet-connect-btn__network-icon"
+                      alt=""
+                    />
+                  </span>
+                  <span class="wallet-connect-btn__label">Connect EVM</span>
+                </button>
+                <div
+                  class="wallet-status indicator wallet-menu-anchor"
+                  style="display: none; align-items: center"
+                >
+                  <button
+                    type="button"
+                    id="evmWalletTrigger"
+                    class="wallet-menu-trigger"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                  >
+                    <img src="./assets/img/arbitrum.svg" alt="" class="wallet-trigger-icon" />
+                    <span id="address" class="wallet-trigger-address"></span>
+                  </button>
+                  <div id="evmWalletMenu" class="wallet-menu" role="menu" aria-label="EVM wallet">
+                    <div class="wallet-menu__header">
+                      Connected with <strong id="evmWalletProvider"></strong>
                     </div>
+                    <div class="wallet-menu__address" id="evmWalletMenuAddress"></div>
+                    <button type="button" id="copyEvmAddress" class="wallet-menu__item">
+                      <i class="fas fa-copy" aria-hidden="true"></i>
+                      <span>Copy address</span>
+                    </button>
+                    <button
+                      type="button"
+                      id="disconnectEvmWallet"
+                      class="wallet-menu__item wallet-menu__item--danger"
+                    >
+                      <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                      <span>Disconnect</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hathor Wallet -->
+              <div class="d-flex align-items-center wallet-row" style="gap: 6px; width: 200px">
+                <button
+                  id="connectHathorWallet"
+                  type="button"
+                  class="btn btn-primary badge-pill btn-sm wallet-connect-btn"
+                  style="width: 200px; white-space: nowrap"
+                  aria-label="Connect Hathor"
+                >
+                  <span class="wallet-connect-btn__compact" aria-hidden="true">
+                    <i class="fas fa-plug"></i>
+                    <img
+                      src="./assets/img/hathor.png"
+                      class="wallet-connect-btn__network-icon"
+                      alt=""
+                    />
+                  </span>
+                  <span class="wallet-connect-btn__label">Connect Hathor</span>
+                </button>
+                <div
+                  id="hathorWalletInfo"
+                  class="wallet-menu-anchor"
+                  style="display: none; align-items: center"
+                >
+                  <button
+                    type="button"
+                    id="hathorWalletTrigger"
+                    class="wallet-menu-trigger"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                  >
+                    <img src="./assets/img/hathor.png" alt="" class="wallet-trigger-icon" />
+                    <span id="hathorWalletAddress" class="wallet-trigger-address"></span>
+                  </button>
+                  <div
+                    id="hathorWalletMenu"
+                    class="wallet-menu"
+                    role="menu"
+                    aria-label="Hathor wallet"
+                  >
+                    <div class="wallet-menu__header">
+                      Connected with <strong>Hathor Wallet</strong>
+                    </div>
+                    <div class="wallet-menu__address" id="hathorWalletMenuAddress"></div>
+                    <button type="button" id="copyHathorAddress" class="wallet-menu__item">
+                      <i class="fas fa-copy" aria-hidden="true"></i>
+                      <span>Copy address</span>
+                    </button>
+                    <button
+                      type="button"
+                      id="disconnectHathorWallet"
+                      class="wallet-menu__item wallet-menu__item--danger"
+                    >
+                      <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                      <span>Disconnect</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-            </div>
-        </nav>
-        <div class="navbar_bottom_shape"></div>
-        <section id="home">
-            <div class="container">
-                <div class="title">
-                    <h1 id="title">Hathor EVM bridge</h1>
-                    <p class="">You can convert your tokens from Hathor to Arbitrum One and viceversa.</p>
-                    <p style="display: none;" class="">You can claim tokens you send from Hathor.</p>
-                    <p class=""><a href="https://gist.github.com/obiyankenobi/7fdc497d4fecd4712f042dfa165c5dce"
-                            target="_blank">Click here</a> for a tutorial on how to use the bridge.</p>
+          </div>
+        </div>
+      </nav>
+      <div class="navbar_bottom_shape"></div>
+      <section id="home">
+        <div class="container">
+          <div class="title">
+            <h1 id="title">Hathor EVM bridge</h1>
+            <p class="">You can convert your tokens from Hathor to Arbitrum One and viceversa.</p>
+            <p style="display: none" class="">You can claim tokens you send from Hathor.</p>
+            <p class="">
+              <a
+                href="https://gist.github.com/obiyankenobi/7fdc497d4fecd4712f042dfa165c5dce"
+                target="_blank"
+                >Click here</a
+              >
+              for a tutorial on how to use the bridge.
+            </p>
+          </div>
+          <!--Begin of transferTab-->
+          <div id="transferTab" class="align-center disabled">
+            <div class="card">
+              <div class="card-body">
+                <!-- Direction toggle -->
+                <div class="form-group text-center mb-3">
+                  <div
+                    class="btn-group btn-group-toggle"
+                    data-toggle="buttons"
+                    id="directionToggle"
+                  >
+                    <label class="btn btn-outline-secondary active" id="btn-arb-to-htr">
+                      <input type="radio" name="direction" value="arb-to-htr" checked /> ARB &rarr;
+                      HTR
+                    </label>
+                    <label class="btn btn-outline-secondary" id="btn-htr-to-arb">
+                      <input type="radio" name="direction" value="htr-to-arb" /> HTR &rarr; ARB
+                    </label>
+                  </div>
                 </div>
-                <!--Begin of transferTab-->
-                <div id="transferTab" class="align-center disabled">
-                    <div class="card">
-                        <div class="card-body">
-                            <form id="crossForm" name="crossForm">
-                                <div class="form-group">
-                                    <label for="tokenAddress">Select token</label>
-                                    <select class="selectpicker" id="tokenAddress" name="tokenAddress" data-width="100%"
-                                        title="Select token" disabled required>
-                                        <!-- Dinamic content made with JS -->
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="amount">Amount</label>
-                                    <div class="input-group">
-                                        <input name="amount" id="amount" class="form-control" placeholder="0.0"
-                                            required>
-                                        <div class="input-group-append">
-                                            <button id="max" class="btn btn-secondary" type="button">Max</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <div class="fees mt-2">
-                                        <p>Service fee: <span id="serviceFee"></span> <span
-                                                class="selectedToken"></span></p>
-                                        <p>Total cost: <span id="totalCost"></span> <span class="selectedToken"></span>
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="form-group willReceive">
-                                    <label class="hathorAddress-label" for="hathorAddress">Which Hathor Address do you
-                                        want to send the tokens to:</label>
-                                    <div class="input-group">
-                                        <div class="form-control-plaintext" id="htrAddress" name="htrAddress">
-                                            <input name="hathorAddress" id="hathorAddress"
-                                                class="outline form-control text-center align-center"
-                                                placeholder="Hathor Address" required>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="text-center mt-3">
-                                    <button disabled id="approve"
-                                        class="btn btn-primary btn-lg btn-block">Approve</button>
-                                    <button disbaled id="deposit" type="submit"
-                                        class="btn btn-primary btn-lg btn-block mt-2">Convert tokens</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                <!--End of transferTab-->
-
-                <!--Begin of claimTab-->
-                <div id="claimTab" class="tab-content" id="nav-tabContent">
-                    <div id="claims" class="tab-pane fade show active" role="tabpanel">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Token</th>
-                                    <th scope="col">Amount</th>
-                                    <th scope="col"><button id="refresh-claim" class="btn btn-primary">Refresh</button>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody id="claims-tbody">
-                                <!-- Dinamic content made with JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="wait_claim_nomessage" class="mt-3 align-center text-center"
-                        style="max-width:350px; line-height: 16px; display:none;">
-                        <!-- Spinner <div class="spinner-border mb-4" style="height:70px; width:70px"></div> -->
-                        <!-- https://tobiasahlin.com/spinkit/ -->
-                        <div class="sk-fading-circle">
-                            <div class="sk-circle1 sk-circle"></div>
-                            <div class="sk-circle2 sk-circle"></div>
-                            <div class="sk-circle3 sk-circle"></div>
-                            <div class="sk-circle4 sk-circle"></div>
-                            <div class="sk-circle5 sk-circle"></div>
-                            <div class="sk-circle6 sk-circle"></div>
-                            <div class="sk-circle7 sk-circle"></div>
-                            <div class="sk-circle8 sk-circle"></div>
-                            <div class="sk-circle9 sk-circle"></div>
-                            <div class="sk-circle10 sk-circle"></div>
-                            <div class="sk-circle11 sk-circle"></div>
-                            <div class="sk-circle12 sk-circle"></div>
-                        </div>
-                    </div>
-                    <div id="wait_claim" class="mt-3 align-center text-center"
-                        style="max-width:350px; line-height: 16px; display:none;">
-                        <!-- Spinner <div class="spinner-border mb-4" style="height:70px; width:70px"></div> -->
-                        <!-- https://tobiasahlin.com/spinkit/ -->
-                        <div class="sk-fading-circle">
-                            <div class="sk-circle1 sk-circle"></div>
-                            <div class="sk-circle2 sk-circle"></div>
-                            <div class="sk-circle3 sk-circle"></div>
-                            <div class="sk-circle4 sk-circle"></div>
-                            <div class="sk-circle5 sk-circle"></div>
-                            <div class="sk-circle6 sk-circle"></div>
-                            <div class="sk-circle7 sk-circle"></div>
-                            <div class="sk-circle8 sk-circle"></div>
-                            <div class="sk-circle9 sk-circle"></div>
-                            <div class="sk-circle10 sk-circle"></div>
-                            <div class="sk-circle11 sk-circle"></div>
-                            <div class="sk-circle12 sk-circle"></div>
-                        </div>
-                        <div class="mt-2">
-                            Wait for approximately <b><span id="secondsPerBlock_claim">X</span> seconds:</b>
-                            the waiting period is required to confirm the transaction on the blockchain.
-                            Please <b>do not close this tab</b> until the process has finished.
-                        </div>
-                    </div>
-
-                    <div id="success_claim" class="mt-3 align-center text-center alert alert-dismissible fade show"
-                        style="display:none;">
-                        <div class="outline-rounded">
-                            <div style="font-size: 32px;"><i class="fas fa-check"></i></div>
-                            <div>You will receive <span id="receive_claim" class="black">126 rKovDAI</span> in your
-                                wallet in approximately
-                                <span id="confirmationTime_claim">X minutes</span>
-                            </div>
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div id="alert-danger_claim" class="alert alert-danger alert-dismissible fade show" role="alert"
-                            style="display:none">
-                            <h4 class="alert-heading">Ups! there was an error</h4>
-                            <p id="alert-danger-text_claim"></p>
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <!--End of claim Tab-->
-
-                <div id="previousTxnsEmptyTab">
-                    <h5 class="">Active account transactions</h5>
-                    <p class="subtitle text-center">Please note that all transactions listed here will not
-                        appear if you use another device</p>
-                    <p class="text-center">No transactions for active account found</p>
-                </div>
-
-                <div id="previousTxnsTab">
-                    <h5 class="">Active account transactions</h5>
-                    <nav>
-                        <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                            <a class="nav-item nav-link active" id="nav-htr-eth-tab" data-toggle="tab"
-                                href="#nav-htr-eth" role="tab" aria-controls="nav-htr-eth" aria-selected="true">ARB
-                                &rarr; HTR</a>
-                            <a class="nav-item nav-link" id="nav-eth-htr-tab" data-toggle="tab" href="#nav-eth-htr"
-                                role="tab" aria-controls="nav-eth-htr" aria-selected="false">HTR &rarr; ARB</a>
-                        </div>
-                    </nav>
-                    <div class="tab-content" id="nav-tabContent">
-                        <div class="tab-pane fade show active" id="nav-htr-eth" role="tabpanel"
-                            aria-labelledby="nav-htr-eth-tab">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Txn hash</th>
-                                        <th scope="col">Block number</th>
-                                        <th scope="col">Amount</th>
-                                        <th scope="col">Status | Estimated time</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="htr-eth-tbody">
-                                    <!-- Dinamic content made with JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="tab-pane fade" id="nav-eth-htr" role="tabpanel" aria-labelledby="nav-eth-htr-tab">
-                            <!-- Dinamic content made with JS -->
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Sender</th>
-                                        <th scope="col">Amount</th>
-                                        <th scope="col" class="text-right">Approvals</th>
-                                        <th scope="col">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="eth-htr-tbody">
-                                    <!-- Dinamic content made with JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
-                        <div class="btn-group mr-2" role="group" aria-label="First group">
-                            <button type="button" id="txn-previous" class="btn btn-secondary">
-                                < previous</button>
-                                    <button type="button" id="txn-next" class="btn btn-secondary">next ></button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="tokensTab">
-                    <h5 class="">Token bridge list</h5>
-                    <p class="subtitle text-center">Hathor native tokens will transform into a(tokenName). Arbitrum One
-                        native tokens will transform into h(tokenName)</p>
-                    <div id="tokenListTab" class="align-center">
+                <form id="crossForm" name="crossForm">
+                  <!-- Token and amount are one decision, so they share a row. -->
+                  <div class="form-row transfer-row">
+                    <div class="form-group col-sm-6">
+                      <label for="tokenAddress">Select token</label>
+                      <select
+                        id="tokenAddress"
+                        name="tokenAddress"
+                        title="Select token"
+                        disabled
+                        required
+                      >
                         <!-- Dinamic content made with JS -->
+                      </select>
+                      <small class="token-balance-label">
+                        Balance: <span id="evmTokenBalance">—</span>
+                      </small>
                     </div>
-                </div>
+                    <div class="form-group col-sm-6">
+                      <label for="amount">Amount</label>
+                      <div class="input-group">
+                        <input
+                          name="amount"
+                          id="amount"
+                          class="form-control"
+                          placeholder="0.0"
+                          required
+                        />
+                        <div class="input-group-append">
+                          <button id="max" class="btn btn-secondary" type="button">Max</button>
+                        </div>
+                      </div>
+                      <!--
+                                      The amount rejections used to be written into
+                                      `.amount .invalid-feedback`, a selector that matches nothing
+                                      in this page — so an amount below the minimum or over the
+                                      daily limit was refused with no explanation at all.
+                                    -->
+                      <div class="invalid-feedback" id="amountError"></div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <div class="fees mt-2">
+                      <p>
+                        Service fee: <span id="serviceFee"></span>
+                        <span class="selectedToken"></span>
+                      </p>
+                      <p>
+                        Total cost: <span id="totalCost"></span> <span class="selectedToken"></span>
+                      </p>
+                    </div>
+                  </div>
+                  <div class="form-group willReceive">
+                    <label class="hathorAddress-label" for="hathorAddress"
+                      >Which Hathor Address do you want to send the tokens to:</label
+                    >
+                    <small class="token-balance-label receive-line">
+                      You will receive: <span id="willReceiveToken">—</span>
+                    </small>
+                    <div class="input-group">
+                      <div class="form-control-plaintext" id="htrAddress" name="htrAddress">
+                        <input
+                          name="hathorAddress"
+                          id="hathorAddress"
+                          class="outline form-control text-center align-center"
+                          placeholder="Hathor Address"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="text-center mt-3">
+                    <!--
+                                      The approval step, shown only while the bridge is not yet
+                                      allowed to move the total cost. Both this block and the
+                                      checkbox in it were missing from the page, which made
+                                      unlimited approval unreachable even though the use case
+                                      implements it.
+                                    -->
+                    <div class="approve-deposit">
+                      <button disabled id="approve" class="btn btn-primary btn-lg btn-block">
+                        Approve
+                      </button>
+                      <div class="custom-control custom-checkbox mt-2 approve-remember">
+                        <input
+                          type="checkbox"
+                          class="custom-control-input"
+                          id="doNotAskAgain"
+                          disabled
+                        />
+                        <label class="custom-control-label" for="doNotAskAgain">
+                          Approve once and don't ask again for this token
+                        </label>
+                      </div>
+                    </div>
+                    <button
+                      disabled
+                      id="deposit"
+                      type="submit"
+                      class="btn btn-primary btn-lg btn-block mt-2"
+                    >
+                      Convert tokens
+                    </button>
+                  </div>
+                </form>
 
-                <div id="infoTab">
-                    <h5 class="">Important details</h5>
-                    <div class="row mb-5">
-                        <div class="col-md-4 col-sm-4 mb-5 config-section">
-                            <span class="config-value mb-2" id="config-max">-</span>
-                            <span class="config-title">Max transfer allowed</span>
-                            <p>
-                                The max value of tokens that can be transferred per day
-                            </p>
-                        </div>
-                        <div class="col-md-4 col-sm-4 mb-5 config-section">
-                            <span class="config-value mb-2" id="config-min">-</span>
-                            <span class="config-title">Min transfer allowed</span>
-                            <p>
-                                The min value of tokens that can be transferred per day
-                            </p>
-                        </div>
-                        <div class="col-md-4 col-sm-4 mb-5 config-section">
-                            <span class="config-value mb-2" id="config-to-spend">-</span>
-                            <span class="config-title">Daily transfer limit</span>
-                            <p>
-                                How many tokens can be transferred today
-                            </p>
-                        </div>
-                        <div class="col-md-4 col-sm-4 mb-5 config-section">
-                            <span class="config-value mb-2" id="config-fee">-</span>
-                            <span class="config-title">Fee</span>
-                            <p>
-                                This is the fee required for transferring tokens between networks
-                            </p>
-                        </div>
-                        <div class="col-md-4 col-sm-4 mb-5 config-section">
-                            <div>
-                                <span class="config-value mb-2 ml-2" id="config-federators-count">-</span>
-                            </div>
-                            <span class="config-title">Federators</span>
-                            <p>
-                                The Authorities will vote the transactions to cross
-                            </p>
-                        </div>
-                        <div class="col-md-4 col-sm-4 mb-5 config-section">
-                            <span class="config-value mb-2" id="config-whitelisted-enabled">-</span>
-                            <span class="config-title">Crossing period</span>
-                            <p>
-                                Time needed to have enough confirmations to securely cross assets to the other network
-                            </p>
-                        </div>
+                <!-- HTR→ARB transfer form (shown when direction toggle = HTR→ARB) -->
+                <div id="htrToArbForm" style="display: none">
+                  <!-- Same row as the other direction, so the two forms match. -->
+                  <div class="form-row transfer-row">
+                    <div class="form-group col-sm-6">
+                      <label for="htrTokenSelect">Select token</label>
+                      <select id="htrTokenSelect" title="Select token" disabled required></select>
+                      <small class="token-balance-label">
+                        Balance: <span id="htrTokenBalance">—</span>
+                      </small>
                     </div>
+                    <div class="form-group col-sm-6">
+                      <label for="htrAmount">Amount</label>
+                      <div class="input-group">
+                        <input
+                          id="htrAmount"
+                          class="form-control"
+                          placeholder="0.0"
+                          type="text"
+                          disabled
+                        />
+                        <div class="input-group-append">
+                          <button id="htrMax" class="btn btn-secondary" type="button" disabled>
+                            Max
+                          </button>
+                        </div>
+                      </div>
+                      <div class="invalid-feedback" id="htrAmountError"></div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="htrDestAddress">Destination Arbitrum address</label>
+                    <input
+                      id="htrDestAddress"
+                      class="form-control"
+                      type="text"
+                      disabled
+                      placeholder="0x... (auto-filled from connected EVM wallet)"
+                    />
+                    <small class="form-text text-muted">
+                      Where you will receive tokens on Arbitrum.
+                    </small>
+                  </div>
+                  <div class="form-group">
+                    <div class="fees mt-2">
+                      <p>Service fee: paid on the bridge contract at time of claim</p>
+                    </div>
+                  </div>
+                  <div class="text-center mt-3">
+                    <button
+                      id="htrSendBtn"
+                      class="btn btn-primary btn-lg btn-block"
+                      type="button"
+                      disabled
+                    >
+                      Send via Hathor Wallet
+                    </button>
+                  </div>
                 </div>
-            </div> <!--- End Tab Content -->
+              </div>
             </div>
-        </section>
-        <!-- Modal -->
-        <div id="myModal" class="modal fade" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title"></h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="modal-message-content" style="display: none;"></div>
-                        <ul id="wallet-list" class="list-group">
-                            <!-- Wallets will be dynamically inserted here -->
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <footer id="footer" class="section-bg">
-            <div class="container">
-                <div class="row">
-                    <div class="col-lg-6 d-flex align-items-center">
-                        <div>
-                            <p class="powered mb-2">Powered by</p>
-                            <a href="https://hathor.network/" target="_blank" class="d-inline-block">
-                                <img src="./assets/img/hathor.png" class="hathor-logo" alt="Hathor Network">
-                            </a>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="footer-links text-lg-right">
-                            <ul class="list-unstyled mb-0">
-                                <li><a href="https://github.com/the-storm-labs/hathor-tokenbridge"
-                                        target="_blank">Repository</a></li>
-                                <li><a href="https://gist.github.com/obiyankenobi/7fdc497d4fecd4712f042dfa165c5dce"
-                                        target="_blank">Tutorial</a></li>
-                                <li><a id="network-navlink" href="./index.html?testnet">Use Testnet</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <hr class="my-4">
-                <div class="row">
-                    <div class="col-12 text-center">
-                        <p class="copyright mb-0">Copyright © 2025 Storm Labs. All rights reserved.</p>
-                    </div>
-                </div>
-            </div>
-        </footer>
-        <div id="js">
-            <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.min.js"
-                integrity="sha512-/DXTXr6nQodMUiq+IUJYCt2PPOUjrHJ9wFrqpJ3XkgPNOZVfMok7cRw6CSxyCQxXn6ozlESsSh1/sMCTF1rL/g=="
-                crossorigin="anonymous"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
-                integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
-                crossorigin="anonymous"></script>
-            <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
-                integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
-                crossorigin="anonymous"></script>
-            <!-- Bootstrap Select https://developer.snapappointments.com/bootstrap-select/ -->
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"
-                integrity="sha384-SfMwgGnc3UiUUZF50PsPetXLqH2HSl/FmkMW/Ja3N2WaJ/fHLbCHPUsXzzrM6aet"
-                crossorigin="anonymous"></script>
-            <!-- Updated Web3.js as MetaMsak uses 0.20.7 version -->
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.10.4/web3.min.js"
-                integrity="sha512-jrrqoRbH3+TZhsm54CVfS3hsIPDC2lYTXFBTJ5AkjRzcxtdlXxpSpYj0HGoN8DNkMD4zq1IjJpWBHI5KPGUYhg=="
-                crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-            <!-- bignumber.js -->
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.0.0/bignumber.min.js"
-                integrity="sha384-W92bSiy/NxoN+p5YNhm8ybWnIFnqtH0/Bxc4l9jojSsPK2KQdOvQonrRBon0O/om"
-                crossorigin="anonymous"></script>
-            <!-- Copy to Clipboard https://clipboardjs.com/ -->
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"
-                integrity="sha384-8CYhPwYlLELodlcQV713V9ZikA3DlCVaXFDpjHfP8Z36gpddf/Vrt47XmKDsCttu"
-                crossorigin="anonymous"></script>
-            <!-- async-await-retry  https://github.com/VoodooTeam/async-await-retry -->
-            <script src="./txns-storage.js"></script>
-            <!--- local Storage Static utilities -->
-            <script type="text/javascript" src="./js/localStorage.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
-            <script src="./js/bs58.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-            <script type="text/javascript" src="./js/validate-address.js"></script>
-            <!-- Custom Js -->
-            <script type="text/javascript" src="./js/index.js"></script>
-        </div>
-</body>
+          </div>
+          <!--End of transferTab-->
 
+          <div id="previousTxnsEmptyTab">
+            <h5 class="">Active account transactions</h5>
+            <p class="subtitle text-center">
+              Please note that all transactions listed here will not appear if you use another
+              device
+            </p>
+            <p class="text-center">No transactions for active account found</p>
+          </div>
+
+          <div id="previousTxnsTab">
+            <h5 class="">Active account transactions</h5>
+            <nav>
+              <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                <a
+                  class="nav-item nav-link active"
+                  id="nav-htr-eth-tab"
+                  data-toggle="tab"
+                  href="#nav-htr-eth"
+                  role="tab"
+                  aria-controls="nav-htr-eth"
+                  aria-selected="true"
+                  >ARB &rarr; HTR</a
+                >
+                <a
+                  class="nav-item nav-link"
+                  id="nav-eth-htr-tab"
+                  data-toggle="tab"
+                  href="#nav-eth-htr"
+                  role="tab"
+                  aria-controls="nav-eth-htr"
+                  aria-selected="false"
+                  >HTR &rarr; ARB</a
+                >
+              </div>
+            </nav>
+            <div class="tab-content" id="nav-tabContent">
+              <div
+                class="tab-pane fade show active"
+                id="nav-htr-eth"
+                role="tabpanel"
+                aria-labelledby="nav-htr-eth-tab"
+              >
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Txn hash</th>
+                      <th scope="col">Block number</th>
+                      <th scope="col">Amount</th>
+                      <th scope="col">Status | Estimated time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="htr-eth-tbody">
+                    <!-- Dinamic content made with JS -->
+                  </tbody>
+                </table>
+              </div>
+              <div
+                class="tab-pane fade"
+                id="nav-eth-htr"
+                role="tabpanel"
+                aria-labelledby="nav-eth-htr-tab"
+              >
+                <!-- Dinamic content made with JS -->
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Txn hash</th>
+                      <th scope="col">Sender</th>
+                      <th scope="col">Amount</th>
+                      <th scope="col" class="text-right">Approvals</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="eth-htr-tbody">
+                    <!-- Dinamic content made with JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
+              <div class="btn-group mr-2" role="group" aria-label="First group">
+                <button type="button" id="txn-previous" class="btn btn-secondary">
+                  &lt; previous
+                </button>
+                <button type="button" id="txn-next" class="btn btn-secondary">next ></button>
+              </div>
+            </div>
+          </div>
+
+          <div id="tokensTab">
+            <h5 class="">Token bridge list</h5>
+            <p class="subtitle text-center">
+              Hathor native tokens will transform into a(tokenName). Arbitrum One native tokens will
+              transform into h(tokenName)
+            </p>
+            <div id="tokenListTab" class="align-center">
+              <!-- Dinamic content made with JS -->
+            </div>
+          </div>
+
+          <div id="infoTab">
+            <h5 class="">Important details</h5>
+            <div class="row mb-5">
+              <div class="col-md-4 col-sm-4 mb-5 config-section">
+                <span class="config-value mb-2" id="config-max">-</span>
+                <span class="config-title">Max transfer allowed</span>
+                <p>The max value of tokens that can be transferred per day</p>
+              </div>
+              <div class="col-md-4 col-sm-4 mb-5 config-section">
+                <span class="config-value mb-2" id="config-min">-</span>
+                <span class="config-title">Min transfer allowed</span>
+                <p>The min value of tokens that can be transferred per day</p>
+              </div>
+              <div class="col-md-4 col-sm-4 mb-5 config-section">
+                <span class="config-value mb-2" id="config-to-spend">-</span>
+                <span class="config-title">Daily transfer limit</span>
+                <p>How many tokens can be transferred today</p>
+              </div>
+              <div class="col-md-4 col-sm-4 mb-5 config-section">
+                <span class="config-value mb-2" id="config-fee">-</span>
+                <span class="config-title">Fee</span>
+                <p>This is the fee required for transferring tokens between networks</p>
+              </div>
+              <div class="col-md-4 col-sm-4 mb-5 config-section">
+                <div>
+                  <span class="config-value mb-2 ml-2" id="config-federators-count">-</span>
+                </div>
+                <span class="config-title">Federators</span>
+                <p>
+                  The Authorities will vote the transactions to cross.
+                  <span id="config-federators-required">-</span> of them have to agree.
+                </p>
+              </div>
+              <div class="col-md-4 col-sm-4 mb-5 config-section">
+                <span class="config-value mb-2" id="config-whitelisted-enabled">-</span>
+                <span class="config-title">Crossing period</span>
+                <p>
+                  Time needed to have enough confirmations to securely cross assets to the other
+                  network
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!--- End Tab Content -->
+      </section>
+
+      <!--
+          Transfer feedback, as toasts.
+
+          Fixed to the corner rather than inline in the form for two reasons
+          beyond the styling: on a long form the message sat below the fold, and
+          the ARB→HTR blocks lived inside #crossForm — so switching direction hid
+          the outcome of what you had just done.
+
+          The close buttons are data-toast-dismiss, not Bootstrap's
+          data-dismiss="alert": that one *removes* the element, and the next
+          transfer would have nothing left to report into.
+        -->
+      <div id="toastArea" class="toast-area" aria-live="polite" aria-atomic="true">
+        <div
+          id="success"
+          class="toast-item alert alert-success"
+          role="status"
+          style="display: none"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <div class="toast-icon"><i class="fas fa-check"></i></div>
+          <div>
+            You will receive <span id="receive" class="black"></span> in your wallet in
+            approximately <span id="confirmationTime"></span>
+          </div>
+        </div>
+        <div
+          id="alert-danger"
+          class="toast-item alert alert-danger"
+          role="alert"
+          style="display: none"
+          tabindex="-1"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 class="alert-heading">Ups! there was an error</h4>
+          <p id="alert-danger-text"></p>
+        </div>
+        <div
+          id="htrSendPending"
+          class="toast-item alert alert-info"
+          role="status"
+          style="display: none"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <div class="toast-icon"><i class="fas fa-spinner fa-spin"></i></div>
+          <h4 class="alert-heading">Confirm it in your Hathor wallet</h4>
+          <p>The request is waiting there for your approval. Nothing is sent until you confirm.</p>
+        </div>
+        <div
+          id="htrSendSuccess"
+          class="toast-item alert alert-success"
+          role="status"
+          style="display: none"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <div class="toast-icon"><i class="fas fa-check"></i></div>
+          <div>
+            Transaction submitted. The bridge will process it shortly. Check the HTR &rarr; ARB tab
+            below for status updates.
+          </div>
+        </div>
+        <div
+          id="htrSendError"
+          class="toast-item alert alert-danger"
+          role="alert"
+          style="display: none"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 class="alert-heading">Ups! there was an error</h4>
+          <p id="htrSendErrorMsg"></p>
+        </div>
+        <!--
+          A WalletConnect session lives seven days and nothing renews it, so a
+          wallet left connected over a week is dropped on the next visit. Without
+          this the page just appears to have logged the user out.
+        -->
+        <div
+          id="htrSessionExpired"
+          class="toast-item alert alert-warning"
+          role="status"
+          style="display: none"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 class="alert-heading">Hathor wallet session expired</h4>
+          <p>Your wallet has been disconnected. Connect it again to continue.</p>
+        </div>
+      </div>
+      <!-- Modal -->
+      <div id="myModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"></h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div id="modal-message-content" style="display: none"></div>
+              <ul id="wallet-list" class="list-group">
+                <!-- Wallets will be dynamically inserted here -->
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer id="footer" class="section-bg">
+        <div class="container">
+          <div class="row">
+            <div class="col-lg-6 d-flex align-items-center">
+              <div>
+                <p class="powered mb-2">Powered by</p>
+                <a href="https://hathor.network/" target="_blank" class="d-inline-block">
+                  <img src="./assets/img/hathor.png" class="hathor-logo" alt="Hathor Network" />
+                </a>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="footer-links text-lg-right">
+                <ul class="list-unstyled mb-0">
+                  <li>
+                    <a href="https://github.com/the-storm-labs/hathor-tokenbridge" target="_blank"
+                      >Repository</a
+                    >
+                  </li>
+                  <li>
+                    <a
+                      href="https://gist.github.com/obiyankenobi/7fdc497d4fecd4712f042dfa165c5dce"
+                      target="_blank"
+                      >Tutorial</a
+                    >
+                  </li>
+                  <li><a id="network-navlink" href="./index.html?testnet">Use Testnet</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <hr class="my-4" />
+          <div class="row">
+            <div class="col-12 text-center">
+              <p class="copyright mb-0">Copyright © 2025 Storm Labs. All rights reserved.</p>
+            </div>
+          </div>
+        </div>
+      </footer>
+      <div id="js">
+        <!-- The whole app: TypeScript modules, bundled by Vite. -->
+        <script type="module" src="./app/main.ts"></script>
+      </div>
+    </section>
+  </body>
 </html>
