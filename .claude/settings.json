@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:docs.dozer.finance)",
+      "WebFetch(domain:wallet-headless-api.docs.hathor.network)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/hBulldozer/dozer/main/packages/api/src/router/token.ts\")",
+      "Bash(curl -s \"https://api.github.com/repos/hBulldozer/dozer/git/trees/main?recursive=1\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/hBulldozer/dozer/main/packages/api/src/helpers/fetchFunction.ts\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/hBulldozer/dozer/main/packages/higmi/services/walletConnectionService.ts\")",
+      "WebFetch(domain:node1.mainnet.hathor.network)"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+node_modules
+public
+
+# Vendored, and not ours to restyle.
+src/abis
+src/css
+
+# Prose and CI config: Prettier rewraps markdown paragraphs and reflows YAML,
+# which churns hand-tuned tables and comments for no gain. Formatting here is a
+# call the team has not made.
+*.md
+.github

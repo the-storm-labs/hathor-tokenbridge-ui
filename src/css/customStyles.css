@@ -1,3 +1,21 @@
+/*
+   The WalletConnect modal's own stacking order.
+
+   `<w3m-modal>` declares `z-index: var(--w3m-z-index)`, and AppKit only defines
+   that variable when the host app passes it in `themeVariables` — which
+   `UniversalConnector.init` has no option for. An undefined `var()` with no
+   fallback is invalid at computed-value time, so the modal fell back to
+   `z-index: auto` and every positioned element with a positive z-index painted
+   over the QR code: Bootstrap gives `.input-group-append .btn` (Max) a 2 and the
+   active `.btn-group > .btn` (the direction toggle) a 1.
+
+   1080 sits above Bootstrap's modal (1050) and backdrop (1040) and below
+   `.toast-area` (1090), which is deliberately the topmost layer on the page.
+*/
+:root {
+  --w3m-z-index: 1080;
+}
+
 /* Styles for the connected wallet button */
 .wallet-status.indicator.badge-outline {
   background-color: #1f1f1f;
@@ -15,6 +33,141 @@
 
 .indicator span:before {
   background-color: #444;
+}
+
+/*
+ * The connected-wallet menu: click the address to reveal "Copy address" and
+ * "Disconnect", instead of a lone "×" button sitting next to it. Replaces
+ * #logIn/#connectHathorWallet's sibling — see wallet-header.component.ts and
+ * hathor-transfer-form.component.ts, wired through adapters/driving/ui/popover.ts.
+ */
+.wallet-menu-anchor {
+  position: relative;
+}
+
+.wallet-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px;
+  margin: -4px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.wallet-menu-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/*
+ * The network's own icon (Arbitrum's hexagon, Hathor's mark) instead of the
+ * generic wallet glyph both triggers used to share — nothing distinguished
+ * one connected row from the other at a glance.
+ */
+.wallet-trigger-icon {
+  display: block;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+}
+
+/*
+ * The network name line ("Arbitrum One" / "Hathor") is gone — the icon next
+ * to it already says which network this is. That also removes the reason
+ * the two rows didn't line up: both icons are the same fixed size, so with
+ * only one line left, "0x…" and "HT…" start at the same x with nothing to
+ * line up by hand, and truncateMiddle's shared defaults already make the
+ * two addresses the same length.
+ *
+ * The `!important`s guard against a real-world case, not a hypothetical one:
+ * a wallet extension (confirmed with MetaMask installed) recognises "0x…"
+ * text anywhere on any page as an Ethereum address and injects its own
+ * margin/padding/position onto that element to hang a hover affordance off
+ * it — invisible here, but enough to knock the EVM address out of line with
+ * the Hathor one, which has no "0x" prefix for it to match. A plain rule
+ * loses that fight since the extension's stylesheet loads after ours; only
+ * `!important` reliably wins it back.
+ */
+.wallet-trigger-address {
+  font-family: monospace;
+  font-size: 11px;
+  color: white;
+  white-space: nowrap;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+}
+
+.wallet-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 200px;
+  max-width: min(280px, calc(100vw - 24px));
+  background-color: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 12px;
+  text-align: left;
+}
+
+.wallet-menu__header {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.wallet-menu__header strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.wallet-menu__address {
+  font-family: monospace;
+  font-size: 13px;
+  color: #fff;
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+
+.wallet-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 6px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wallet-menu__item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.wallet-menu__item i {
+  width: 14px;
+  text-align: center;
+}
+
+.wallet-menu__item--danger {
+  color: #ff6b6b;
+}
+
+.wallet-menu__item--danger:hover {
+  background-color: rgba(255, 107, 107, 0.12);
 }
 
 body {
@@ -80,37 +233,6 @@ h6 {
   margin-bottom: 64px;
 }
 
-#claimTab {
-  max-width: 500px;
-  margin-bottom: 150px;
-}
-
-.claim-title {
-  text-align: center;
-  font-weight: 300;
-}
-
-.claim-table {
-  display: table;
-  width: 100%;
-}
-
-.claim-row {
-  display: table-row;
-}
-
-.claim-label {
-  display: table-cell;
-  text-align: right;
-  padding-right: 10px;
-  /* Adjust as needed */
-}
-
-.claim-value {
-  display: table-cell;
-  text-align: left;
-}
-
 #previousTxnsEmptyTab {
   display: none;
 }
@@ -162,12 +284,6 @@ label {
   cursor: pointer;
 }
 
-.bootstrap-select .dropdown-toggle .filter-option {
-  font-family: "Poppins";
-  font-size: 20px;
-  line-height: 25px;
-  text-align: center;
-}
 
 .dropdown-item,
 .form-control-plaintext {
@@ -195,6 +311,26 @@ label {
 #amount {
   font-size: 18px;
   line-height: 22px;
+}
+
+/* Address inputs
+ *
+ * A full EVM address is 42 characters and did not fit at the 18px every
+ * .form-control shares: measured at 424px of text in a 400px field, so the tail
+ * was silently cut off — bad in a field where the last four characters are how
+ * you check you pasted the right thing.
+ *
+ * 16px measures 377px, which fits with room to spare, and the size shrinks with
+ * the viewport because the field does too. Below roughly 420px wide a 42-character
+ * address cannot fit at a legible size at all, so the floor stops there and the
+ * field scrolls as any input does.
+ *
+ * Both address fields get it, so the two directions look the same even though the
+ * Hathor address is eight characters shorter and would have fitted as it was.
+ */
+#hathorAddress,
+#htrDestAddress {
+  font-size: clamp(12px, 2.9vw, 16px);
 }
 
 #amount.ok {
@@ -264,14 +400,7 @@ label {
   background-color: transparent;
 }
 
-.bootstrap-select>.dropdown-toggle.bs-placeholder:hover,
-.bootstrap-select>.dropdown-toggle.bs-placeholder {
-  color: #000;
-}
 
-.dropdown.bootstrap-select.disabled>.disabled {
-  color: #bfbdbd;
-}
 
 .btn-toolbar {
   justify-content: center;
@@ -395,6 +524,90 @@ a:hover {
   margin-top: 0px;
 }
 
+/*
+ * #logIn and #connectHathorWallet used to sit inside a Bootstrap
+ * `.navbar-collapse.collapse` with no `.navbar-toggler` to ever add `.show` —
+ * Bootstrap's JS is gone from this app, so that block was `display: none` on
+ * every viewport under 992px (real mobile, a narrowed window, a MetaMask
+ * popup shrinking the visible page) with nothing on the page able to reveal
+ * it again. The `collapse` class was dropped from the markup; `#logIn` and
+ * `#connectHathorWallet` are reachable at every width now.
+ *
+ * Bootstrap's `.navbar-collapse` also carries `flex-basis: 100%`: paired with
+ * a toggler, that's what makes the reopened menu drop down as a full-width
+ * panel below the brand. There is no toggler here, so with the collapse
+ * always visible that rule instead forced it onto its own full-width row
+ * under the Storm Labs logo on every narrow screen — the opposite of the
+ * desktop layout, where it sits beside the logo. `.navbar` still keeps
+ * Bootstrap's `flex-wrap: wrap` as a fallback for widths too narrow to fit
+ * both, but sized to its content `#navbarResponsive` fits next to the logo
+ * from phone widths up, same as desktop.
+ *
+ * `margin-left: auto` moves here rather than staying only on the inner
+ * `.navbar-item`: once this box is content-sized it has no spare width of
+ * its own for that inner margin to consume, so on the rare screen too
+ * narrow to fit both (where `.navbar`'s wrap puts this box on its own line)
+ * it fell back to hugging the left edge instead of the right one.
+ */
+#navbarResponsive {
+  flex-basis: auto;
+  flex-grow: 0;
+  width: auto;
+  margin-left: auto;
+}
+
+.wallet-connect-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wallet-connect-btn__compact {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wallet-connect-btn__compact .fa-plug {
+  font-size: 13px;
+}
+
+.wallet-connect-btn__network-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  /*
+   * `body .btn` above (line 52) sets 24px of horizontal padding at a
+   * specificity a bare `.wallet-connect-btn` can't out-rank by source order
+   * alone — it silently kept its padding here, squeezing the icon-only
+   * content into the few pixels left inside a 52px-wide button. Matching its
+   * `body .btn` shape is what actually wins the cascade.
+   */
+  body .wallet-connect-btn {
+    width: 52px !important;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .wallet-connect-btn__label {
+    display: none;
+  }
+
+  .wallet-connect-btn__compact {
+    display: inline-flex;
+  }
+
+  .wallet-row {
+    width: auto !important;
+    justify-content: flex-end;
+  }
+}
+
 .nav-tabs .nav-link {
   font-weight: 400;
   color: #6c757d;
@@ -507,10 +720,38 @@ a:hover {
   background-color: #dc3545;
 }
 
+/*
+   One frame for every token icon.
+ 
+   The artwork does not agree with itself: USDC is a filled blue disc that reads
+   as large, Hathor is a dark disc that disappears into the dark theme and reads
+   as small. Both files are 64x64 and edge-to-edge, so setting a box was never
+   enough — the frame is what makes them the same shape, and the light backing is
+   what makes a dark logo legible here.
+ 
+   object-fit keeps a future non-square icon from being stretched instead of
+   letterboxed.
+*/
 .token-logo {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
   margin-right: 0.5rem;
+  object-fit: contain;
+  border-radius: 50%;
+  background-color: #fff;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.token-balance-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 4px;
+}
+
+.token-balance-label span {
+  color: #fff;
+  font-weight: 500;
 }
 
 .dropup .dropdown-toggle::after {
@@ -529,13 +770,6 @@ a:hover {
   vertical-align: 0.255em;
 }
 
-.bootstrap-select>.dropdown-toggle:after {
-  margin-top: 0px;
-  font-size: 20px;
-  vertical-align: middle;
-  line-height: 25px;
-  text-align: center;
-}
 
 #wait {
   font-family: "Rubik";
@@ -552,9 +786,115 @@ a:hover {
   color: #919191;
 }
 
-#success {
-  padding: 0px;
-  max-width: 222px;
+/* Toasts
+ *
+ * Transfer feedback, bottom-right. Bootstrap's .alert palette is built for a
+ * light page — on this background the success message rendered as dark text on
+ * dark, i.e. invisible. So the surface is the page's own dark grey and the
+ * severity is carried by the left border, which stays legible either way.
+ *
+ * Above .modal (1050): a transfer can fail while the wallet modal is open.
+ */
+.toast-area {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1090;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 360px;
+  max-width: calc(100vw - 2rem);
+  /* The empty container must not swallow clicks on the page behind it; each
+     toast takes its own clicks back. */
+  pointer-events: none;
+}
+
+.toast-area .toast-item {
+  pointer-events: auto;
+  position: relative;
+  margin: 0;
+  padding: 0.75rem 2.25rem 0.75rem 1rem;
+  background-color: #2a2a2a;
+  color: #e5e5e5;
+  border: 1px solid #444;
+  border-left: 4px solid #6c757d;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5);
+  /* Going from display:none to block restarts this animation by itself, so the
+     entrance needs no class toggled from script and no frame to wait for.
+     Deliberately animates only the slide, never opacity: if the animation never
+     runs — reduced motion, a throttled tab, a browser that stalls it — the toast
+     is still fully visible. Fading in from 0 makes visibility depend on the
+     animation, which is the bug this whole change is fixing. */
+  animation: toast-in 0.2s ease;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+.toast-area .alert-success {
+  border-left-color: #28a745;
+}
+
+.toast-area .alert-danger {
+  border-left-color: #dc3545;
+}
+
+/* In progress, not an outcome: the accent colour, and it stays up until the
+   caller hides it. */
+.toast-area .alert-info {
+  border-left-color: #a06fbd;
+}
+
+.toast-area .alert-info .toast-icon {
+  color: #a06fbd;
+}
+
+.toast-area .toast-icon {
+  color: #28a745;
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.toast-area .alert-heading {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  color: #fff;
+}
+
+.toast-area .toast-item p:last-child {
+  margin-bottom: 0;
+}
+
+.toast-area .toast-item .close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  color: #e5e5e5;
+  text-shadow: none;
+  opacity: 0.6;
+}
+
+.toast-area .toast-item .close:hover {
+  color: #fff;
+  opacity: 1;
+}
+
+/* Respect a reduced-motion preference: appear, but do not slide. */
+@media (prefers-reduced-motion: reduce) {
+  .toast-area .toast-item {
+    animation: none;
+  }
 }
 
 /*Spinner*/
@@ -777,4 +1117,175 @@ table.table td {
 
 #eth-htr-tbody tr {
   height: 67px;
+}
+/* --------------------------------------------------------------------------
+   Token dropdown
+
+   Replaces bootstrap-select, which was the last reason jQuery, Popper and
+   Bootstrap's JS were on the page. The values below are the ones those rules
+   used, so the widget looks the same; see token-select.component.ts for why a
+   native <select> could not be styled into this (an <option> cannot hold an
+   image).
+   -------------------------------------------------------------------------- */
+
+.token-select {
+  position: relative;
+  width: 100%;
+}
+
+/* Kept in the DOM and authoritative — hidden from sight, not removed, so the
+   label, the name and the form control all still exist. */
+.token-select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.token-select-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+  font-family: "Poppins";
+  font-size: 20px;
+  line-height: 25px;
+  text-align: center;
+  color: #fff;
+  background-color: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.token-select-toggle::after {
+  content: "\f107";
+  font-family: "Font Awesome 5 Free";
+  font-weight: 300;
+  position: absolute;
+  right: 0.75rem;
+  font-size: 20px;
+  line-height: 25px;
+}
+
+.token-select.open .token-select-toggle::after {
+  content: "\f106";
+}
+
+.token-select-toggle:disabled {
+  color: #bfbdbd;
+  cursor: default;
+}
+
+.token-select-menu {
+  position: absolute;
+  z-index: 1000;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.5rem 0;
+  list-style: none;
+  background-color: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 0.25rem;
+}
+
+.token-select-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 1.5rem;
+  color: #fff;
+  cursor: pointer;
+}
+
+.token-select-item:hover,
+.token-select-item:focus {
+  background-color: #333;
+  outline: none;
+}
+
+.token-select-item.active {
+  background-color: #1f1f1f;
+}
+
+/* --------------------------------------------------------------------------
+   Transfer form layout
+   -------------------------------------------------------------------------- */
+
+/* Token and amount are one decision, so they sit side by side rather than
+   stacking into two full-width rows with a gap between them. */
+.transfer-row {
+  align-items: flex-start;
+}
+
+.transfer-row .form-group {
+  margin-bottom: 1rem;
+}
+
+/* One height for the whole row. The dropdown keeps its larger type, so it is
+   the tallest control and everything beside it is matched to it rather than
+   the other way round — `1.5em` would have resolved against each control's own
+   font size and produced three different heights. */
+.transfer-row .token-select-toggle,
+.transfer-row .form-control,
+.transfer-row .input-group-append .btn {
+  height: 2.75rem;
+}
+
+.transfer-row .form-control {
+  line-height: 1.5;
+}
+
+/* The destination question and what will arrive are two statements, so they get
+   a line each — the token chip used to wrap and sit alone under the sentence.
+   The gap is explicit because flex collapses the whitespace that separated the
+   label from the token. */
+.receive-line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Centred both ways: the label sits against the box rather than beside it when
+   Bootstrap's default left alignment stretches it across the card. */
+.approve-remember {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 0;
+}
+
+.approve-remember .custom-control-input {
+  position: static;
+  width: auto;
+  margin: 0 0.5rem 0 0;
+  align-self: center;
+  opacity: 1;
+  z-index: auto;
+  /* Checked state in the theme's own purple rather than the browser's blue. */
+  accent-color: #71258f;
+}
+
+.approve-remember .custom-control-label {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+/* Bootstrap draws the box with ::before/::after on the label; with a real
+   checkbox visible next to it, those would be a second one. */
+.approve-remember .custom-control-label::before,
+.approve-remember .custom-control-label::after {
+  display: none;
 }

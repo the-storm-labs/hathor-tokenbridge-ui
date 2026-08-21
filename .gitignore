@@ -67,6 +67,13 @@ node_modules/
 
 # dotenv environment variables file
 .env
+src/.env.local
+src/.env.production
 
 # dataconnect generated files
 .dataconnect
+
+# Documentation
+/docs/**
+# The smoke checklist is the safety net for the refactor — it has to be versioned.
+!/docs/smoke-checklist.md
