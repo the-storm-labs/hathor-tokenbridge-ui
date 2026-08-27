@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js'
 import { clampDecimals } from '../../../../domain/amount-math'
 import { isEvmAddress } from '../../../../domain/evm-address'
+import { maxSendableHathorAmount } from '../../../../domain/hathor-network-fee'
 import { findTokenByKey } from '../../../../domain/token-lookup'
 import { isOnHathor, type Token } from '../../../../domain/model/token'
 import { truncateMiddle } from '../../../../domain/tx-id'
@@ -361,7 +362,12 @@ export class HathorTransferForm {
     if (!token || !this.amount || !this.deps.wallet.isConnected()) return
 
     try {
-      this.amount.value = await this.deps.refreshBalance(token)
+      const balance = await this.deps.refreshBalance(token)
+      // Leaves room for the Hathor network's data-output fee -- filling the
+      // whole balance for a native-HTR send left nothing to cover it, and the
+      // wallet rejected the transaction before ever showing a confirmation
+      // screen. See maxSendableHathorAmount for why only HTR is affected.
+      this.amount.value = maxSendableHathorAmount(balance, token)
       this.validateAmount()
     } catch (error) {
       console.error('Could not fetch max balance', error)
