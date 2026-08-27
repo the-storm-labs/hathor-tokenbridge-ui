@@ -89,6 +89,14 @@ export const TOAST = {
   hathorSendPending: 'htrSendPending',
   hathorSendSuccess: 'htrSendSuccess',
   hathorSendError: 'htrSendError',
+  /**
+   * A destination the bridge can never claim to (e.g. an EIP-7702 delegation) —
+   * a block, not a failure, so it gets a warning toast rather than the danger
+   * one `hathorSendError` shows.
+   */
+  hathorDestinationBlocked: 'htrDestinationBlocked',
+  /** The user declined the request in their wallet — their choice, not a failure. */
+  hathorSendCancelled: 'htrSendCancelled',
   /** A seven-day session ran out, or the wallet ended it from its own side. */
   hathorSessionExpired: 'htrSessionExpired',
 } as const

@@ -1,4 +1,5 @@
 import { truncateMiddle } from '../../../../domain/tx-id'
+import { messageOf } from '../messages'
 import type { BridgeRoute } from '../../../../domain/model/network'
 import type {
   DiscoveredWallet,
@@ -382,6 +383,3 @@ function walletRow(wallet: DiscoveredWallet): string {
         <button class="btn btn-primary btn-sm">Connect</button>
       </li>`
 }
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)

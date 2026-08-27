@@ -13,7 +13,9 @@ import { LocalTransferHistoryAdapter } from '../adapters/driven/storage/local-tr
 import { WindowSchedulerAdapter } from '../adapters/driven/scheduler/window-scheduler.adapter'
 import { ViemChainAdapter } from '../adapters/driven/evm/chain.adapter'
 import { Eip6963WalletAdapter } from '../adapters/driven/evm/eip6963-wallet.adapter'
+import { ViemEip7702Adapter } from '../adapters/driven/evm/eip7702-delegation.adapter'
 import { createEvmClients, type EvmClients } from '../adapters/driven/evm/clients'
+import { createPublicClient, http } from 'viem'
 import type { Eip1193Provider } from '../ports/driven/evm-wallet.port'
 import {
   ViemAllowTokensAdapter,
@@ -45,6 +47,7 @@ export interface Container {
   readonly hathorWallet: HathorWalletConnectAdapter
   readonly evmWallet: Eip6963WalletAdapter
   readonly chain: ViemChainAdapter
+  readonly eip7702: ViemEip7702Adapter
   readonly scheduler: WindowSchedulerAdapter
   readonly erc20: ViemErc20Adapter
   readonly bridge: ViemBridgeAdapter
@@ -109,6 +112,18 @@ export function createContainer(options: ContainerOptions): Container {
 
     evmWallet: new Eip6963WalletAdapter(),
     chain: new ViemChainAdapter(getClients),
+    // The one reader of VITE_EVM_HOST_MAINNET/TESTNET: a plain RPC, not the
+    // connected wallet's provider, because the HTR→ARB EIP-7702 check has to
+    // work with no EVM wallet connected at all. See eip7702-delegation.adapter.
+    eip7702: new ViemEip7702Adapter(
+      createPublicClient({
+        transport: http(
+          import.meta.env[
+            deployment === 'testnet' ? 'VITE_EVM_HOST_TESTNET' : 'VITE_EVM_HOST_MAINNET'
+          ] ?? '',
+        ),
+      }),
+    ),
 
     erc20: new ViemErc20Adapter(getClients),
     bridge: new ViemBridgeAdapter(getClients, route.evm.bridge),

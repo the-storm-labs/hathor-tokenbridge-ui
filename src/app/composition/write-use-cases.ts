@@ -87,6 +87,7 @@ export function createWriteUseCases(container: Container) {
       tokens,
       route,
       deployment,
+      eip7702: container.eip7702,
     }),
 
     // --- wallet connection -------------------------------------------------

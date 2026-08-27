@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { HathorWalletConnectAdapter } from './walletconnect.adapter'
+import { UserRejectedError } from '../../../ports/driven/hathor-wallet.port'
 import type { PreferencesPort } from '../../../ports/driven/preferences.port'
 
 const ADDRESS = 'HDeadbeefDeadbeefDeadbeefDeadbeef01'
@@ -272,6 +273,34 @@ describe('sending over a dead session', () => {
       hash: 'deadbeef',
     })
     expect(request).toHaveBeenCalledOnce()
+  })
+
+  it('reports the user declining as UserRejectedError, not the raw JSON-RPC object', async () => {
+    // @walletconnect/jsonrpc-provider rejects with the bare error off the wire —
+    // WalletConnect's own standard shape for a decline, not an Error instance.
+    const { adapter, request } = setup(ADDRESS)
+    request.mockRejectedValueOnce({ code: 5000, message: 'User rejected.' })
+    await adapter.restore('mainnet')
+
+    await expect(adapter.sendBridgeTransfer(TRANSFER, 'mainnet')).rejects.toThrow(UserRejectedError)
+  })
+
+  it('still recognises a decline that carries a different code but says so in the message', async () => {
+    const { adapter, request } = setup(ADDRESS)
+    request.mockRejectedValueOnce({ code: 4001, message: 'User Rejected Request' })
+    await adapter.restore('mainnet')
+
+    await expect(adapter.sendBridgeTransfer(TRANSFER, 'mainnet')).rejects.toThrow(UserRejectedError)
+  })
+
+  it('leaves an unrelated failure alone', async () => {
+    const { adapter, request } = setup(ADDRESS)
+    request.mockRejectedValueOnce({ code: -32000, message: 'insufficient funds' })
+    await adapter.restore('mainnet')
+
+    const rejection = adapter.sendBridgeTransfer(TRANSFER, 'mainnet')
+    await expect(rejection).rejects.not.toBeInstanceOf(UserRejectedError)
+    await expect(rejection).rejects.toMatchObject({ message: 'insufficient funds' })
   })
 })
 

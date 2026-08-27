@@ -5,6 +5,8 @@ import {
   HATHOR_FORM_EVENT,
   type HathorTransferFormDeps,
 } from './hathor-transfer-form.component'
+import { Eip7702DelegatedError } from '../../../../application/use-cases/send-hathor-transfer'
+import { UserRejectedError } from '../../../../ports/driven/hathor-wallet.port'
 import { tokensFor } from '../../../../config/tokens'
 import { mountTokenSelect } from './token-select.component'
 import { TOAST } from '../toasts'
@@ -29,6 +31,7 @@ const MARKUP = `
   <input id="htrDestAddress" disabled>
   <button id="htrSendBtn" disabled></button>
   <p id="htrSendErrorMsg"></p>
+  <p id="htrDestinationBlockedMsg"></p>
 `
 
 const EVM_ADDRESS = '0x1234567890abcdef1234567890ABCDEF12345678'
@@ -189,6 +192,24 @@ describe('the amount field', () => {
     expect(amount().classList.contains('is-invalid')).toBe(false)
   })
 
+  it('does not mark an empty field red — only a value the user actually typed', async () => {
+    setup()
+    el('connectHathorWallet').click()
+    await settle()
+    select().value = 'USDC'
+
+    amount().value = '0'
+    amount().dispatchEvent(new Event('input'))
+    expect(amount().classList.contains('is-invalid')).toBe(true)
+
+    // Deleting back to empty: still nothing to send, but not a mistake either.
+    amount().value = ''
+    amount().dispatchEvent(new Event('input'))
+
+    expect(amount().classList.contains('is-invalid')).toBe(false)
+    expect(sendButton().disabled).toBe(true)
+  })
+
   it('fills Max from the balance', async () => {
     setup()
     el('connectHathorWallet').click()
@@ -232,6 +253,16 @@ describe('sending', () => {
     expect(heard).toHaveBeenCalledOnce()
   })
 
+  it('clears the amount and re-reads the balance once the transfer is confirmed', async () => {
+    const { deps } = await ready()
+
+    sendButton().click()
+    await settle()
+
+    expect(amount().value).toBe('')
+    expect(deps.refreshBalance).toHaveBeenCalled()
+  })
+
   it('keeps the pending toast up until the wallet answers', async () => {
     const { deps } = await ready()
     sendButton().click()
@@ -270,6 +301,49 @@ describe('sending', () => {
     expect(el('htrSendErrorMsg').textContent).toBe('wallet said no')
     expect(deps.toasts.show).toHaveBeenCalledWith(TOAST.hathorSendError)
     expect(sendButton().disabled).toBe(false)
+  })
+
+  it('shows a delegated destination as a block, not a send error', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { deps } = await ready({
+      sendTransfer: vi.fn(async () => {
+        throw new Eip7702DelegatedError('0x000000000000000000000000000000000000ad')
+      }),
+    })
+
+    sendButton().click()
+    await settle()
+
+    expect(el('htrDestinationBlockedMsg').textContent).toContain('EIP-7702 delegation')
+    expect(deps.toasts.show).toHaveBeenCalledWith(TOAST.hathorDestinationBlocked)
+    expect(deps.toasts.show).not.toHaveBeenCalledWith(TOAST.hathorSendError)
+    expect(sendButton().disabled).toBe(false)
+    // Nothing reached the wallet — the typed amount is still what was meant.
+    expect(amount().value).toBe('2.5')
+  })
+
+  it('shows a cancelled notice, not a send error, when the user declines in their wallet', async () => {
+    // A shared spy across this file's other tests, so it starts with calls of
+    // its own — cleared here to isolate what this test itself triggers.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { deps } = await ready({
+      sendTransfer: vi.fn(async () => {
+        throw new UserRejectedError()
+      }),
+    })
+    consoleError.mockClear()
+
+    sendButton().click()
+    await settle()
+
+    expect(deps.toasts.show).toHaveBeenCalledWith(TOAST.hathorSendCancelled)
+    expect(deps.toasts.show).not.toHaveBeenCalledWith(TOAST.hathorSendError)
+    expect(consoleError).not.toHaveBeenCalled()
+    expect(sendButton().disabled).toBe(false)
+    // Declining is a settled outcome too — starts the next attempt fresh,
+    // same as a confirmed send.
+    expect(amount().value).toBe('')
+    expect(deps.refreshBalance).toHaveBeenCalled()
   })
 })
 

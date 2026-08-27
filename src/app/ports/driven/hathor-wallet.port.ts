@@ -17,6 +17,20 @@ export interface HathorSession {
   readonly expired?: boolean
 }
 
+/**
+ * The user declined the request in their Hathor wallet.
+ *
+ * Its own type, distinct from a plain `Error`: this is the user's own choice,
+ * not something that went wrong — the form renders it as a notice, not a
+ * failure. See HathorTransferForm.
+ */
+export class UserRejectedError extends Error {
+  constructor() {
+    super('User rejected.')
+    this.name = 'UserRejectedError'
+  }
+}
+
 export interface SendBridgeTransferParams {
   /** Hathor deposit address of the bridge. */
   readonly bridgeAddress: string
@@ -55,7 +69,10 @@ export interface HathorWalletPort {
    */
   getBalance(tokenUid: string, deployment: Deployment): Promise<TokenBalance>
 
-  /** @returns the Hathor transaction id of the submitted transfer. */
+  /**
+   * @returns the Hathor transaction id of the submitted transfer.
+   * @throws {UserRejectedError} if the user declines it in their wallet.
+   */
   sendBridgeTransfer(
     params: SendBridgeTransferParams,
     deployment: Deployment,

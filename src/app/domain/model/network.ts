@@ -42,4 +42,11 @@ export interface BridgeRoute {
   readonly deployment: Deployment
   readonly evm: EvmNetwork
   readonly hathor: HathorNetwork
+  /**
+   * Federators required to relay (Hathor side) or vote a claim through (EVM
+   * side) — the same federation, the same threshold, on both phases. Mainnet
+   * and testnet run different federator sets of different sizes, so this
+   * lives on the route rather than as a shared constant; see vote-progress.ts.
+   */
+  readonly signaturesRequired: number
 }

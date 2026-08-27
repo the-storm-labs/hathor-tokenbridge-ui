@@ -1,4 +1,5 @@
 import { paginate, type Page } from '../../../../domain/pagination'
+import { messageOf } from '../messages'
 import type { BridgeRoute } from '../../../../domain/model/network'
 import type { BridgeTransfer } from '../../../../domain/model/transfer'
 import type { ClaimRequest } from '../../../../ports/driven/contracts.port'
@@ -305,7 +306,11 @@ export class TransferHistory {
     const claimIndex = transfer.claim ? this.hathorOrigin.indexOf(transfer) : -1
     const action = transferStatusCell(transfer.status, claimIndex >= 0 ? claimIndex : null)
 
-    return hathorTransferRow({ ...transfer, action }, this.deps.route.hathor.explorer)
+    return hathorTransferRow(
+      { ...transfer, action },
+      this.deps.route.hathor.explorer,
+      this.deps.route.signaturesRequired,
+    )
   }
 
   private evmRow(transfer: StoredTransfer): string {
@@ -340,6 +345,3 @@ export function mountTransferHistory(root: Document, deps: TransferHistoryDeps):
   history.mount()
   return history
 }
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)

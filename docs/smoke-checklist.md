@@ -86,6 +86,16 @@ assume still work.
 30. Selecting a token shows its Hathor balance.
 31. **Max** fills the amount from the balance.
 32. An invalid EVM destination address is rejected.
+32b. A destination with an active EIP-7702 delegation is **blocked** — the
+    amber "This destination can't be used" toast, naming the delegate, not the
+    red send-error one — and **before** the Hathor wallet is asked to sign
+    anything. To get a delegated Sepolia address: in MetaMask, open Account
+    Details on a test account and use **Switch to smart account** (needs a
+    little Sepolia ETH for gas); or use
+    [eip7702reset](https://github.com/maikelordaz/eip7702reset)'s `set`
+    command from the CLI.
+32c. Declining the request in the Hathor wallet shows the amber "Transaction
+    cancelled" toast, not the red send-error one, and no console error.
 33. **Send** submits, and the transaction appears in the HTR→ARB history tab.
 
 ## Info tab

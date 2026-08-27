@@ -61,8 +61,16 @@ const HATHOR_MAINNET: HathorNetwork = {
 }
 
 export const ROUTES: Record<Deployment, BridgeRoute> = {
-  mainnet: { deployment: 'mainnet', evm: ARBITRUM_ONE, hathor: HATHOR_MAINNET },
-  testnet: { deployment: 'testnet', evm: SEPOLIA, hathor: HATHOR_TESTNET },
+  mainnet: {
+    deployment: 'mainnet',
+    evm: ARBITRUM_ONE,
+    hathor: HATHOR_MAINNET,
+    signaturesRequired: 4,
+  },
+  // Golf testnet runs a single federator, not mainnet's four — the approval
+  // meter waited on 4/4 here until this was split out of vote-progress.ts's
+  // shared constant.
+  testnet: { deployment: 'testnet', evm: SEPOLIA, hathor: HATHOR_TESTNET, signaturesRequired: 1 },
 }
 
 /**
