@@ -248,6 +248,34 @@ describe('addEvmTransfer', () => {
     history.addEvmTransfer(ADDRESS, NETWORK, receipt)
     expect(receipt.logs).toEqual(['x'])
   })
+
+  it('strips effectiveGasPrice, another bigint field viem reports', () => {
+    history.addEvmTransfer(ADDRESS, NETWORK, {
+      transactionHash: '0xaaa',
+      amount: '1',
+      effectiveGasPrice: 1_000_000_000n,
+    })
+
+    expect(history.list(ADDRESS, NETWORK)[0]!.effectiveGasPrice).toBeUndefined()
+  })
+
+  it('survives a bigint field the noise list does not know by name', () => {
+    // viem's TransactionReceipt can carry other bigint fields beyond the ones
+    // RECEIPT_NOISE strips by name, and JSON.stringify cannot serialize a
+    // bigint at all -- this used to crash the write right after the wallet
+    // had already mined the transaction, with "Do not know how to serialize
+    // a BigInt". Whatever slips past the strip list must degrade to a string
+    // instead of taking the write down.
+    expect(() =>
+      history.addEvmTransfer(ADDRESS, NETWORK, {
+        transactionHash: '0xaaa',
+        amount: '1',
+        someFutureBigintField: 42n,
+      }),
+    ).not.toThrow()
+
+    expect(history.list(ADDRESS, NETWORK)[0]!.someFutureBigintField).toBe('42')
+  })
 })
 
 describe('isAvailable', () => {

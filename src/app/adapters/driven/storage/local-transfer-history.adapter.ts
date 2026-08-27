@@ -89,7 +89,7 @@ export class LocalTransferHistoryAdapter implements TransferHistoryPort {
   }
 
   private write(key: string, transfers: readonly StoredTransfer[]): void {
-    this.storage.setItem(key, JSON.stringify(transfers))
+    this.storage.setItem(key, JSON.stringify(transfers, replaceBigInt))
   }
 }
 
@@ -139,12 +139,29 @@ const RECEIPT_NOISE = [
   'transactionIndex',
   'cumulativeGasUsed',
   'gasUsed',
+  'effectiveGasPrice',
   'contractAddress',
   'logs',
   'to',
   'root',
   'logsBloom',
 ] as const
+
+/**
+ * `ViemChainAdapter.waitForReceipt` spreads viem's raw `TransactionReceipt`
+ * into the port's `EvmReceipt` (see chain.adapter.ts), and several of its
+ * fields -- `gasUsed`, `cumulativeGasUsed`, `effectiveGasPrice` -- arrive as
+ * native `bigint`, which `JSON.stringify` cannot serialize at all: it throws
+ * `TypeError: Do not know how to serialize a BigInt` and takes the whole write
+ * down with it. `RECEIPT_NOISE` strips the ones known by name; this is the
+ * backstop for whichever one isn't (today or after a future viem upgrade),
+ * so a stray bigint degrades to a decimal string instead of crashing the
+ * write outright -- which otherwise happened *after* the wallet had already
+ * confirmed and mined the transaction, with no way to recover the record.
+ */
+function replaceBigInt(_key: string, value: unknown): unknown {
+  return typeof value === 'bigint' ? value.toString() : value
+}
 
 function stripReceiptNoise(transfer: StoredTransfer): StoredTransfer {
   // The original mutated its caller's object with `delete`; copying avoids that.
