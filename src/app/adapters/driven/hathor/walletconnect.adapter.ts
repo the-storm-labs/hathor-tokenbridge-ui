@@ -1,9 +1,10 @@
 import type { Deployment } from '../../../domain/model/deployment'
-import type {
-  HathorSession,
-  HathorWalletPort,
-  SendBridgeTransferParams,
-  TokenBalance,
+import {
+  UserRejectedError,
+  type HathorSession,
+  type HathorWalletPort,
+  type SendBridgeTransferParams,
+  type TokenBalance,
 } from '../../../ports/driven/hathor-wallet.port'
 import type { PreferencesPort } from '../../../ports/driven/preferences.port'
 import { HathorNodeBalanceAdapter } from './node-balance.adapter'
@@ -132,6 +133,26 @@ function isLive(session: WalletConnectSession | null | undefined): boolean {
   if (typeof session.expiry !== 'number') return true
 
   return session.expiry * 1000 - EXPIRY_SKEW_MS > Date.now()
+}
+
+/**
+ * Whether a request's rejection was the user declining it in their wallet.
+ *
+ * `@walletconnect/jsonrpc-provider` rejects a request with the bare JSON-RPC
+ * error object off the wire, not an `Error` — `isJsonRpcError(n) ? o(n.error)
+ * : ...`. A decline is WalletConnect's own standard error
+ * (`getSdkError('USER_REJECTED')`): `{ code: 5000, message: 'User
+ * rejected.' }`. The message is checked too, in case a wallet's own RPC
+ * handler answers a decline with a different code but still says so in words —
+ * better to catch that than to show it as a bug on our side.
+ */
+function isUserRejection(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+
+  const { code, message } = error as { code?: unknown; message?: unknown }
+  if (code === 5000) return true
+
+  return typeof message === 'string' && /reject/i.test(message)
 }
 
 interface UniversalConnectorFactory {
@@ -400,11 +421,16 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
       throw new Error(SESSION_EXPIRED_MESSAGE)
     }
 
-    return provider.client!.request({
-      topic: session.topic,
-      chainId: `hathor:${deployment}`,
-      request: { jsonrpc: '2.0', id: ++this.rpcRequestId, method, params },
-    })
+    try {
+      return await provider.client!.request({
+        topic: session.topic,
+        chainId: `hathor:${deployment}`,
+        request: { jsonrpc: '2.0', id: ++this.rpcRequestId, method, params },
+      })
+    } catch (error) {
+      if (isUserRejection(error)) throw new UserRejectedError()
+      throw error
+    }
   }
 
   private async balanceViaRpc(tokenUid: string, deployment: Deployment): Promise<TokenBalance> {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createSendHathorTransfer } from './send-hathor-transfer'
+import { createSendHathorTransfer, Eip7702DelegatedError } from './send-hathor-transfer'
 import { ROUTES } from '../../config/networks'
 import { findToken } from '../../config/tokens'
 import { TransferStatus } from '../../ports/driven/bridge-api.port'
@@ -39,6 +39,7 @@ function setup(overrides: Record<string, unknown> = {}) {
     tokens: [AHTR, USDC, NOT_BRIDGEABLE],
     route: ROUTE,
     deployment: 'mainnet',
+    eip7702: { getDelegate: async () => null },
     ...overrides,
   }
 
@@ -182,6 +183,57 @@ describe('sendHathorTransfer', () => {
     expect(sendBridgeTransfer.mock.calls[0]![0]).toMatchObject({
       evmDestination: EVM_DESTINATION,
     })
+  })
+
+  it('refuses a destination with an active EIP-7702 delegation, as its own error type', async () => {
+    const DELEGATE = '0x000000000000000000000000000000000000ad'
+    const { sendBridgeTransfer, sendHathorTransfer } = setup({
+      eip7702: { getDelegate: async () => DELEGATE },
+    })
+
+    // A distinct class, not a plain Error: the form renders this as a block —
+    // this destination was never going to work — not a failed send. See
+    // HathorTransferForm.
+    await expect(sendHathorTransfer(request())).rejects.toThrow(Eip7702DelegatedError)
+    await expect(sendHathorTransfer(request())).rejects.toThrow(/active EIP-7702 delegation/)
+    expect(sendBridgeTransfer).not.toHaveBeenCalled()
+  })
+
+  it('carries the delegate address, and truncates it in the message', async () => {
+    const DELEGATE = '0x000000000000000000000000000000000000ad'
+    const { sendHathorTransfer } = setup({
+      eip7702: { getDelegate: async () => DELEGATE },
+    })
+
+    try {
+      await sendHathorTransfer(request())
+      expect.unreachable()
+    } catch (error) {
+      expect(error).toBeInstanceOf(Eip7702DelegatedError)
+      expect((error as Eip7702DelegatedError).delegate).toBe(DELEGATE)
+      // The full address is one unbroken token — showing it in full is what
+      // overflowed the toast this message renders in.
+      expect((error as Error).message).toContain('0x000000...0000ad')
+    }
+  })
+
+  it('allows a destination with no delegation through', async () => {
+    const { sendBridgeTransfer, sendHathorTransfer } = setup({
+      eip7702: { getDelegate: async () => null },
+    })
+
+    await sendHathorTransfer(request())
+
+    expect(sendBridgeTransfer).toHaveBeenCalled()
+  })
+
+  it('checks the trimmed destination, not the raw input', async () => {
+    const getDelegate = vi.fn(async () => null)
+    const { sendHathorTransfer } = setup({ eip7702: { getDelegate } })
+
+    await sendHathorTransfer(request({ evmDestination: `  ${EVM_DESTINATION}  ` }))
+
+    expect(getDelegate).toHaveBeenCalledWith(EVM_DESTINATION)
   })
 
   it('refuses to send when the deposit address is not configured', async () => {

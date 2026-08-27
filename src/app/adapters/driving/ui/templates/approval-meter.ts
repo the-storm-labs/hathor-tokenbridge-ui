@@ -7,8 +7,16 @@ import { approvalProgress, type ApprovalCounts } from '../../../../domain/vote-p
  * defined inside. The counting rules live in domain/vote-progress; this only
  * paints them.
  */
-export function approvalMeter(counts: ApprovalCounts, isHathorPhase: boolean): string {
-  const { count, required, label, title } = approvalProgress(counts, isHathorPhase)
+export function approvalMeter(
+  counts: ApprovalCounts,
+  isHathorPhase: boolean,
+  signaturesRequired: number,
+): string {
+  const { count, required, label, title } = approvalProgress(
+    counts,
+    isHathorPhase,
+    signaturesRequired,
+  )
 
   let segments = ''
   for (let i = 1; i <= required; i++) {

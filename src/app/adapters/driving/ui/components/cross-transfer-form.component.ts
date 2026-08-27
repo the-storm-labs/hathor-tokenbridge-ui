@@ -10,6 +10,7 @@ import type { CrossTokenParams } from '../../../../application/use-cases/cross-t
 import { formatRowAmount } from '../templates/amount'
 import { HATHOR_FORM_EVENT } from './hathor-transfer-form.component'
 import { TOAST } from '../toasts'
+import { messageOf } from '../messages'
 import type { TokenSelect } from './token-select.component'
 
 /**
@@ -300,8 +301,15 @@ export class CrossTransferForm {
     })
 
     if (rejection) {
-      this.markInvalidAmount(rejectionMessage(rejection))
       this.setButtons({ approve: false, cross: false })
+      // An empty field is not a mistake yet — nothing typed, nothing to flag
+      // red. The buttons staying disabled is what actually blocks it; only a
+      // non-empty value that fails validation earns the red border.
+      if (rejection.kind === 'empty') {
+        this.clearAmountError()
+        return
+      }
+      this.markInvalidAmount(rejectionMessage(rejection))
       return
     }
 
@@ -389,7 +397,9 @@ export class CrossTransferForm {
 
     const amount = this.amount.value
     if (!amount) {
-      this.markInvalidAmount('Invalid amount')
+      // Not a mistake yet — nothing typed. checkAmount already disabled the
+      // buttons on the way here; this just avoids re-marking it red on blur.
+      this.clearAmountError()
       return
     }
     if (new BigNumber(amount).isLessThanOrEqualTo(0)) {
@@ -422,7 +432,10 @@ export class CrossTransferForm {
 
   private async approve(): Promise<void> {
     if (!this.approveButton) return
-    if (this.amount?.classList.contains('is-invalid')) {
+    // Empty no longer carries the `is-invalid` class (see checkAmount), so it
+    // has to be checked here too — the button being disabled is the normal
+    // guard, this is only for whatever reaches this past that.
+    if (!this.amount?.value || this.amount.classList.contains('is-invalid')) {
       this.deps.reportError('Invalid Amount')
       return
     }
@@ -458,7 +471,10 @@ export class CrossTransferForm {
       this.deps.toasts.hide(TOAST.transferError)
       this.deps.toasts.hide(TOAST.transferSuccess)
 
-      if (this.amount?.classList.contains('is-invalid')) throw new Error('Invalid Amount')
+      // Empty no longer carries the `is-invalid` class (see checkAmount).
+      if (!this.amount?.value || this.amount.classList.contains('is-invalid')) {
+        throw new Error('Invalid Amount')
+      }
 
       this.setEnabled(false)
 
@@ -505,6 +521,3 @@ export function mountCrossTransferForm(
 function isAmountKey(event: KeyboardEvent): boolean {
   return event.key.length > 1 || event.key === '.' || (event.key >= '0' && event.key <= '9')
 }
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)

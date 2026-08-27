@@ -32,11 +32,13 @@ export interface HathorTransferRowData {
 export function hathorTransferRow(
   transfer: HathorTransferRowData,
   hathorExplorerUrl: string | null,
+  signaturesRequired: number,
 ): string {
   const isHathorPhase = transfer.status === TransferStatus.HathorVoting
   const meter = approvalMeter(
     { votes: transfer.votes, signatures: transfer.signatures },
     isHathorPhase,
+    signaturesRequired,
   )
 
   const symbol = transfer.tokenSymbol ?? ''

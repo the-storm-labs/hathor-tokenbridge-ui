@@ -5,15 +5,6 @@
  * afterwards, so the row shows whichever counter it is currently waiting on.
  */
 
-/** Federation threshold on the EVM side. */
-export const REQUIRED_VOTES_TO_CLAIM = 4
-
-/**
- * The Read API reports Hathor-side ProposalSigned events but not the threshold
- * they count against; the federation uses the same size as the EVM side.
- */
-export const REQUIRED_SIGNATURES_TO_RELAY = 4
-
 export type ApprovalPhase = 'hathor-signatures' | 'evm-votes'
 
 export interface ApprovalProgress {
@@ -35,9 +26,16 @@ export interface ApprovalCounts {
 /**
  * @param isHathorPhase True while the transfer is still awaiting Hathor
  *                      federation signatures (API status `hathor_voting`).
+ * @param required Federators required on this route — the same threshold for
+ *                 both phases (see BridgeRoute.signaturesRequired). Mainnet
+ *                 and testnet run federations of different sizes, so this
+ *                 comes from the caller rather than a shared constant.
  */
-export function approvalProgress(counts: ApprovalCounts, isHathorPhase: boolean): ApprovalProgress {
-  const required = isHathorPhase ? REQUIRED_SIGNATURES_TO_RELAY : REQUIRED_VOTES_TO_CLAIM
+export function approvalProgress(
+  counts: ApprovalCounts,
+  isHathorPhase: boolean,
+  required: number,
+): ApprovalProgress {
   const raw = isHathorPhase ? counts.signatures : counts.votes
 
   // `Number(x) || 0` in the original: null, undefined and NaN all become 0.

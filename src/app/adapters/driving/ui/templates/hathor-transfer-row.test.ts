@@ -43,21 +43,29 @@ describe('formatRowAmount', () => {
 
 describe('approvalMeter', () => {
   it('paints one filled segment per approval', () => {
-    const html = approvalMeter({ signatures: 2 }, true)
+    const html = approvalMeter({ signatures: 2 }, true, 4)
     expect((html.match(/#28a745/g) ?? []).length).toBe(2)
     expect((html.match(/#e9ecef/g) ?? []).length).toBe(2)
     expect(html).toContain('2/4')
   })
 
   it('labels the phase it is counting', () => {
-    expect(approvalMeter({ signatures: 1 }, true)).toContain('Hathor federation signatures')
-    expect(approvalMeter({ votes: 1 }, false)).toContain('Arbitrum federation votes')
+    expect(approvalMeter({ signatures: 1 }, true, 4)).toContain('Hathor federation signatures')
+    expect(approvalMeter({ votes: 1 }, false, 4)).toContain('Arbitrum federation votes')
   })
 
   it('does not overflow when the count exceeds the threshold', () => {
-    const html = approvalMeter({ signatures: 9 }, true)
+    const html = approvalMeter({ signatures: 9 }, true, 4)
     expect(html).toContain('4/4')
     expect((html.match(/#28a745/g) ?? []).length).toBe(4)
+  })
+
+  it('uses the threshold the caller passes, not a hardcoded four', () => {
+    // Golf testnet runs a single federator.
+    const html = approvalMeter({ signatures: 1 }, true, 1)
+    expect(html).toContain('1/1')
+    expect((html.match(/#28a745/g) ?? []).length).toBe(1)
+    expect((html.match(/#e9ecef/g) ?? []).length).toBe(0)
   })
 })
 
@@ -112,13 +120,13 @@ describe('hathorTransferRow', () => {
   }
 
   it('links a Hathor hash to the Hathor explorer', () => {
-    const html = hathorTransferRow(base, EXPLORER)
+    const html = hathorTransferRow(base, EXPLORER, 4)
     expect(html).toContain(`${EXPLORER}/transaction/${HATHOR_TX}`)
     expect(html).toContain('00002f8b...738b5532')
   })
 
   it('shows "Not available" for an EVM hash, which has no Hathor page', () => {
-    const html = hathorTransferRow({ ...base, displayedTxHash: EVM_TX }, EXPLORER)
+    const html = hathorTransferRow({ ...base, displayedTxHash: EVM_TX }, EXPLORER, 4)
     expect(html).toContain('Not available')
     expect(html).not.toContain('<a href')
   })
@@ -126,40 +134,42 @@ describe('hathorTransferRow', () => {
   it('shows "Not available" when no explorer url was supplied', () => {
     // The old closure defaulted its config parameter to {}, so a caller that
     // forgot to pass it silently produced this for every row.
-    expect(hathorTransferRow(base, null)).toContain('Not available')
+    expect(hathorTransferRow(base, null, 4)).toContain('Not available')
   })
 
   it('hides an EVM sender, which is the relayer rather than the user', () => {
     const html = hathorTransferRow(
       { ...base, sender: '0x89612c955624281a4B3aa41b8b2994A77EDAcEaD' },
       EXPLORER,
+      4,
     )
     expect(html).toContain('Not available')
   })
 
   it('truncates a Hathor sender', () => {
-    expect(hathorTransferRow(base, EXPLORER)).toContain('HT55cV...H4NM')
+    expect(hathorTransferRow(base, EXPLORER, 4)).toContain('HT55cV...H4NM')
   })
 
   it('shows a dash when there is no sender at all', () => {
-    expect(hathorTransferRow({ ...base, sender: null }, EXPLORER)).toContain('—')
+    expect(hathorTransferRow({ ...base, sender: null }, EXPLORER, 4)).toContain('—')
   })
 
   it('renders the amount at the token precision, with its symbol', () => {
-    expect(hathorTransferRow(base, EXPLORER)).toContain('2.00 aHTR')
+    expect(hathorTransferRow(base, EXPLORER, 4)).toContain('2.00 aHTR')
   })
 
   it('renders a hathor_voting amount at its own scale', () => {
     const html = hathorTransferRow(
       { ...base, status: 'hathor_voting', amount: '500', amountDecimals: 2, tokenSymbol: 'hUSDC' },
       EXPLORER,
+      4,
     )
     // The regression: unscaling this by 18 rendered a real 5 USDC as 0.00.
     expect(html).toContain('5.00 hUSDC')
   })
 
   it('produces one table row with five cells', () => {
-    const html = hathorTransferRow(base, EXPLORER)
+    const html = hathorTransferRow(base, EXPLORER, 4)
     expect((html.match(/<tr/g) ?? []).length).toBe(1)
     expect((html.match(/<t[hd]/g) ?? []).length).toBe(5)
   })

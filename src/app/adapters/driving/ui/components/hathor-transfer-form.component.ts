@@ -4,8 +4,13 @@ import { isEvmAddress } from '../../../../domain/evm-address'
 import { findTokenByKey } from '../../../../domain/token-lookup'
 import { isOnHathor, type Token } from '../../../../domain/model/token'
 import { truncateMiddle } from '../../../../domain/tx-id'
-import type { SendHathorTransferParams } from '../../../../application/use-cases/send-hathor-transfer'
+import {
+  Eip7702DelegatedError,
+  type SendHathorTransferParams,
+} from '../../../../application/use-cases/send-hathor-transfer'
+import { UserRejectedError } from '../../../../ports/driven/hathor-wallet.port'
 import { TOAST } from '../toasts'
+import { messageOf } from '../messages'
 import { bindPopover, type Popover } from '../popover'
 import type { TokenSelect } from './token-select.component'
 
@@ -91,6 +96,7 @@ export class HathorTransferForm {
   private readonly balance: HTMLElement | null
   private readonly amountError: HTMLElement | null
   private readonly sendError: HTMLElement | null
+  private readonly blockedError: HTMLElement | null
   /** Null on a page with no trigger/menu pair — nothing opens, nothing closes. */
   private readonly popover: Popover | null
 
@@ -117,6 +123,7 @@ export class HathorTransferForm {
     this.balance = byId('htrTokenBalance')
     this.amountError = byId('htrAmountError')
     this.sendError = byId('htrSendErrorMsg')
+    this.blockedError = byId('htrDestinationBlockedMsg')
 
     const trigger = byId('hathorWalletTrigger')
     const menu = byId('hathorWalletMenu')
@@ -381,7 +388,10 @@ export class HathorTransferForm {
     if (!this.amount) return
 
     const valid = isPositiveAmount(this.amount.value)
-    this.amount.classList.toggle('is-invalid', !valid)
+    // An empty field is not a mistake yet — nothing typed, nothing to flag red.
+    // Only a non-empty value that fails validation gets the red border; the
+    // Send button staying disabled is what actually blocks an empty submit.
+    this.amount.classList.toggle('is-invalid', !valid && this.amount.value !== '')
 
     const ready = valid && this.deps.wallet.isConnected() && !!this.tokenSelect?.value
     if (this.sendButton) this.sendButton.disabled = !ready
@@ -392,6 +402,8 @@ export class HathorTransferForm {
   private async send(): Promise<void> {
     this.deps.toasts.hide(TOAST.hathorSendSuccess)
     this.deps.toasts.hide(TOAST.hathorSendError)
+    this.deps.toasts.hide(TOAST.hathorDestinationBlocked)
+    this.deps.toasts.hide(TOAST.hathorSendCancelled)
     this.deps.toasts.hide(TOAST.hathorSendPending)
 
     const amount = this.amount?.value ?? ''
@@ -433,9 +445,26 @@ export class HathorTransferForm {
 
       this.deps.toasts.show(TOAST.hathorSendSuccess)
       this.emit(HATHOR_FORM_EVENT.transferSent, { evmDestination })
+      // The amount just went out — refilling it would resubmit the same
+      // number by accident, and the balance it was drawn from just changed.
+      this.resetAmountAfterSend()
     } catch (error) {
-      console.error('HTR→ARB send failed', error)
-      this.fail(messageOf(error) || 'Transaction failed. Please try again.')
+      if (error instanceof Eip7702DelegatedError) {
+        // A delegated destination was never going to work — the guard did its
+        // job, so this renders as a block, not a failure, and is logged as one.
+        // Nothing was sent to the wallet, so the typed amount is still good.
+        console.warn('HTR→ARB send blocked: destination has an EIP-7702 delegation', error)
+        this.block(error.message)
+      } else if (error instanceof UserRejectedError) {
+        // The user's own choice, not a failure — no console.error either. They
+        // said no to *this* request; starting the next one from a blank field
+        // matches confirming, rather than leaving a stale amount behind.
+        this.cancel()
+        this.resetAmountAfterSend()
+      } else {
+        console.error('HTR→ARB send failed', error)
+        this.fail(messageOf(error) || 'Transaction failed. Please try again.')
+      }
     } finally {
       this.deps.toasts.hide(TOAST.hathorSendPending)
       if (button) {
@@ -448,6 +477,29 @@ export class HathorTransferForm {
   private fail(message: string): void {
     if (this.sendError) this.sendError.textContent = message
     this.deps.toasts.show(TOAST.hathorSendError)
+  }
+
+  /** A destination the bridge could never claim to — shown as a warning, not an error. */
+  private block(message: string): void {
+    if (this.blockedError) this.blockedError.textContent = message
+    this.deps.toasts.show(TOAST.hathorDestinationBlocked)
+  }
+
+  /** The user declined in their wallet — shown as a warning, not an error. */
+  private cancel(): void {
+    this.deps.toasts.show(TOAST.hathorSendCancelled)
+  }
+
+  /**
+   * Clears the amount and re-reads the balance once the wallet interaction is
+   * settled — sent, or the user said no. Called for both outcomes, never for
+   * the pre-flight EIP-7702 block: that one never reached the wallet, so the
+   * typed amount is still what the user meant to send.
+   */
+  private resetAmountAfterSend(): void {
+    if (this.amount) this.amount.value = ''
+    this.validateAmount()
+    void this.refreshBalance()
   }
 
   private emit(type: string, detail: unknown): void {
@@ -476,6 +528,3 @@ function isPositiveAmount(amount: string): boolean {
 function isAmountKey(event: KeyboardEvent): boolean {
   return event.key.length > 1 || event.key === '.' || (event.key >= '0' && event.key <= '9')
 }
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)

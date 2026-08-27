@@ -3,9 +3,11 @@ import { toBaseUnits } from '../../domain/amount-math'
 import { isEvmAddress } from '../../domain/evm-address'
 import { findTokenByKey } from '../../domain/token-lookup'
 import { isOnHathor, type Token } from '../../domain/model/token'
+import { truncateMiddle } from '../../domain/tx-id'
 import type { BridgeRoute } from '../../domain/model/network'
 import type { Deployment } from '../../domain/model/deployment'
 import { TransferStatus } from '../../ports/driven/bridge-api.port'
+import type { Eip7702Port } from '../../ports/driven/eip7702.port'
 import type { HathorWalletPort } from '../../ports/driven/hathor-wallet.port'
 import type { StoredTransfer, TransferHistoryPort } from '../../ports/driven/transfer-history.port'
 
@@ -24,6 +26,7 @@ export interface SendHathorTransferDeps {
   readonly tokens: readonly Token[]
   readonly route: BridgeRoute
   readonly deployment: Deployment
+  readonly eip7702: Eip7702Port
 }
 
 export interface SendHathorTransferParams {
@@ -41,6 +44,28 @@ export interface SendHathorTransferResult {
   readonly record: StoredTransfer
 }
 
+/**
+ * The destination has an active EIP-7702 delegation, so the bridge cannot
+ * process a claim to it. Its own type, distinct from a plain `Error`: this is
+ * a guard rejecting a destination that was never going to work, not something
+ * that went wrong on a send that otherwise would have — the form renders it
+ * as a block, not a failure. See HathorTransferForm.
+ */
+export class Eip7702DelegatedError extends Error {
+  constructor(readonly delegate: string) {
+    // Truncated the same way the wallet header shortens an address — the full
+    // 42 characters is one unbroken token with nowhere to wrap, and it blew
+    // out the width of the toast that renders this.
+    super(
+      `This Arbitrum address has an active EIP-7702 delegation (to ${truncateMiddle(delegate)}). ` +
+        'The bridge cannot process a claim to a delegated account — send to a plain wallet address ' +
+        "instead, or remove the delegation from your wallet's own account settings first (this page " +
+        "can't do that for you).",
+    )
+    this.name = 'Eip7702DelegatedError'
+  }
+}
+
 export function createSendHathorTransfer(deps: SendHathorTransferDeps) {
   return async function sendHathorTransfer(
     params: SendHathorTransferParams,
@@ -55,6 +80,13 @@ export function createSendHathorTransfer(deps: SendHathorTransferDeps) {
     if (!isEvmAddress(evmDestination)) {
       throw new Error('Enter a valid Arbitrum address (0x...).')
     }
+
+    // The bridge cannot process a claim to a delegated account — the tokens
+    // would arrive but sit unclaimable forever. Catching that here means it
+    // fails before a Hathor transaction is even signed, instead of after
+    // Hathor voting finishes, which is where this used to be discovered.
+    const delegate = await deps.eip7702.getDelegate(evmDestination)
+    if (delegate) throw new Eip7702DelegatedError(delegate)
 
     const bridgeAddress = deps.route.hathor.bridgeHathorAddress
     // A placeholder here would send the user's tokens to an address nobody

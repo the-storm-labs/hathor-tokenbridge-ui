@@ -153,6 +153,26 @@ describe('rendering', () => {
     expect(rows('htr-eth-tbody')).toHaveLength(1)
   })
 
+  it("uses the route's federator count for the approval meter, not a hardcoded four", async () => {
+    // Golf testnet runs a single federator — this used to render 4/4 no
+    // matter which route was showing the row.
+    const { history } = setup({
+      route: { ...ROUTE, signaturesRequired: 1 },
+      loadHistory: async () => ({
+        hathorToEvm: [
+          hathorTransfer({ status: TransferStatus.HathorVoting, signatures: 1, claim: null }),
+        ],
+        evmToHathor: [],
+      }),
+    })
+    history.start()
+    await history.refresh()
+
+    const html = el('eth-htr-tbody').innerHTML
+    expect(html).toContain('1/1')
+    expect(html).not.toContain('/4')
+  })
+
   it('paginates at six rows and disables the boundaries', async () => {
     const many = Array.from({ length: 8 }, (_, i) => hathorTransfer({ transactionId: `tx-${i}` }))
     const { history } = setup({

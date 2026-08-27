@@ -656,6 +656,39 @@
           <p id="htrSendErrorMsg"></p>
         </div>
         <!--
+          Not a failure: the destination is one the bridge could never let the
+          user claim to (e.g. an EIP-7702 delegation), caught before anything is
+          sent. Warning styling, not danger — this didn't go wrong on our side.
+        -->
+        <div
+          id="htrDestinationBlocked"
+          class="toast-item alert alert-warning"
+          role="alert"
+          style="display: none"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 class="alert-heading">This destination can't be used</h4>
+          <p id="htrDestinationBlockedMsg"></p>
+        </div>
+        <!--
+          Not a failure either: declining in the wallet is the user's own
+          choice. Warning styling, same reasoning as htrDestinationBlocked.
+        -->
+        <div
+          id="htrSendCancelled"
+          class="toast-item alert alert-warning"
+          role="status"
+          style="display: none"
+        >
+          <button type="button" class="close" data-toast-dismiss aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 class="alert-heading">Transaction cancelled</h4>
+          <p>You declined the request in your Hathor wallet. No tokens were sent.</p>
+        </div>
+        <!--
           A WalletConnect session lives seven days and nothing renews it, so a
           wallet left connected over a week is dropped on the next visit. Without
           this the page just appears to have logged the user out.

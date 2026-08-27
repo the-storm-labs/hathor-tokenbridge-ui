@@ -142,6 +142,21 @@ describe('the amount field', () => {
     expect(el<HTMLButtonElement>('deposit').disabled).toBe(true)
   })
 
+  it('does not mark an empty field red — only a value the user actually typed', async () => {
+    await withToken()
+    amount().value = '0.5'
+    amount().dispatchEvent(new Event('input'))
+    expect(amount().classList.contains('is-invalid')).toBe(true)
+
+    // Deleting back to empty: still nothing to send, but not a mistake either.
+    amount().value = ''
+    amount().dispatchEvent(new Event('input'))
+
+    expect(amount().classList.contains('is-invalid')).toBe(false)
+    expect(el('amountError').style.display).toBe('none')
+    expect(el<HTMLButtonElement>('deposit').disabled).toBe(true)
+  })
+
   it('caps what is typed at the precision Hathor can represent', async () => {
     await withToken()
     amount().value = '1.2345'
