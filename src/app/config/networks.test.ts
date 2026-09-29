@@ -13,12 +13,17 @@ describe('ROUTES', () => {
     expect(ROUTES.mainnet.evm.name).toBe('Arbitrum One')
     expect(ROUTES.testnet.evm.chainId).toBe(11155111)
     expect(ROUTES.testnet.evm.name).toBe('Sepolia')
+    expect(ROUTES['testnet-arb'].evm.chainId).toBe(421614)
+    expect(ROUTES['testnet-arb'].evm.name).toBe('Arbitrum Sepolia')
   })
 
-  it('gives both deployments a Hathor deposit address', () => {
+  it('gives every deployment a Hathor deposit address', () => {
     // An empty one here would send HTR→ARB transfers into the void.
     expect(ROUTES.mainnet.hathor.bridgeHathorAddress).toBe('hQj6skwZY9RT3bRvFuRjioJP5ZbLSRYeuD')
     expect(ROUTES.testnet.hathor.bridgeHathorAddress).toBe('wYr7GUqHFDCan2WBN1f6JPJYUWPtpVhb22')
+    expect(ROUTES['testnet-arb'].hathor.bridgeHathorAddress).toBe(
+      'wbihDnF11dfeMRVAWtE6b3MCCy9eSPoi5p',
+    )
   })
 
   it('uses network-appropriate Hathor address prefixes', () => {
@@ -26,6 +31,7 @@ describe('ROUTES', () => {
     // be unrecoverable.
     expect(ROUTES.mainnet.hathor.bridgeHathorAddress[0]).toMatch(/[Hh]/)
     expect(ROUTES.testnet.hathor.bridgeHathorAddress[0]).toMatch(/[Ww]/)
+    expect(ROUTES['testnet-arb'].hathor.bridgeHathorAddress[0]).toMatch(/[Ww]/)
   })
 
   it('gives every EVM network its three contract addresses', () => {
@@ -36,9 +42,23 @@ describe('ROUTES', () => {
     }
   })
 
-  it('keeps the two deployments on distinct contracts', () => {
-    expect(ROUTES.mainnet.evm.bridge).not.toBe(ROUTES.testnet.evm.bridge)
-    expect(ROUTES.mainnet.hathor.federation).not.toBe(ROUTES.testnet.hathor.federation)
+  it('keeps every deployment on distinct contracts', () => {
+    const routes = Object.values(ROUTES)
+    expect(new Set(routes.map((r) => r.evm.bridge)).size).toBe(routes.length)
+    expect(new Set(routes.map((r) => r.hathor.federation)).size).toBe(routes.length)
+    expect(new Set(routes.map((r) => r.hathor.bridgeHathorAddress)).size).toBe(routes.length)
+  })
+
+  it('gives every deployment its own history keys', () => {
+    // Local transfer history is keyed by network name, so two deployments that
+    // shared one would show each other's transfers.
+    const routes = Object.values(ROUTES)
+    expect(new Set(routes.map((r) => r.evm.name)).size).toBe(routes.length)
+    expect(new Set(routes.map((r) => r.hathor.name)).size).toBe(routes.length)
+  })
+
+  it('needs two of the three testnet-arb federators', () => {
+    expect(ROUTES['testnet-arb'].signaturesRequired).toBe(2)
   })
 })
 
@@ -46,12 +66,16 @@ describe('routeForChainId', () => {
   it('resolves the deployment chain', () => {
     expect(routeForChainId(42161, 'mainnet')).toBe(ROUTES.mainnet)
     expect(routeForChainId(11155111, 'testnet')).toBe(ROUTES.testnet)
+    expect(routeForChainId(421614, 'testnet-arb')).toBe(ROUTES['testnet-arb'])
   })
 
   it('rejects the other deployment chain', () => {
     // Sepolia on the mainnet page must be "Wrong Network", not a silent switch.
     expect(routeForChainId(11155111, 'mainnet')).toBeNull()
     expect(routeForChainId(42161, 'testnet')).toBeNull()
+    // The two testnets must not accept each other's chain.
+    expect(routeForChainId(11155111, 'testnet-arb')).toBeNull()
+    expect(routeForChainId(421614, 'testnet')).toBeNull()
   })
 
   it('rejects an unknown chain', () => {
@@ -64,5 +88,6 @@ describe('expectedChainId', () => {
   it('reports the chain the wallet should be on', () => {
     expect(expectedChainId('mainnet')).toBe(42161)
     expect(expectedChainId('testnet')).toBe(11155111)
+    expect(expectedChainId('testnet-arb')).toBe(421614)
   })
 })

@@ -97,7 +97,7 @@ export function createContainer(options: ContainerOptions): Container {
     // `window.__ENV__` object filled by an inline script with `%VITE_*%`
     // placeholders, because the classic scripts could not see import.meta —
     // and a page served without a build then shipped the literal placeholder.
-    bridgeApi: new HttpBridgeApiAdapter(import.meta.env['VITE_BRIDGE_API_URL'] ?? ''),
+    bridgeApi: new HttpBridgeApiAdapter(bridgeApiUrlFor(deployment)),
 
     hathorWallet: new HathorWalletConnectAdapter(
       options.universalConnector,
@@ -112,22 +112,53 @@ export function createContainer(options: ContainerOptions): Container {
 
     evmWallet: new Eip6963WalletAdapter(),
     chain: new ViemChainAdapter(getClients),
-    // The one reader of VITE_EVM_HOST_MAINNET/TESTNET: a plain RPC, not the
-    // connected wallet's provider, because the HTR→ARB EIP-7702 check has to
-    // work with no EVM wallet connected at all. See eip7702-delegation.adapter.
+    // The one reader of VITE_EVM_HOST_*: a plain RPC, not the connected
+    // wallet's provider, because the HTR→ARB EIP-7702 check has to work with no
+    // EVM wallet connected at all. See eip7702-delegation.adapter.
     eip7702: new ViemEip7702Adapter(
-      createPublicClient({
-        transport: http(
-          import.meta.env[
-            deployment === 'testnet' ? 'VITE_EVM_HOST_TESTNET' : 'VITE_EVM_HOST_MAINNET'
-          ] ?? '',
-        ),
-      }),
+      createPublicClient({ transport: http(evmHostFor(deployment)) }),
     ),
 
     erc20: new ViemErc20Adapter(getClients),
     bridge: new ViemBridgeAdapter(getClients, route.evm.bridge),
     allowTokens: new ViemAllowTokensAdapter(getClients, route.evm.allowTokens),
     federation: new ViemFederationAdapter(getClients, route.evm.federation),
+  }
+}
+
+/**
+ * `testnet-arb` has its own Read API: the one in `VITE_BRIDGE_API_URL` indexes
+ * a different Bridge and Federation, so its records would never match this
+ * deployment's. Empty means none — the history then shows only what this
+ * browser sent, as it did before.
+ */
+function bridgeApiUrlFor(deployment: Deployment): string {
+  const env = import.meta.env
+  return deployment === 'testnet-arb'
+    ? (env['VITE_BRIDGE_API_URL_TESTNET_ARB'] ?? '')
+    : (env['VITE_BRIDGE_API_URL'] ?? '')
+}
+
+/**
+ * The public Arbitrum Sepolia RPC, used when `VITE_EVM_HOST_TESTNET_ARB` is
+ * unset. The rollup's own `sepolia-rollup.arbitrum.io` does not answer
+ * `eth_syncing`; this one does, and needs no key.
+ */
+const ARBITRUM_SEPOLIA_PUBLIC_RPC = 'https://arbitrum-sepolia-rpc.publicnode.com'
+
+/**
+ * One variable per deployment: the two testnets bridge different EVM chains, so
+ * pointing `VITE_EVM_HOST_TESTNET` at Arbitrum Sepolia would break the Sepolia
+ * page's check.
+ */
+function evmHostFor(deployment: Deployment): string {
+  const env = import.meta.env
+  switch (deployment) {
+    case 'mainnet':
+      return env['VITE_EVM_HOST_MAINNET'] ?? ''
+    case 'testnet':
+      return env['VITE_EVM_HOST_TESTNET'] ?? ''
+    case 'testnet-arb':
+      return env['VITE_EVM_HOST_TESTNET_ARB'] || ARBITRUM_SEPOLIA_PUBLIC_RPC
   }
 }

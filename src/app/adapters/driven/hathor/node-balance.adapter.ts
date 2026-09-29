@@ -1,4 +1,8 @@
-import type { Deployment } from '../../../domain/model/deployment'
+import {
+  hathorNetworkOf,
+  type Deployment,
+  type HathorNetworkId,
+} from '../../../domain/model/deployment'
 import type { TokenBalance } from '../../../ports/driven/hathor-wallet.port'
 
 /**
@@ -14,7 +18,7 @@ import type { TokenBalance } from '../../../ports/driven/hathor-wallet.port'
  * native HTR and a custom token.
  */
 
-const NODE_URLS: Record<Deployment, string> = {
+const NODE_URLS: Record<HathorNetworkId, string> = {
   mainnet: 'https://node1.mainnet.hathor.network/v1a/',
   testnet: 'https://node1.testnet.hathor.network/v1a/',
 }
@@ -59,7 +63,7 @@ export class HathorNodeBalanceAdapter {
     tokenUid: string,
     deployment: Deployment,
   ): Promise<TokenBalance> {
-    const nodeUrl = NODE_URLS[deployment]
+    const nodeUrl = NODE_URLS[hathorNetworkOf(deployment)]
     const nowSeconds = Math.floor(this.now() / 1000)
 
     let query = `addresses[]=${encodeURIComponent(address)}`

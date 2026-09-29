@@ -1,4 +1,8 @@
-import type { Deployment } from '../../../domain/model/deployment'
+import {
+  hathorNetworkOf,
+  type Deployment,
+  type HathorNetworkId,
+} from '../../../domain/model/deployment'
 import {
   UserRejectedError,
   type HathorSession,
@@ -18,7 +22,7 @@ import { HathorNodeBalanceAdapter } from './node-balance.adapter'
  * runs work on import cannot be composed or tested.
  */
 
-const NETWORKS: Record<Deployment, Record<string, unknown>> = {
+const NETWORKS: Record<HathorNetworkId, Record<string, unknown>> = {
   mainnet: {
     id: 1,
     chainNamespace: 'hathor',
@@ -283,7 +287,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     const result = await this.rpcRequest(
       'htr_sendTransaction',
       {
-        network: deployment,
+        network: hathorNetworkOf(deployment),
         outputs: [
           {
             address: params.bridgeAddress,
@@ -317,7 +321,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
       networks: [
         {
           methods: HATHOR_METHODS,
-          chains: [NETWORKS[deployment]],
+          chains: [NETWORKS[hathorNetworkOf(deployment)]],
           events: [],
           namespace: 'hathor',
         },
@@ -424,7 +428,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     try {
       return await provider.client!.request({
         topic: session.topic,
-        chainId: `hathor:${deployment}`,
+        chainId: `hathor:${hathorNetworkOf(deployment)}`,
         request: { jsonrpc: '2.0', id: ++this.rpcRequestId, method, params },
       })
     } catch (error) {
@@ -437,7 +441,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     const result = await this.rpcRequest(
       'htr_getBalance',
       // Never send addressIndexes — the wallet answers NotImplementedError.
-      { network: deployment, tokens: [tokenUid] },
+      { network: hathorNetworkOf(deployment), tokens: [tokenUid] },
       deployment,
     )
 

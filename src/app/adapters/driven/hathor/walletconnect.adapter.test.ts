@@ -275,6 +275,19 @@ describe('sending over a dead session', () => {
     expect(request).toHaveBeenCalledOnce()
   })
 
+  it('addresses the Hathor testnet, not the deployment name, from testnet-arb', async () => {
+    // testnet-arb is ours; the wallet only knows `mainnet` and `testnet`.
+    const { adapter, request } = setup(ADDRESS)
+    await adapter.restore('testnet-arb')
+    await adapter.sendBridgeTransfer(TRANSFER, 'testnet-arb')
+
+    const [call] = request.mock.calls[0] as unknown as [
+      { chainId: string; request: { params: { network: string } } },
+    ]
+    expect(call.chainId).toBe('hathor:testnet')
+    expect(call.request.params.network).toBe('testnet')
+  })
+
   it('reports the user declining as UserRejectedError, not the raw JSON-RPC object', async () => {
     // @walletconnect/jsonrpc-provider rejects with the bare error off the wire —
     // WalletConnect's own standard shape for a decline, not an Error instance.

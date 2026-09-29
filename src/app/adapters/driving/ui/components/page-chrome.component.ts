@@ -15,26 +15,56 @@ import type { Deployment } from '../../../../domain/model/deployment'
 const TITLES: Record<Deployment, string> = {
   mainnet: 'Hathor EVM bridge',
   testnet: 'Hathor Testnet bridge with Ethereum Sepolia',
+  'testnet-arb': 'Hathor Testnet bridge with Arbitrum Sepolia',
 }
 
-/** Where the footer link points, and what it says. */
-const OTHER_DEPLOYMENT: Record<Deployment, { label: string; href: string }> = {
-  mainnet: { label: 'Use Testnet', href: './index.html?testnet' },
-  testnet: { label: 'Use Mainnet', href: './index.html' },
+interface FooterLink {
+  readonly label: string
+  readonly href: string
+}
+
+const MAINNET_LINK: FooterLink = { label: 'Use Mainnet', href: './index.html' }
+const TESTNET_LINK: FooterLink = { label: 'Use Testnet (Sepolia)', href: './index.html?testnet' }
+const TESTNET_ARB_LINK: FooterLink = {
+  label: 'Use Testnet (Arbitrum Sepolia)',
+  href: './testnet-arb.html',
+}
+
+/**
+ * Where the footer links point, and what they say: `#network-navlink` and
+ * `#network-navlink-alt`. A `null` hides the second one's `<li>`.
+ *
+ * `testnet` is not a page of its own — `?testnet` reuses index.html — so it has
+ * to set both links, or it would keep mainnet's "Use Testnet (Sepolia)" and
+ * link to itself.
+ */
+const OTHER_DEPLOYMENTS: Record<Deployment, readonly [FooterLink, FooterLink | null]> = {
+  mainnet: [TESTNET_LINK, TESTNET_ARB_LINK],
+  testnet: [MAINNET_LINK, TESTNET_ARB_LINK],
+  'testnet-arb': [MAINNET_LINK, null],
 }
 
 export function mountPageChrome(root: Document, deployment: Deployment): void {
   const title = root.getElementById('title')
   if (title) title.textContent = TITLES[deployment]
 
-  const link = root.getElementById('network-navlink')
-  if (link) {
-    const other = OTHER_DEPLOYMENT[deployment]
-    link.textContent = other.label
-    link.setAttribute('href', other.href)
-  }
+  const [primary, alternate] = OTHER_DEPLOYMENTS[deployment]
+  setFooterLink(root.getElementById('network-navlink'), primary)
+  setFooterLink(root.getElementById('network-navlink-alt'), alternate)
 
   warnOnUnsupportedBrowser(root.defaultView)
+}
+
+function setFooterLink(anchor: HTMLElement | null, link: FooterLink | null): void {
+  if (!anchor) return
+  const item = anchor.closest('li') ?? anchor
+  if (!link) {
+    item.style.display = 'none'
+    return
+  }
+  item.style.display = ''
+  anchor.textContent = link.label
+  anchor.setAttribute('href', link.href)
 }
 
 /** Preserved from the ready block; the wallet flows are only tested on these. */
