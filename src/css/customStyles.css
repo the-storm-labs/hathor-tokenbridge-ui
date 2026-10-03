@@ -1300,3 +1300,11 @@ table.table td {
 .approve-remember .custom-control-label::after {
   display: none;
 }
+
+/* "Track" link next to a history row's hash: the transfer on the bridge dashboard. */
+.dashboard-link {
+  margin-left: 0.5em;
+  font-size: 0.8em;
+  font-weight: 400;
+  white-space: nowrap;
+}

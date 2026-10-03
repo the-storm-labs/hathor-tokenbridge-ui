@@ -2,6 +2,7 @@ import { isEvmSideAddress, truncateMiddle } from '../../../../domain/tx-id'
 import { TransferStatus } from '../../../../ports/driven/bridge-api.port'
 import { approvalMeter } from './approval-meter'
 import { formatRowAmount } from './amount'
+import { dashboardLink } from './dashboard-link'
 
 /**
  * One row of the Hathor→EVM history table.
@@ -33,6 +34,7 @@ export function hathorTransferRow(
   transfer: HathorTransferRowData,
   hathorExplorerUrl: string | null,
   signaturesRequired: number,
+  dashboardUrl: string | null = null,
 ): string {
   const isHathorPhase = transfer.status === TransferStatus.HathorVoting
   const meter = approvalMeter(
@@ -49,7 +51,7 @@ export function hathorTransferRow(
   )
 
   return `<tr class="black">
-        ${hashCell(transfer, hathorExplorerUrl)}
+        ${hashCell(transfer, hathorExplorerUrl, dashboardUrl)}
         <td class="align-middle">${senderCell(transfer.sender)}</td>
         <td class="align-middle">${amount} ${symbol}</td>
         <td class="align-middle">${meter}</td>
@@ -57,15 +59,25 @@ export function hathorTransferRow(
     </tr>`
 }
 
-/** Only a Hathor id can be linked; an EVM hash has no Hathor explorer page. */
-function hashCell(transfer: HathorTransferRowData, explorerUrl: string | null): string {
+/**
+ * Only a Hathor id can be linked to the Hathor explorer; an EVM hash has no page there. The
+ * dashboard resolves either, so its link shows whenever there is a hash at all.
+ */
+function hashCell(
+  transfer: HathorTransferRowData,
+  explorerUrl: string | null,
+  dashboardUrl: string | null,
+): string {
   const hash = transfer.displayedTxHash || transfer.hathorTxId || transfer.transactionHash
   const isHathorHash = !!hash && !isEvmSideAddress(hash)
+  const track = dashboardLink(transfer.hathorTxId || hash, dashboardUrl)
 
-  if (!isHathorHash || !explorerUrl) return unavailableCell('th')
+  if (!isHathorHash || !explorerUrl) {
+    return track ? `<th scope="row">${unavailableMarkup()}${track}</th>` : unavailableCell('th')
+  }
 
   const short = `${hash.substring(0, 8)}...${hash.slice(-8)}`
-  return `<th scope="row"><a href="${explorerUrl}/transaction/${hash}" target="_blank">${short}</a></th>`
+  return `<th scope="row"><a href="${explorerUrl}/transaction/${hash}" target="_blank">${short}</a>${track}</th>`
 }
 
 /**
