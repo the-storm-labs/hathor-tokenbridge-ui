@@ -1,0 +1,365 @@
+/*
+ * Light theme. The dark look is the default and lives in dark-theme.css and customStyles.css;
+ * every rule here applies only while <html data-theme="light">, set by the header toggle
+ * (adapters/driving/ui/components/theme-toggle.component.ts). Loaded after both, and scoped with
+ * the attribute, so it wins over them without touching them. `!important` only where the rule it
+ * overrides already has one (Bootstrap's .bg-dark, .text-muted, the border utilities).
+ *
+ * Palette: page #f5f5f7, surfaces #fff, lines #e2e2e8, text #1f1f1f, muted #6b6b75, and the same
+ * brand purple (#71258f) the dark theme uses for actions and links.
+ */
+
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='light'] body {
+  background-color: #f5f5f7;
+  color: #1f1f1f;
+}
+
+/* ---- header ---------------------------------------------------------------------------------- */
+
+html[data-theme='light'] .navbar.bg-dark {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e2e8;
+}
+
+html[data-theme='light'] .navbar a {
+  color: #1f1f1f;
+}
+
+/* ---- text ------------------------------------------------------------------------------------ */
+
+html[data-theme='light'] h1,
+html[data-theme='light'] .network,
+html[data-theme='light'] .black,
+html[data-theme='light'] .max,
+html[data-theme='light'] .config-section .config-title,
+html[data-theme='light'] .config-section .config-value,
+html[data-theme='light'] .config-section .config-address,
+html[data-theme='light'] .form-check label,
+html[data-theme='light'] #tokenListTab a {
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] label,
+html[data-theme='light'] .subtitle,
+html[data-theme='light'] .fees,
+html[data-theme='light'] .config-section p,
+html[data-theme='light'] .copyright,
+html[data-theme='light'] .powered,
+html[data-theme='light'] #wait,
+html[data-theme='light'] #txBridge,
+html[data-theme='light'] #txBridge:hover {
+  color: #6b6b75;
+}
+
+html[data-theme='light'] .text-muted {
+  color: #6b6b75 !important;
+}
+
+html[data-theme='light'] a,
+html[data-theme='light'] .amount .max,
+html[data-theme='light'] .outline-rounded,
+html[data-theme='light'] .badge-outline {
+  color: #71258f;
+}
+
+html[data-theme='light'] a:hover {
+  color: #451c55;
+}
+
+html[data-theme='light'] .disabled,
+html[data-theme='light'] .disabled .network,
+html[data-theme='light'] .max:disabled {
+  color: #a3a3ab;
+}
+
+html[data-theme='light'] .disabled .outline,
+html[data-theme='light'] .disabled .outline-rounded,
+html[data-theme='light'] .disabled .badge-outline {
+  color: #a3a3ab;
+  border-color: #d4d4da;
+}
+
+html[data-theme='light'] .confirmed {
+  color: #71258f;
+}
+
+html[data-theme='light'] .pending {
+  color: #a86b00;
+}
+
+/* ---- surfaces -------------------------------------------------------------------------------- */
+
+html[data-theme='light'] .card,
+html[data-theme='light'] .modal-content,
+html[data-theme='light'] #myModal .modal-content,
+html[data-theme='light'] .dropdown-menu,
+html[data-theme='light'] table.table {
+  background-color: #ffffff;
+  color: #1f1f1f;
+  border: 1px solid #e2e2e8;
+}
+
+html[data-theme='light'] .modal-header,
+html[data-theme='light'] #myModal .modal-header {
+  border-bottom: 1px solid #e2e2e8;
+}
+
+html[data-theme='light'] .modal-footer {
+  border-top: 1px solid #e2e2e8;
+}
+
+html[data-theme='light'] #myModal .close {
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] .border-top {
+  border-top: 1px solid #e2e2e8 !important;
+}
+
+html[data-theme='light'] .border-bottom {
+  border-bottom: 1px solid #e2e2e8 !important;
+}
+
+html[data-theme='light'] .outline,
+html[data-theme='light'] .outline-rounded,
+html[data-theme='light'] .badge-outline,
+html[data-theme='light'] #amount.ok {
+  border-color: #d4d4da;
+}
+
+/* ---- tables ---------------------------------------------------------------------------------- */
+
+html[data-theme='light'] .table {
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] .table th,
+html[data-theme='light'] .table td {
+  border-top: 1px solid #e2e2e8;
+}
+
+/* ---- tabs ------------------------------------------------------------------------------------ */
+
+html[data-theme='light'] .nav-tabs .nav-link {
+  color: #6b6b75;
+  border-color: #e2e2e8;
+}
+
+html[data-theme='light'] .nav-tabs .nav-link.active {
+  color: #1f1f1f;
+  background-color: #ffffff;
+  border-color: #e2e2e8 #e2e2e8 #ffffff;
+}
+
+/* ---- forms ----------------------------------------------------------------------------------- */
+
+html[data-theme='light'] .form-control {
+  background-color: #ffffff;
+  color: #1f1f1f;
+  border: 1px solid #d4d4da;
+}
+
+html[data-theme='light'] .form-control:disabled,
+html[data-theme='light'] .form-control[readonly] {
+  background-color: #f0f0f3;
+  color: #8a8a93;
+}
+
+html[data-theme='light'] input::placeholder {
+  color: #a3a3ab !important;
+}
+
+/* ---- buttons --------------------------------------------------------------------------------- */
+
+html[data-theme='light'] .btn-primary {
+  color: #ffffff;
+  background-color: #71258f;
+  border-color: #71258f;
+}
+
+html[data-theme='light'] .btn-primary:hover,
+html[data-theme='light'] .btn-primary:not(:disabled):not(.disabled):active {
+  color: #ffffff;
+  background-color: #451c55;
+  border-color: #451c55;
+}
+
+html[data-theme='light'] .btn-primary.disabled,
+html[data-theme='light'] .btn-primary:disabled {
+  color: #ffffff;
+  background-color: #c9c9d1;
+  border-color: #c9c9d1;
+}
+
+html[data-theme='light'] .btn-secondary {
+  color: #1f1f1f;
+  background-color: #e9e9ee;
+  border-color: #d4d4da;
+}
+
+html[data-theme='light'] .btn-secondary:hover {
+  background-color: #dcdce3;
+  border-color: #c9c9d1;
+}
+
+/* ---- wallet header and menu ------------------------------------------------------------------ */
+
+html[data-theme='light'] .wallet-status.indicator.badge-outline,
+html[data-theme='light'] .wallet-status.indicator.badge-outline:hover {
+  background-color: #ffffff;
+  color: #1f1f1f;
+  border-color: #d4d4da;
+}
+
+html[data-theme='light'] .wallet-trigger-address,
+html[data-theme='light'] .wallet-menu__header strong,
+html[data-theme='light'] .wallet-menu__address,
+html[data-theme='light'] .wallet-menu__item {
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] .wallet-menu__header {
+  color: #6b6b75;
+}
+
+html[data-theme='light'] .wallet-menu-trigger:hover,
+html[data-theme='light'] .wallet-menu__item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme='light'] .wallet-menu {
+  background-color: #ffffff;
+  border: 1px solid #e2e2e8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='light'] .wallet-menu__item--danger {
+  color: #c62828;
+}
+
+html[data-theme='light'] #wallet-list .list-group-item {
+  background-color: #ffffff;
+  border-color: #e2e2e8;
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] #wallet-list .list-group-item:hover {
+  background-color: #f0f0f3;
+}
+
+html[data-theme='light'] .indicator span:before {
+  background-color: #c9c9d1;
+}
+
+/* ---- token selector and balances ------------------------------------------------------------- */
+
+html[data-theme='light'] .token-select-toggle {
+  color: #1f1f1f;
+  background-color: #ffffff;
+  border: 1px solid #d4d4da;
+}
+
+html[data-theme='light'] .token-select-toggle:disabled {
+  color: #a3a3ab;
+}
+
+html[data-theme='light'] .token-select-menu {
+  background-color: #ffffff;
+  border: 1px solid #e2e2e8;
+}
+
+html[data-theme='light'] .token-select-item {
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] .token-select-item:hover,
+html[data-theme='light'] .token-select-item:focus,
+html[data-theme='light'] .dropdown-item:hover {
+  background-color: #f0f0f3;
+}
+
+html[data-theme='light'] .token-select-item.active {
+  background-color: #ece3f1;
+}
+
+html[data-theme='light'] .dropdown-item {
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] .token-balance-label {
+  color: #6b6b75;
+}
+
+html[data-theme='light'] .token-balance-label span {
+  color: #1f1f1f;
+}
+
+/* ---- toasts ---------------------------------------------------------------------------------- */
+
+html[data-theme='light'] .toast-area .toast-item {
+  background-color: #ffffff;
+  color: #1f1f1f;
+  border: 1px solid #e2e2e8;
+  border-left: 4px solid #6c757d;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='light'] .toast-area .alert-heading,
+html[data-theme='light'] .toast-area .toast-item .close:hover {
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] .toast-area .toast-item .close {
+  color: #6b6b75;
+}
+
+/* ---- footer and loaders ---------------------------------------------------------------------- */
+
+html[data-theme='light'] #footer {
+  background-color: #ffffff;
+  border-top: 1px solid #e2e2e8;
+}
+
+html[data-theme='light'] .footer-links ul li a {
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] .footer-links ul li a:hover {
+  color: #71258f;
+}
+
+html[data-theme='light'] .sk-fading-circle .sk-circle:before {
+  background-color: #71258f;
+}
+
+/* ---- the toggle itself ----------------------------------------------------------------------- */
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 50%;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  line-height: 30px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme='light'] .theme-toggle {
+  border-color: #d4d4da;
+  color: #1f1f1f;
+}
+
+html[data-theme='light'] .theme-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
