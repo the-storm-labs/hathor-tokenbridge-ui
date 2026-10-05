@@ -114,6 +114,11 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
     showTokenInfo: (token) => {
       if (token.evm && store.getState().route) void infoPanel.refresh(token.evm.address)
     },
+    // Over the plain RPC, so it works with no EVM wallet at all.
+    loadLimits: async (token) => {
+      if (!token.evm) throw new Error(`${token.key} has no EVM side`)
+      return container.rpcAllowTokens.getInfoAndLimits(token.evm.address)
+    },
   })
 
   const history = mountTransferHistory(root, {

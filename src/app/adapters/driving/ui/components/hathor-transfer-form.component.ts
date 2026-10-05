@@ -2,11 +2,13 @@ import BigNumber from 'bignumber.js'
 import { clampDecimals } from '../../../../domain/amount-math'
 import { isEvmAddress } from '../../../../domain/evm-address'
 import { maxSendableHathorAmount } from '../../../../domain/hathor-network-fee'
+import { checkHathorTransferLimits, type WeiLimits } from '../../../../domain/limits'
 import { findTokenByKey } from '../../../../domain/token-lookup'
 import { isOnHathor, type Token } from '../../../../domain/model/token'
 import { truncateMiddle } from '../../../../domain/tx-id'
 import {
   Eip7702DelegatedError,
+  TransferLimitError,
   type SendHathorTransferParams,
 } from '../../../../application/use-cases/send-hathor-transfer'
 import { UserRejectedError } from '../../../../ports/driven/hathor-wallet.port'
@@ -73,6 +75,12 @@ export interface HathorTransferFormDeps {
   readonly getEvmAddress: () => string
   /** Shows this token's limits in the info panel, if the chain is reachable. */
   readonly showTokenInfo: (token: Token) => void
+  /**
+   * The token's per-transaction limits, for flagging the amount while it is
+   * typed. The send use case checks them again, and refuses if they cannot be
+   * read; this is the early, field-level half of the same rule.
+   */
+  readonly loadLimits: (token: Token) => Promise<WeiLimits>
 }
 
 export class HathorTransferForm {
@@ -100,6 +108,8 @@ export class HathorTransferForm {
   private readonly blockedError: HTMLElement | null
   /** Null on a page with no trigger/menu pair — nothing opens, nothing closes. */
   private readonly popover: Popover | null
+  /** Limits read so far, by token key. A token missing here is not checked yet. */
+  private readonly limits = new Map<string, WeiLimits>()
 
   constructor(
     private readonly root: Document,
@@ -149,7 +159,10 @@ export class HathorTransferForm {
         this.validateAmount()
 
         const token = this.selectedToken()
-        if (token) this.deps.showTokenInfo(token)
+        if (token) {
+          this.deps.showTokenInfo(token)
+          void this.loadLimits(token)
+        }
       })
     }
 
@@ -298,6 +311,8 @@ export class HathorTransferForm {
     if (connected) {
       this.prefillDestination()
       void this.refreshBalance()
+      const token = this.selectedToken()
+      if (token) void this.loadLimits(token)
     } else if (this.balance) {
       this.balance.textContent = '—'
     }
@@ -374,6 +389,22 @@ export class HathorTransferForm {
     }
   }
 
+  /**
+   * Reads and caches the limits, then re-validates whatever is typed. A failed
+   * read is logged and left out of the cache: the field just goes unchecked,
+   * and the send use case — which fails closed — is still in the way.
+   */
+  private async loadLimits(token: Token): Promise<void> {
+    if (this.limits.has(token.key)) return
+    try {
+      this.limits.set(token.key, await this.deps.loadLimits(token))
+    } catch (error) {
+      console.error('Could not read the bridge limits', error)
+      return
+    }
+    if (this.selectedToken()?.key === token.key) this.validateAmount()
+  }
+
   // --- amount --------------------------------------------------------------
 
   /**
@@ -393,14 +424,27 @@ export class HathorTransferForm {
   private validateAmount(): void {
     if (!this.amount) return
 
-    const valid = isPositiveAmount(this.amount.value)
+    const outOfLimits = this.limitRejection()
+    const valid = isPositiveAmount(this.amount.value) && !outOfLimits
     // An empty field is not a mistake yet — nothing typed, nothing to flag red.
     // Only a non-empty value that fails validation gets the red border; the
     // Send button staying disabled is what actually blocks an empty submit.
     this.amount.classList.toggle('is-invalid', !valid && this.amount.value !== '')
+    if (this.amountError) this.amountError.textContent = outOfLimits ?? ''
 
     const ready = valid && this.deps.wallet.isConnected() && !!this.tokenSelect?.value
     if (this.sendButton) this.sendButton.disabled = !ready
+  }
+
+  /** The limit message for what is typed, or `null` when within or unknown. */
+  private limitRejection(): string | null {
+    const token = this.selectedToken()
+    const limits = token && this.limits.get(token.key)
+    const amount = this.amount?.value ?? ''
+    if (!limits || !isPositiveAmount(amount)) return null
+
+    const rejection = checkHathorTransferLimits(amount, limits)
+    return rejection && 'message' in rejection ? rejection.message : null
   }
 
   // --- sending -------------------------------------------------------------
@@ -455,7 +499,13 @@ export class HathorTransferForm {
       // number by accident, and the balance it was drawn from just changed.
       this.resetAmountAfterSend()
     } catch (error) {
-      if (error instanceof Eip7702DelegatedError) {
+      if (error instanceof TransferLimitError) {
+        // Limits the field had not read yet, or that changed since. Nothing was
+        // sent, so the amount stays for the user to correct.
+        this.amount?.classList.add('is-invalid')
+        if (this.amountError) this.amountError.textContent = error.message
+        this.fail(error.message)
+      } else if (error instanceof Eip7702DelegatedError) {
         // A delegated destination was never going to work — the guard did its
         // job, so this renders as a block, not a failure, and is logged as one.
         // Nothing was sent to the wallet, so the typed amount is still good.
