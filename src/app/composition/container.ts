@@ -77,7 +77,11 @@ export interface ContainerOptions {
 
 export function createContainer(options: ContainerOptions): Container {
   const deployment = resolveDeployment(window.location, window.document)
-  const route = ROUTES[deployment]
+  // VITE_DASHBOARD_URL points the history's "Track" links at another dashboard (local, staging).
+  const dashboardOverride = import.meta.env['VITE_DASHBOARD_URL']
+  const route: BridgeRoute = dashboardOverride
+    ? { ...ROUTES[deployment], dashboardUrl: dashboardOverride }
+    : ROUTES[deployment]
 
   let clients: EvmClients | null = null
   const getClients = () => clients

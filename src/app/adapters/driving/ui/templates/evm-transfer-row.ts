@@ -1,5 +1,6 @@
 import { confirmationProgress } from '../../../../domain/confirmations'
 import { formatRowAmount } from './amount'
+import { dashboardLink } from './dashboard-link'
 
 /**
  * One row of the EVM→Hathor history table.
@@ -25,6 +26,8 @@ export interface EvmTransferRowContext {
   readonly confirmations: number
   readonly secondsPerBlock: number
   readonly explorer: string
+  /** The deployment's bridge dashboard, when it has one. */
+  readonly dashboardUrl?: string | null
 }
 
 export function evmTransferRow(
@@ -42,7 +45,7 @@ export function evmTransferRow(
   const amount = formatRowAmount(transfer.amount, transfer.amountDecimals ?? null, 2)
 
   return `<tr class="black">
-            ${hashCell(transfer.transactionHash, context.explorer)}
+            ${hashCell(transfer.transactionHash, context.explorer, context.dashboardUrl)}
             <td>${transfer.blockNumber ?? ''}</td>
             <td>${amount} ${transfer.tokenFrom ?? ''}</td>
             <td>${status} ${progress.humanTimeRemaining}</td>
@@ -54,9 +57,13 @@ export function evmTransferRow(
  * original called `.substring` on it unguarded and threw, taking the whole
  * table's render down with it.
  */
-function hashCell(hash: string | null | undefined, explorer: string): string {
+function hashCell(
+  hash: string | null | undefined,
+  explorer: string,
+  dashboardUrl?: string | null,
+): string {
   if (!hash) return `<th scope="row">—</th>`
 
   const short = `${hash.substring(0, 8)}...${hash.slice(-8)}`
-  return `<th scope="row"><a href="${explorer}/tx/${hash}">${short}</a></th>`
+  return `<th scope="row"><a href="${explorer}/tx/${hash}">${short}</a>${dashboardLink(hash, dashboardUrl)}</th>`
 }

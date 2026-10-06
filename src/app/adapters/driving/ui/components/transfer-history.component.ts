@@ -310,6 +310,7 @@ export class TransferHistory {
       { ...transfer, action },
       this.deps.route.hathor.explorer,
       this.deps.route.signaturesRequired,
+      this.deps.route.dashboardUrl ?? null,
     )
   }
 
@@ -319,6 +320,7 @@ export class TransferHistory {
       confirmations: this.deps.route.evm.confirmations,
       secondsPerBlock: this.deps.route.evm.secondsPerBlock,
       explorer: this.deps.route.evm.explorer,
+      dashboardUrl: this.deps.route.dashboardUrl ?? null,
     })
   }
 
