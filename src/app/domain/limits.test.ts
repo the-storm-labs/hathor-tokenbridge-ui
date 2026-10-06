@@ -19,16 +19,16 @@ describe('validateAmount', () => {
     expect(validateAmount('-1', bn('-1'), limits)).toEqual({ kind: 'not-positive' })
   })
 
-  it('reports the minimum net of fee', () => {
+  it('reports the minimum as the contract holds it, fee included', () => {
     const rejection = validateAmount('0.5', bn('0.5'), limits)
     expect(rejection?.kind).toBe('below-minimum')
-    expect(rejectionMessage(rejection!)).toBe('Minimum amount 0.998 token')
+    expect(rejectionMessage(rejection!)).toBe('Minimum amount 1 token')
   })
 
-  it('reports the maximum net of fee', () => {
+  it('reports the maximum as the contract holds it, fee included', () => {
     const rejection = validateAmount('200000', bn('200000'), limits)
     expect(rejection?.kind).toBe('above-maximum')
-    expect(rejectionMessage(rejection!)).toBe('Max amount 99800 tokens')
+    expect(rejectionMessage(rejection!)).toBe('Max amount 100,000 tokens')
   })
 
   it('validates the total cost, not the typed amount', () => {
@@ -41,11 +41,9 @@ describe('validateAmount', () => {
     expect(validateAmount('100000', bn('100000'), limits)).toBeNull()
   })
 
-  it('drops the fee term from the message when the fee is zero', () => {
-    const zeroFee = { min: 1, max: 100, feeRate: 0 }
-    expect(rejectionMessage(validateAmount('0.5', bn('0.5'), zeroFee)!)).toBe(
-      'Minimum amount 1 token',
-    )
+  it('quotes the same minimum whatever the fee', () => {
+    const zeroFee = { min: 5, max: 100, feeRate: 0 }
+    expect(rejectionMessage(validateAmount('4', bn('4'), zeroFee)!)).toBe('Minimum amount 5 tokens')
   })
 })
 
