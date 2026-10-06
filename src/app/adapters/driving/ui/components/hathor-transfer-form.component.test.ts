@@ -230,11 +230,14 @@ describe('the amount field', () => {
     expect(sendButton().disabled).toBe(true)
     expect(amount().classList.contains('is-invalid')).toBe(true)
     expect(el('htrAmountError').textContent).toBe('Max amount 1,000 tokens')
+    // Shown, not just written: the page's CSS would otherwise keep it hidden.
+    expect(el('htrAmountError').style.display).toBe('block')
 
     amount().value = '1000'
     amount().dispatchEvent(new Event('input'))
     expect(sendButton().disabled).toBe(false)
     expect(el('htrAmountError').textContent).toBe('')
+    expect(el('htrAmountError').style.display).toBe('none')
   })
 
   it('blocks an amount under the token minimum', async () => {
