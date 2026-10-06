@@ -35,20 +35,17 @@ export function validateAmount(
   if (rawAmount === '') return { kind: 'empty' }
   if (totalCost.isLessThanOrEqualTo(0)) return { kind: 'not-positive' }
 
-  // The messages quote the limit net of fee, and use plain float arithmetic so
-  // the rendered number matches the original character for character.
+  // The messages quote the limit as the contract holds it — gross, fee
+  // included — the same number the info panel and the HTR→ARB form show. The
+  // net figure (4.99 for a 5 minimum) only made the three disagree.
+  const shown = (limit: number) => tokens(new BigNumber(limit))
+
   if (totalCost.isLessThan(limits.min)) {
-    return {
-      kind: 'below-minimum',
-      message: `Minimum amount ${limits.min - limits.min * limits.feeRate} token`,
-    }
+    return { kind: 'below-minimum', message: `Minimum amount ${shown(limits.min)}` }
   }
 
   if (totalCost.isGreaterThan(limits.max)) {
-    return {
-      kind: 'above-maximum',
-      message: `Max amount ${limits.max - limits.max * limits.feeRate} tokens`,
-    }
+    return { kind: 'above-maximum', message: `Max amount ${shown(limits.max)}` }
   }
 
   return null
@@ -100,15 +97,20 @@ const LIMIT_DECIMALS = 18
  */
 export function checkTransferLimits(amount: string, limits: WeiLimits): AmountRejection | null {
   const scaled = new BigNumber(amount).shiftedBy(LIMIT_DECIMALS)
-  const shown = (wei: string) => new BigNumber(wei).shiftedBy(-LIMIT_DECIMALS).toFormat()
+  const shown = (wei: string) => tokens(new BigNumber(wei).shiftedBy(-LIMIT_DECIMALS))
 
   if (scaled.isLessThan(limits.min)) {
-    return { kind: 'below-minimum', message: `Minimum amount ${shown(limits.min)} tokens` }
+    return { kind: 'below-minimum', message: `Minimum amount ${shown(limits.min)}` }
   }
 
   if (scaled.isGreaterThan(limits.max)) {
-    return { kind: 'above-maximum', message: `Max amount ${shown(limits.max)} tokens` }
+    return { kind: 'above-maximum', message: `Max amount ${shown(limits.max)}` }
   }
 
   return null
+}
+
+/** `2,500 tokens`, `1 token`. */
+function tokens(amount: BigNumber): string {
+  return `${amount.toFormat()} ${amount.isEqualTo(1) ? 'token' : 'tokens'}`
 }
