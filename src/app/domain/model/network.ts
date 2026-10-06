@@ -49,4 +49,9 @@ export interface BridgeRoute {
    * lives on the route rather than as a shared constant; see vote-progress.ts.
    */
   readonly signaturesRequired: number
+  /**
+   * The bridge dashboard for this deployment, if it has a public one. Each history row links to
+   * `<dashboardUrl>/tx/<hash>`, which opens that transfer's pipeline (votes, signatures, claim).
+   */
+  readonly dashboardUrl?: string
 }

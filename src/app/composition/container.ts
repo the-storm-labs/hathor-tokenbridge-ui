@@ -15,7 +15,7 @@ import { ViemChainAdapter } from '../adapters/driven/evm/chain.adapter'
 import { Eip6963WalletAdapter } from '../adapters/driven/evm/eip6963-wallet.adapter'
 import { ViemEip7702Adapter } from '../adapters/driven/evm/eip7702-delegation.adapter'
 import { createEvmClients, type EvmClients } from '../adapters/driven/evm/clients'
-import { createPublicClient, http } from 'viem'
+import { createPublicClient, createWalletClient, http } from 'viem'
 import type { Eip1193Provider } from '../ports/driven/evm-wallet.port'
 import {
   ViemAllowTokensAdapter,
@@ -52,6 +52,11 @@ export interface Container {
   readonly erc20: ViemErc20Adapter
   readonly bridge: ViemBridgeAdapter
   readonly allowTokens: ViemAllowTokensAdapter
+  /**
+   * The same AllowTokens contract over the plain RPC rather than the wallet:
+   * the HTR→ARB form has to check limits with no EVM wallet connected.
+   */
+  readonly rpcAllowTokens: ViemAllowTokensAdapter
   readonly federation: ViemFederationAdapter
 
   /**
@@ -72,10 +77,25 @@ export interface ContainerOptions {
 
 export function createContainer(options: ContainerOptions): Container {
   const deployment = resolveDeployment(window.location, window.document)
-  const route = ROUTES[deployment]
+  // VITE_DASHBOARD_URL points the history's "Track" links at another dashboard (local, staging).
+  const dashboardOverride = import.meta.env['VITE_DASHBOARD_URL']
+  const route: BridgeRoute = dashboardOverride
+    ? { ...ROUTES[deployment], dashboardUrl: dashboardOverride }
+    : ROUTES[deployment]
 
   let clients: EvmClients | null = null
   const getClients = () => clients
+
+  // The one reader of VITE_EVM_HOST_*: a plain RPC, not the connected wallet's
+  // provider, for the HTR→ARB reads that have to work with no EVM wallet
+  // connected at all — the EIP-7702 check and the transfer limits.
+  const rpcTransport = http(evmHostFor(deployment))
+  // Only `reader` is ever used; the writer exists because the adapters take the
+  // pair, and with no account it cannot sign anything.
+  const rpcClients: EvmClients = {
+    reader: createPublicClient({ transport: rpcTransport }),
+    writer: createWalletClient({ transport: rpcTransport }),
+  }
 
   const store = createStore<AppState>(initialAppState())
   const scheduler = new WindowSchedulerAdapter()
@@ -112,16 +132,13 @@ export function createContainer(options: ContainerOptions): Container {
 
     evmWallet: new Eip6963WalletAdapter(),
     chain: new ViemChainAdapter(getClients),
-    // The one reader of VITE_EVM_HOST_*: a plain RPC, not the connected
-    // wallet's provider, because the HTR→ARB EIP-7702 check has to work with no
-    // EVM wallet connected at all. See eip7702-delegation.adapter.
-    eip7702: new ViemEip7702Adapter(
-      createPublicClient({ transport: http(evmHostFor(deployment)) }),
-    ),
+    // See eip7702-delegation.adapter for why this reads over the plain RPC.
+    eip7702: new ViemEip7702Adapter(rpcClients.reader),
 
     erc20: new ViemErc20Adapter(getClients),
     bridge: new ViemBridgeAdapter(getClients, route.evm.bridge),
     allowTokens: new ViemAllowTokensAdapter(getClients, route.evm.allowTokens),
+    rpcAllowTokens: new ViemAllowTokensAdapter(() => rpcClients, route.evm.allowTokens),
     federation: new ViemFederationAdapter(getClients, route.evm.federation),
   }
 }

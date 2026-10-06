@@ -41,6 +41,45 @@ const NETWORKS: Record<HathorNetworkId, Record<string, unknown>> = {
   },
 }
 
+/**
+ * The first character of a base58 Hathor address, per network (P2PKH, P2SH). Used where all we have
+ * is an address string - the address stored for the restore shortcut.
+ */
+const ADDRESS_PREFIXES: Record<HathorNetworkId, readonly string[]> = {
+  mainnet: ['H', 'h'],
+  testnet: ['W', 'w'],
+}
+
+/**
+ * The session's account on this deployment's network, or null.
+ *
+ * The mainnet and testnet pages are served from the same origin, so they share WalletConnect's
+ * storage and the stored address: a session approved on the testnet page is the "last session" the
+ * mainnet page finds on load. Accounts are CAIP-10 (`hathor:testnet:W…`), and only one on this
+ * page's network may be adopted - taking `accounts[0]` whatever its chain is what showed a testnet
+ * wallet as connected on mainnet.
+ */
+function accountOn(session: WalletConnectSession, deployment: Deployment): string | null {
+  const prefix = `${String(NETWORKS[hathorNetworkOf(deployment)]['caipNetworkId'])}:`
+  const account = (session.namespaces?.hathor?.accounts ?? []).find((a) => a.startsWith(prefix))
+  return account ? account.slice(prefix.length) || null : null
+}
+
+function hasAccounts(session: WalletConnectSession): boolean {
+  return (session.namespaces?.hathor?.accounts ?? []).length > 0
+}
+
+function addressOn(address: string | null, deployment: Deployment): boolean {
+  return !!address && ADDRESS_PREFIXES[hathorNetworkOf(deployment)].includes(address.charAt(0))
+}
+
+const WRONG_NETWORK_MESSAGE: Record<HathorNetworkId, string> = {
+  mainnet:
+    'Your Hathor wallet is connected to the testnet. Switch it to Hathor mainnet and connect again.',
+  testnet:
+    'Your Hathor wallet is connected to mainnet. Switch it to the Hathor testnet and connect again.',
+}
+
 /** Per HathorNetwork/rfcs rpc-protocol.md. */
 const HATHOR_METHODS = [
   'htr_sendTransaction',
@@ -193,7 +232,12 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     const connector = await this.ensureConnector(deployment)
     const { session } = await connector.connect()
 
-    this.adoptSession(session)
+    if (hasAccounts(session) && !accountOn(session, deployment)) {
+      // The wallet handed back a session on the other network (an existing pairing, or a wallet set
+      // to the wrong network). Adopting it would sign mainnet transfers against testnet funds.
+      throw new Error(WRONG_NETWORK_MESSAGE[hathorNetworkOf(deployment)])
+    }
+    this.adoptSession(session, deployment)
     if (this.address) this.preferences.setHathorAddress(this.address)
 
     return { address: this.address }
@@ -225,7 +269,10 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
    * one can neither show a balance nor name a sender.
    */
   async restore(deployment: Deployment): Promise<HathorSession | null> {
-    if (!this.preferences.getHathorAddress()) return null
+    const stored = this.preferences.getHathorAddress()
+    // Another network's address (stored by the other page on this origin) is not ours to restore, and
+    // not ours to clear either: that page still needs it.
+    if (!addressOn(stored, deployment)) return null
 
     try {
       const connector = await this.ensureConnector(deployment)
@@ -248,10 +295,17 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
         return { address: null, expired: true }
       }
 
-      this.adoptSession(session)
+      if (hasAccounts(session) && !accountOn(session, deployment)) {
+        // The last session on this origin belongs to the other network's page. Leave it alone -
+        // disconnecting would log that page out - and show this one as not connected.
+        console.info('Hathor WalletConnect session is for another network; not restoring it here')
+        return null
+      }
+
+      this.adoptSession(session, deployment)
       // A session with no accounts still means "connected"; fall back to the
-      // address we stored so the UI is not blank.
-      if (!this.address) this.address = this.preferences.getHathorAddress()
+      // address we stored (already checked to be on this network) so the UI is not blank.
+      if (!this.address) this.address = stored
 
       this.extendIfExpiringSoon(connector, session)
 
@@ -400,10 +454,9 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
   }
 
   /** Session accounts look like `hathor:mainnet:H<address>`. */
-  private adoptSession(session: WalletConnectSession): void {
+  private adoptSession(session: WalletConnectSession, deployment: Deployment): void {
     this.session = session
-    const accounts = session.namespaces?.hathor?.accounts ?? []
-    this.address = accounts.length > 0 ? (accounts[0]!.split(':')[2] ?? null) : null
+    this.address = accountOn(session, deployment)
   }
 
   private async rpcRequest(
@@ -414,6 +467,10 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     const provider = this.connector?.provider
     const session = provider?.session
     if (!provider || !session) throw new Error('No active WalletConnect session')
+    // Never send on a session this page did not adopt - it may be the other network's.
+    if (!this.session || session.topic !== this.session.topic) {
+      throw new Error('Hathor wallet not connected')
+    }
 
     // Checked here as well as on restore, because a session can reach its expiry
     // while the page is open. Without this the request goes to the relay and

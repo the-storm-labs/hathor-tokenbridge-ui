@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js'
 import { toBaseUnits } from '../../domain/amount-math'
 import { isEvmAddress } from '../../domain/evm-address'
+import { checkHathorTransferLimits, type WeiLimits } from '../../domain/limits'
 import { findTokenByKey } from '../../domain/token-lookup'
 import { isOnHathor, type Token } from '../../domain/model/token'
 import { truncateMiddle } from '../../domain/tx-id'
@@ -27,6 +28,11 @@ export interface SendHathorTransferDeps {
   readonly route: BridgeRoute
   readonly deployment: Deployment
   readonly eip7702: Eip7702Port
+  /**
+   * The token's AllowTokens limits, keyed by its EVM address. Read over a plain
+   * RPC like `eip7702`, since this form works with no EVM wallet connected.
+   */
+  readonly getLimits: (evmTokenAddress: string) => Promise<WeiLimits>
 }
 
 export interface SendHathorTransferParams {
@@ -42,6 +48,17 @@ export interface SendHathorTransferResult {
   readonly hathorTxId: string
   /** The record written to local history, for the caller to render immediately. */
   readonly record: StoredTransfer
+}
+
+/**
+ * The amount is outside the token's per-transaction limits. Its own type so the
+ * form can mark the amount field rather than show a generic failure.
+ */
+export class TransferLimitError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'TransferLimitError'
+  }
 }
 
 /**
@@ -75,6 +92,10 @@ export function createSendHathorTransfer(deps: SendHathorTransferDeps) {
     if (!isOnHathor(token)) throw new Error('Selected token is not available on Hathor.')
 
     if (!isPositiveAmount(params.amount)) throw new Error('Enter a valid amount.')
+
+    // Checked before anything is signed: once the deposit is on Hathor there is
+    // no undoing it, and the bridge will not release an amount outside these.
+    await assertWithinLimits(deps, token, params.amount)
 
     const evmDestination = params.evmDestination.trim()
     if (!isEvmAddress(evmDestination)) {
@@ -142,6 +163,32 @@ export function createSendHathorTransfer(deps: SendHathorTransferDeps) {
     deps.history.upsertHathorTransfer(evmDestination, deps.route.hathor.name, record)
 
     return { hathorTxId: hash, record }
+  }
+}
+
+/**
+ * Fails closed. An unreadable limit refuses the transfer instead of letting it
+ * through: unlike the EIP-7702 guard, nothing downstream catches an amount over
+ * the maximum, and a deposit below the minimum is dropped with the funds kept.
+ */
+async function assertWithinLimits(
+  deps: SendHathorTransferDeps,
+  token: Token,
+  amount: string,
+): Promise<void> {
+  if (!token.evm) throw new Error('Selected token is not bridgeable to Arbitrum.')
+
+  let limits: WeiLimits
+  try {
+    limits = await deps.getLimits(token.evm.address)
+  } catch (error) {
+    console.error('Could not read the bridge limits', error)
+    throw new Error('Could not read the bridge transfer limits. Please try again in a moment.')
+  }
+
+  const rejection = checkHathorTransferLimits(amount, limits)
+  if (rejection?.kind === 'below-minimum' || rejection?.kind === 'above-maximum') {
+    throw new TransferLimitError(rejection.message)
   }
 }
 

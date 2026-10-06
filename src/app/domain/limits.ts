@@ -1,4 +1,4 @@
-import type BigNumber from 'bignumber.js'
+import BigNumber from 'bignumber.js'
 
 /**
  * Validation of a transfer amount against the bridge's configured limits.
@@ -63,4 +63,47 @@ export function rejectionMessage(rejection: AmountRejection): string {
     case 'above-maximum':
       return rejection.message
   }
+}
+
+/** AllowTokens limits as the contract reports them: 18-decimal wei strings. */
+export interface WeiLimits {
+  readonly min: string
+  readonly max: string
+}
+
+/** The scale AllowTokens keeps every limit in, whatever the token's own precision. */
+const LIMIT_DECIMALS = 18
+
+/**
+ * Checks an HTR→ARB amount against the token's per-transaction limits.
+ *
+ * Nothing on the deposit path enforces these: the Hathor deposit address takes
+ * whatever is sent, and the federator only drops a deposit below the minimum —
+ * silently, leaving the funds in the multisig — and does not look at the
+ * maximum at all. So this check is the only thing between the user and a
+ * deposit the bridge will not release.
+ *
+ * Compared the way the federator does it: the gross amount sent on Hathor,
+ * scaled to 18 decimals, against the raw limits. No fee is taken first, and
+ * no float or `parseInt` rounding gets in the way — the comparison is exact.
+ *
+ * @param amount whole tokens, as typed.
+ * @returns `null` when the amount is acceptable.
+ */
+export function checkHathorTransferLimits(
+  amount: string,
+  limits: WeiLimits,
+): AmountRejection | null {
+  const scaled = new BigNumber(amount).shiftedBy(LIMIT_DECIMALS)
+  const shown = (wei: string) => new BigNumber(wei).shiftedBy(-LIMIT_DECIMALS).toFormat()
+
+  if (scaled.isLessThan(limits.min)) {
+    return { kind: 'below-minimum', message: `Minimum amount ${shown(limits.min)} tokens` }
+  }
+
+  if (scaled.isGreaterThan(limits.max)) {
+    return { kind: 'above-maximum', message: `Max amount ${shown(limits.max)} tokens` }
+  }
+
+  return null
 }

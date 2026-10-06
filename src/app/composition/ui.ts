@@ -30,6 +30,7 @@ import {
   type WalletHeader,
 } from '../adapters/driving/ui/components/wallet-header.component'
 import { mountPageChrome } from '../adapters/driving/ui/components/page-chrome.component'
+import { mountThemeToggle } from '../adapters/driving/ui/components/theme-toggle.component'
 import { routeForChainId } from '../config/networks'
 import { validateHathorAddress } from '../domain/hathor-address'
 import { AddressCryptoAdapter } from '../adapters/driven/crypto/address-crypto.adapter'
@@ -112,6 +113,11 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
     // token was selected without an EVM wallet.
     showTokenInfo: (token) => {
       if (token.evm && store.getState().route) void infoPanel.refresh(token.evm.address)
+    },
+    // Over the plain RPC, so it works with no EVM wallet at all.
+    loadLimits: async (token) => {
+      if (!token.evm) throw new Error(`${token.key} has no EVM side`)
+      return container.rpcAllowTokens.getInfoAndLimits(token.evm.address)
     },
   })
 
@@ -197,6 +203,7 @@ export function mountUi(container: Container, useCases: UseCases, root: Document
   })
 
   mountPageChrome(root, deployment)
+  mountThemeToggle(root)
 
   // The two behaviours Bootstrap's JS provided beyond the dropdown: the active
   // class on the direction toggle, and the ways a modal closes.

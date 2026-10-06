@@ -1,3 +1,4 @@
+import { applyStoredTheme } from './adapters/driving/ui/components/theme-toggle.component'
 import { createContainer } from './composition/container'
 import { mountUi } from './composition/ui'
 import { createUseCases } from './composition/use-cases'
@@ -10,6 +11,9 @@ import { createUseCases } from './composition/use-cases'
  * but before DOMContentLoaded. So every element a component looks for already
  * exists, and nothing has to wait for a ready callback.
  */
+// Before anything else, so a light-theme visitor's page does not render dark first.
+applyStoredTheme(document)
+
 const container = createContainer({
   /**
    * Reown's AppKit, loaded only when a Hathor wallet is actually connected.

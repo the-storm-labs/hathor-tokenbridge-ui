@@ -99,6 +99,7 @@ export const ROUTES: Record<Deployment, BridgeRoute> = {
     evm: ARBITRUM_ONE,
     hathor: HATHOR_MAINNET,
     signaturesRequired: 4,
+    dashboardUrl: 'https://d1aaiyzds7q04l.cloudfront.net',
   },
   // Golf testnet runs a single federator, not mainnet's four — the approval
   // meter waited on 4/4 here until this was split out of vote-progress.ts's

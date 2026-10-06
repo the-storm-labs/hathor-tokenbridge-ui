@@ -276,9 +276,14 @@ describe('sending over a dead session', () => {
   })
 
   it('addresses the Hathor testnet, not the deployment name, from testnet-arb', async () => {
-    // testnet-arb is ours; the wallet only knows `mainnet` and `testnet`.
-    const { adapter, request } = setup(ADDRESS)
-    await adapter.restore('testnet-arb')
+    // testnet-arb is ours; the wallet only knows `mainnet` and `testnet`. The
+    // session has to be a testnet one: a mainnet session is refused on this page.
+    const testnetAddress = 'WDeadbeefDeadbeefDeadbeefDeadbeef01'
+    const { adapter, request } = setup(testnetAddress, {
+      ...SESSION,
+      namespaces: { hathor: { accounts: [`hathor:testnet:${testnetAddress}`] } },
+    })
+    await expect(adapter.restore('testnet-arb')).resolves.toEqual({ address: testnetAddress })
     await adapter.sendBridgeTransfer(TRANSFER, 'testnet-arb')
 
     const [call] = request.mock.calls[0] as unknown as [
@@ -323,5 +328,79 @@ describe('connect', () => {
 
     await expect(adapter.connect('mainnet')).resolves.toEqual({ address: ADDRESS })
     expect(preferences.getHathorAddress()).toBe(ADDRESS)
+  })
+})
+
+describe('one origin, two networks', () => {
+  // The mainnet and testnet pages share an origin, so they share WalletConnect's storage and the
+  // stored address. Found on 2026-10-03: a testnet session showed as connected on the mainnet page.
+  const TESTNET_ADDRESS = 'WDeadbeefDeadbeefDeadbeefDeadbeef01'
+  const testnetSession = {
+    topic: 'topic-testnet',
+    expiry: expiryInDays(7),
+    namespaces: { hathor: { accounts: [`hathor:testnet:${TESTNET_ADDRESS}`] } },
+  }
+
+  it('does not restore a testnet session on the mainnet page, nor drop it for the testnet page', async () => {
+    const { adapter, preferences } = setup(ADDRESS, testnetSession)
+
+    await expect(adapter.restore('mainnet')).resolves.toBeNull()
+    expect(adapter.isConnected()).toBe(false)
+    expect(adapter.getAddress()).toBeNull()
+    expect(preferences.getHathorAddress()).toBe(ADDRESS)
+  })
+
+  it('does not restore from an address stored by the other network’s page', async () => {
+    const { adapter, init, preferences } = setup(TESTNET_ADDRESS)
+
+    await expect(adapter.restore('mainnet')).resolves.toBeNull()
+    expect(init).not.toHaveBeenCalled()
+    expect(preferences.getHathorAddress()).toBe(TESTNET_ADDRESS)
+  })
+
+  it('restores the testnet session on the testnet page', async () => {
+    const { adapter } = setup(TESTNET_ADDRESS, testnetSession)
+
+    await expect(adapter.restore('testnet')).resolves.toEqual({ address: TESTNET_ADDRESS })
+    expect(adapter.getAddress()).toBe(TESTNET_ADDRESS)
+  })
+
+  it('adopts this network’s account when a session carries both', async () => {
+    const { adapter } = setup(ADDRESS, {
+      topic: 'topic-1',
+      expiry: expiryInDays(7),
+      namespaces: {
+        hathor: { accounts: [`hathor:testnet:${TESTNET_ADDRESS}`, `hathor:mainnet:${ADDRESS}`] },
+      },
+    })
+
+    await expect(adapter.restore('mainnet')).resolves.toEqual({ address: ADDRESS })
+  })
+
+  it('refuses a connect that comes back on the other network', async () => {
+    const { adapter, connector, preferences } = setup(null)
+    connector.connect = async () => ({ session: testnetSession })
+
+    await expect(adapter.connect('mainnet')).rejects.toThrow(/connected to the testnet/)
+    expect(adapter.isConnected()).toBe(false)
+    expect(preferences.getHathorAddress()).toBeNull()
+  })
+
+  it('will not send over a session it did not adopt', async () => {
+    const { adapter, request } = setup(ADDRESS, testnetSession)
+    await adapter.restore('mainnet')
+
+    await expect(
+      adapter.sendBridgeTransfer(
+        {
+          bridgeAddress: 'hQj6skwZY9RT3bRvFuRjioJP5ZbLSRYeuD',
+          amountUnits: '100',
+          tokenUid: '00',
+          evmDestination: '0x0',
+        },
+        'mainnet',
+      ),
+    ).rejects.toThrow(/not connected/)
+    expect(request).not.toHaveBeenCalled()
   })
 })
