@@ -5,9 +5,13 @@ import {
   HATHOR_FORM_EVENT,
   type HathorTransferFormDeps,
 } from './hathor-transfer-form.component'
-import { Eip7702DelegatedError } from '../../../../application/use-cases/send-hathor-transfer'
+import {
+  Eip7702DelegatedError,
+  TransferLimitError,
+} from '../../../../application/use-cases/send-hathor-transfer'
 import { UserRejectedError } from '../../../../ports/driven/hathor-wallet.port'
 import { tokensFor } from '../../../../config/tokens'
+import type { WeiLimits } from '../../../../domain/limits'
 import { mountTokenSelect } from './token-select.component'
 import { TOAST } from '../toasts'
 
@@ -69,6 +73,8 @@ function setup(overrides: Partial<HathorTransferFormDeps> = {}) {
     tokenSelect: mountTokenSelect(document, 'htrTokenSelect', 'Select token'),
     getEvmAddress: () => EVM_ADDRESS,
     showTokenInfo: vi.fn(),
+    // 0.5 to 1,000 tokens, 18-decimal as AllowTokens reports them.
+    loadLimits: vi.fn(async () => ({ min: '5' + '0'.repeat(17), max: '1000' + '0'.repeat(18) })),
     ...overrides,
   }
 
@@ -210,6 +216,68 @@ describe('the amount field', () => {
     expect(sendButton().disabled).toBe(true)
   })
 
+  it('blocks an amount over the token maximum, saying what the maximum is', async () => {
+    const { deps } = setup()
+    el('connectHathorWallet').click()
+    await settle()
+    select().value = 'USDC'
+    select().dispatchEvent(new Event('change'))
+    await settle()
+    expect(deps.loadLimits).toHaveBeenCalledWith(expect.objectContaining({ key: 'USDC' }))
+
+    amount().value = '1000.01'
+    amount().dispatchEvent(new Event('input'))
+    expect(sendButton().disabled).toBe(true)
+    expect(amount().classList.contains('is-invalid')).toBe(true)
+    expect(el('htrAmountError').textContent).toBe('Max amount 1,000 tokens')
+
+    amount().value = '1000'
+    amount().dispatchEvent(new Event('input'))
+    expect(sendButton().disabled).toBe(false)
+    expect(el('htrAmountError').textContent).toBe('')
+  })
+
+  it('blocks an amount under the token minimum', async () => {
+    setup()
+    el('connectHathorWallet').click()
+    await settle()
+    select().value = 'USDC'
+    select().dispatchEvent(new Event('change'))
+    await settle()
+
+    amount().value = '0.4'
+    amount().dispatchEvent(new Event('input'))
+    expect(sendButton().disabled).toBe(true)
+    expect(el('htrAmountError').textContent).toBe('Minimum amount 0.5 tokens')
+  })
+
+  it('flags an amount typed before the limits arrived, once they do', async () => {
+    let resolve: (limits: WeiLimits) => void = () => {}
+    setup({ loadLimits: vi.fn(() => new Promise<WeiLimits>((r) => (resolve = r))) })
+    el('connectHathorWallet').click()
+    await settle()
+
+    amount().value = '5000'
+    amount().dispatchEvent(new Event('input'))
+    expect(sendButton().disabled).toBe(false)
+
+    resolve({ min: '0', max: '1000' + '0'.repeat(18) })
+    await settle()
+    expect(sendButton().disabled).toBe(true)
+  })
+
+  it('leaves the field unchecked when the limits cannot be read', async () => {
+    // The send use case fails closed on its own; the field just has nothing to say.
+    setup({ loadLimits: vi.fn(async () => Promise.reject(new Error('rpc down'))) })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    el('connectHathorWallet').click()
+    await settle()
+
+    amount().value = '5000'
+    amount().dispatchEvent(new Event('input'))
+    expect(sendButton().disabled).toBe(false)
+  })
+
   it('fills Max from the balance', async () => {
     setup()
     el('connectHathorWallet').click()
@@ -322,6 +390,23 @@ describe('sending', () => {
     expect(amount().value).toBe('2.5')
   })
 
+  it('marks the amount when the send use case refuses it on limits', async () => {
+    const { deps } = await ready({
+      sendTransfer: vi.fn(async () => {
+        throw new TransferLimitError('Max amount 1,000 tokens')
+      }),
+    })
+
+    sendButton().click()
+    await settle()
+
+    expect(amount().classList.contains('is-invalid')).toBe(true)
+    expect(el('htrAmountError').textContent).toBe('Max amount 1,000 tokens')
+    expect(deps.toasts.show).toHaveBeenCalledWith(TOAST.hathorSendError)
+    // Nothing was sent, so the amount stays for the user to correct.
+    expect(amount().value).toBe('2.5')
+  })
+
   it('shows a cancelled notice, not a send error, when the user declines in their wallet', async () => {
     // A shared spy across this file's other tests, so it starts with calls of
     // its own — cleared here to isolate what this test itself triggers.
@@ -362,6 +447,7 @@ describe('a restored session', () => {
       tokenSelect: mountTokenSelect(document, 'htrTokenSelect', 'Select token'),
       getEvmAddress: () => EVM_ADDRESS,
       showTokenInfo: vi.fn(),
+      loadLimits: vi.fn(async () => ({ min: '0', max: '0' })),
     }).showConnected('HRestoredRestoredRestoredRestored1')
 
     expect(wallet.connect).not.toHaveBeenCalled()

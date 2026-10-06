@@ -88,6 +88,7 @@ export function createWriteUseCases(container: Container) {
       route,
       deployment,
       eip7702: container.eip7702,
+      getLimits: (evmTokenAddress) => container.rpcAllowTokens.getInfoAndLimits(evmTokenAddress),
     }),
 
     // --- wallet connection -------------------------------------------------

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createSendHathorTransfer, Eip7702DelegatedError } from './send-hathor-transfer'
+import {
+  createSendHathorTransfer,
+  Eip7702DelegatedError,
+  TransferLimitError,
+} from './send-hathor-transfer'
 import { ROUTES } from '../../config/networks'
 import { findToken } from '../../config/tokens'
 import { TransferStatus } from '../../ports/driven/bridge-api.port'
@@ -18,6 +22,11 @@ function setup(overrides: Record<string, unknown> = {}) {
     hash: 'a'.repeat(64),
   }))
   const stored: { address: string; network: string; record: StoredTransfer }[] = []
+  // 0.5 to 1,000 tokens, 18-decimal as AllowTokens reports them.
+  const getLimits = vi.fn(async (_evmTokenAddress: string) => ({
+    min: '5' + '0'.repeat(17),
+    max: '1000' + '0'.repeat(18),
+  }))
 
   const deps = {
     wallet: {
@@ -40,10 +49,16 @@ function setup(overrides: Record<string, unknown> = {}) {
     route: ROUTE,
     deployment: 'mainnet',
     eip7702: { getDelegate: async () => null },
+    getLimits,
     ...overrides,
   }
 
-  return { sendBridgeTransfer, stored, sendHathorTransfer: createSendHathorTransfer(deps as never) }
+  return {
+    sendBridgeTransfer,
+    stored,
+    getLimits,
+    sendHathorTransfer: createSendHathorTransfer(deps as never),
+  }
 }
 
 const request = (overrides: Record<string, string> = {}) => ({
@@ -262,5 +277,51 @@ describe('sendHathorTransfer', () => {
       'Transaction sent but wallet returned no response',
     )
     expect(stored).toHaveLength(0)
+  })
+})
+
+describe('sendHathorTransfer limits', () => {
+  it('refuses an amount over the maximum before the wallet is asked', async () => {
+    const { sendBridgeTransfer, stored, sendHathorTransfer } = setup()
+
+    await expect(sendHathorTransfer(request({ amount: '1000.01' }))).rejects.toThrow(
+      TransferLimitError,
+    )
+    expect(sendBridgeTransfer).not.toHaveBeenCalled()
+    expect(stored).toHaveLength(0)
+  })
+
+  it('refuses an amount under the minimum, which the federator would drop', async () => {
+    const { sendBridgeTransfer, sendHathorTransfer } = setup()
+
+    await expect(sendHathorTransfer(request({ amount: '0.49' }))).rejects.toThrow(
+      'Minimum amount 0.5 tokens',
+    )
+    expect(sendBridgeTransfer).not.toHaveBeenCalled()
+  })
+
+  it('accepts the maximum itself', async () => {
+    const { sendBridgeTransfer, sendHathorTransfer } = setup()
+
+    await sendHathorTransfer(request({ amount: '1000' }))
+    expect(sendBridgeTransfer).toHaveBeenCalled()
+  })
+
+  it('reads the limits of the token being sent, by its EVM address', async () => {
+    const { getLimits, sendHathorTransfer } = setup()
+
+    await sendHathorTransfer(request({ tokenKey: 'USDC', amount: '1' }))
+    expect(getLimits).toHaveBeenCalledWith(USDC.evm!.address)
+  })
+
+  it('fails closed when the limits cannot be read', async () => {
+    const { sendBridgeTransfer, sendHathorTransfer } = setup({
+      getLimits: async () => {
+        throw new Error('rpc down')
+      },
+    })
+
+    await expect(sendHathorTransfer(request())).rejects.toThrow(/transfer limits/)
+    expect(sendBridgeTransfer).not.toHaveBeenCalled()
   })
 })
