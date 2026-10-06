@@ -2,7 +2,8 @@ import { findTokenByBridgeAddress } from '../../domain/token-lookup'
 import type { BridgeTransfer } from '../../domain/model/transfer'
 import type { Token } from '../../domain/model/token'
 import type { BridgeRoute } from '../../domain/model/network'
-import type { BridgeApiPort } from '../../ports/driven/bridge-api.port'
+import type { FederationProgress } from '../../domain/evm-to-hathor-progress'
+import type { ApiTransfer, BridgeApiPort } from '../../ports/driven/bridge-api.port'
 import { TransferDirection } from '../../ports/driven/bridge-api.port'
 import type { BridgeContractPort } from '../../ports/driven/contracts.port'
 import type { TransferHistoryPort, StoredTransfer } from '../../ports/driven/transfer-history.port'
@@ -27,10 +28,19 @@ export interface LoadTransferHistoryDeps {
   readonly hash: (value: string) => string
 }
 
+/**
+ * An ARB→HTR transfer: the local record, or one built from the API for a
+ * transfer this browser did not send, plus what the Hathor federation has done.
+ */
+export type EvmToHathorTransfer = StoredTransfer & {
+  /** Absent until the API reports the transfer, or when it cannot be reached. */
+  readonly federation?: FederationProgress | null
+}
+
 export interface TransferHistory {
   readonly hathorToEvm: readonly BridgeTransfer[]
-  /** EVM-origin transfers, read straight from local storage. */
-  readonly evmToHathor: readonly StoredTransfer[]
+  /** EVM-origin transfers: local records joined with the Read API's progress. */
+  readonly evmToHathor: readonly EvmToHathorTransfer[]
 }
 
 const API_PAGE_LIMIT = 1000
@@ -42,7 +52,10 @@ export function createLoadTransferHistory(deps: LoadTransferHistoryDeps) {
     const hathorNetwork = deps.route.hathor.name
     const evmNetwork = deps.route.evm.name
 
-    const remote = await fetchRemote(deps, evmAddress)
+    const [remote, sent] = await Promise.all([
+      fetchRemote(deps, evmAddress),
+      fetchSent(deps, evmAddress),
+    ])
     // Read once, before any write: the mapper needs the pre-existing records to
     // recover ids the API omits, and upserting as we go would move the target.
     const local = deps.history.list(evmAddress, hathorNetwork)
@@ -70,9 +83,83 @@ export function createLoadTransferHistory(deps: LoadTransferHistoryDeps) {
       // Re-read so the result includes locally-sent transfers the API has not
       // indexed yet, in the storage layer's sort order.
       hathorToEvm: reconcile(deps.history.list(evmAddress, hathorNetwork), mapped),
-      evmToHathor: deps.history.list(evmAddress, evmNetwork),
+      evmToHathor: joinEvmToHathor(deps.history.list(evmAddress, evmNetwork), sent, deps.tokens),
     }
   }
+}
+
+async function fetchSent(deps: LoadTransferHistoryDeps, evmAddress: string) {
+  try {
+    return await deps.bridgeApi.listBySender(evmAddress, {
+      limit: API_PAGE_LIMIT,
+      direction: TransferDirection.EvmToHathor,
+    })
+  } catch (error) {
+    // Same as the other direction: the local records still render, just
+    // without the federation's progress.
+    console.error('Could not fetch sent transfers from the Read API', error)
+    return []
+  }
+}
+
+/**
+ * Joins local ARB→HTR records with the API's, by the deposit's EVM tx hash —
+ * which is the API's `originTransactionHash` for this direction.
+ *
+ * A transfer the API knows and this browser does not (sent from another
+ * device) is shown too, built from the API record. Newest block first, with
+ * unmined records on top, as storage orders them.
+ */
+function joinEvmToHathor(
+  local: readonly StoredTransfer[],
+  remote: readonly ApiTransfer[],
+  tokens: readonly Token[],
+): EvmToHathorTransfer[] {
+  const byHash = new Map<string, ApiTransfer>()
+  for (const record of remote) {
+    const hash = record.originTransactionHash?.toLowerCase()
+    if (hash) byHash.set(hash, record)
+  }
+
+  const joined: EvmToHathorTransfer[] = local.map((record) => {
+    const hash = record.transactionHash?.toLowerCase()
+    const match = hash ? byHash.get(hash) : undefined
+    if (!match) return record
+    byHash.delete(hash!)
+    return { ...record, federation: federationOf(match) }
+  })
+
+  for (const record of byHash.values()) {
+    const token = findTokenByBridgeAddress(tokens, record.originalTokenAddress)
+    // No symbol or scale to show it with; same rule as the other direction.
+    if (!token?.evm) continue
+    joined.push({
+      transactionHash: record.originTransactionHash,
+      blockNumber: record.blockNumber,
+      // The deposit's own amount, in the EVM token's base units.
+      amount: record.amount,
+      amountDecimals: token.evm.decimals,
+      tokenFrom: token.evm.symbol,
+      federation: federationOf(record),
+    })
+  }
+
+  return joined.sort(byBlockDescending)
+}
+
+function federationOf(record: ApiTransfer): FederationProgress {
+  return {
+    signatures: record.signatures,
+    hathorFederationStatus: record.hathorFederationStatus,
+    delivered: record.delivered === true,
+    deliveryTxId: record.deliveryTxId,
+  }
+}
+
+function byBlockDescending(a: StoredTransfer, b: StoredTransfer): number {
+  const blockA = a.blockNumber ?? Number.POSITIVE_INFINITY
+  const blockB = b.blockNumber ?? Number.POSITIVE_INFINITY
+  return blockB - blockA
 }
 
 async function fetchRemote(deps: LoadTransferHistoryDeps, evmAddress: string) {

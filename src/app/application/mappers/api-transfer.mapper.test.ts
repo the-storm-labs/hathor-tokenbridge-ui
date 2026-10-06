@@ -34,6 +34,8 @@ const apiRecord = (over: Partial<ApiTransfer> = {}): ApiTransfer => ({
   originChainId: 31,
   destinationChainId: 42161,
   updatedAt: null,
+  delivered: null,
+  deliveryTxId: null,
   ...over,
 })
 

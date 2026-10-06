@@ -46,14 +46,23 @@ const apiRecord = (over: Partial<ApiTransfer> = {}): ApiTransfer => ({
   originChainId: 31,
   destinationChainId: 42161,
   updatedAt: null,
+  delivered: null,
+  deliveryTxId: null,
   ...over,
 })
 
-function setup(options: { remote?: ApiTransfer[]; bridge?: BridgeContractPort | null } = {}) {
+function setup(
+  options: {
+    remote?: ApiTransfer[]
+    sent?: ApiTransfer[]
+    bridge?: BridgeContractPort | null
+  } = {},
+) {
   const storage = fakeStorage()
   const history = new LocalTransferHistoryAdapter(storage)
   const bridgeApi: BridgeApiPort = {
     listByReceiver: vi.fn(async () => options.remote ?? []),
+    listBySender: vi.fn(async () => options.sent ?? []),
     ping: async () => true,
   }
 
@@ -152,6 +161,9 @@ describe('loadTransferHistory', () => {
         listByReceiver: async () => {
           throw new Error('offline')
         },
+        listBySender: async () => {
+          throw new Error('offline')
+        },
         ping: async () => false,
       },
       bridge: null,
@@ -170,6 +182,133 @@ describe('loadTransferHistory', () => {
 
     const { evmToHathor } = await load(ADDRESS)
     expect(evmToHathor).toHaveLength(1)
+  })
+})
+
+describe('ARB→HTR progress', () => {
+  const USDC = findToken('mainnet', 'USDC')!
+  const DEPOSIT = '0xAbCd000000000000000000000000000000000000000000000000000000000001'
+  const sentRecord = (over: Partial<ApiTransfer> = {}) =>
+    apiRecord({
+      direction: 'evm_to_hathor',
+      status: 'hathor_voting',
+      sender: ADDRESS,
+      receiver: 'HUr3CDnARXtYj68xbM6xDuFLBu3JytlPz3',
+      originTransactionHash: DEPOSIT,
+      originalTokenAddress: USDC.evm!.address,
+      amount: '3000000',
+      blockNumber: 500,
+      signatures: 2,
+      hathorFederationStatus: 'ProposalSigned',
+      delivered: false,
+      ...over,
+    })
+
+  it('asks the API for what this account sent, in that direction', async () => {
+    const { load, bridgeApi } = setup()
+    await load(ADDRESS)
+    expect(bridgeApi.listBySender).toHaveBeenCalledWith(ADDRESS, {
+      limit: 1000,
+      direction: 'evm_to_hathor',
+    })
+  })
+
+  it('joins the federation progress onto the local record, by deposit hash', async () => {
+    const { load, history } = setup({ sent: [sentRecord()] })
+    // The hash as the wallet reported it, in a different case from the API's.
+    history.addEvmTransfer(ADDRESS, ROUTES.mainnet.evm.name, {
+      transactionHash: DEPOSIT.toLowerCase(),
+      blockNumber: 500,
+      amount: '3',
+      tokenFrom: 'USDC',
+    })
+
+    const { evmToHathor } = await load(ADDRESS)
+
+    expect(evmToHathor).toHaveLength(1)
+    expect(evmToHathor[0]).toMatchObject({
+      amount: '3',
+      federation: {
+        signatures: 2,
+        hathorFederationStatus: 'ProposalSigned',
+        delivered: false,
+        deliveryTxId: null,
+      },
+    })
+  })
+
+  it('carries the delivery and its Hathor tx id', async () => {
+    const { load, history } = setup({
+      sent: [
+        sentRecord({
+          delivered: true,
+          deliveryTxId: '00bf68c9',
+          hathorFederationStatus: 'ProposalSent',
+        }),
+      ],
+    })
+    history.addEvmTransfer(ADDRESS, ROUTES.mainnet.evm.name, {
+      transactionHash: DEPOSIT,
+      blockNumber: 500,
+    })
+
+    const { evmToHathor } = await load(ADDRESS)
+    expect(evmToHathor[0]!.federation).toMatchObject({ delivered: true, deliveryTxId: '00bf68c9' })
+  })
+
+  it('shows a transfer sent from another device, from the API record', async () => {
+    const { load } = setup({ sent: [sentRecord()] })
+
+    const { evmToHathor } = await load(ADDRESS)
+
+    expect(evmToHathor).toEqual([
+      expect.objectContaining({
+        transactionHash: DEPOSIT,
+        blockNumber: 500,
+        // The deposit in USDC's own 6-decimal base units.
+        amount: '3000000',
+        amountDecimals: 6,
+        tokenFrom: 'USDC',
+      }),
+    ])
+  })
+
+  it('skips an API-only transfer of a token this deployment does not list', async () => {
+    const { load } = setup({
+      sent: [sentRecord({ originalTokenAddress: '0x0000000000000000000000000000000000000001' })],
+    })
+    expect((await load(ADDRESS)).evmToHathor).toHaveLength(0)
+  })
+
+  it('orders local and API-only transfers together, newest block first', async () => {
+    const { load, history } = setup({
+      sent: [sentRecord({ originTransactionHash: '0xremote', blockNumber: 700 })],
+    })
+    history.addEvmTransfer(ADDRESS, ROUTES.mainnet.evm.name, {
+      transactionHash: '0xold',
+      blockNumber: 600,
+    })
+    history.addEvmTransfer(ADDRESS, ROUTES.mainnet.evm.name, {
+      transactionHash: '0xnew',
+      blockNumber: 800,
+    })
+
+    const { evmToHathor } = await load(ADDRESS)
+    expect(evmToHathor.map((t) => t.transactionHash)).toEqual(['0xnew', '0xremote', '0xold'])
+  })
+
+  it('keeps the local records, without progress, when the API is unreachable', async () => {
+    const { load, history, bridgeApi } = setup()
+    vi.mocked(bridgeApi.listBySender).mockRejectedValueOnce(new Error('offline'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    history.addEvmTransfer(ADDRESS, ROUTES.mainnet.evm.name, {
+      transactionHash: DEPOSIT,
+      blockNumber: 500,
+    })
+
+    const { evmToHathor } = await load(ADDRESS)
+    expect(evmToHathor).toHaveLength(1)
+    expect(evmToHathor[0]!.federation).toBeUndefined()
   })
 })
 
