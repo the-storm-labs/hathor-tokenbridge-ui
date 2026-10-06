@@ -430,10 +430,22 @@ export class HathorTransferForm {
     // Only a non-empty value that fails validation gets the red border; the
     // Send button staying disabled is what actually blocks an empty submit.
     this.amount.classList.toggle('is-invalid', !valid && this.amount.value !== '')
-    if (this.amountError) this.amountError.textContent = outOfLimits ?? ''
+    this.showAmountError(outOfLimits)
 
     const ready = valid && this.deps.wallet.isConnected() && !!this.tokenSelect?.value
     if (this.sendButton) this.sendButton.disabled = !ready
+  }
+
+  /**
+   * Writes the message under the amount, or clears it. Shown explicitly, as
+   * the ARB→HTR form does: Bootstrap only reveals an `.invalid-feedback` that
+   * directly follows an `.is-invalid` input, and this one sits outside the
+   * input group — so the field went red with no explanation.
+   */
+  private showAmountError(message: string | null): void {
+    if (!this.amountError) return
+    this.amountError.textContent = message ?? ''
+    this.amountError.style.display = message ? 'block' : 'none'
   }
 
   /** The limit message for what is typed, or `null` when within or unknown. */
@@ -463,7 +475,7 @@ export class HathorTransferForm {
     // knows which input to mark.
     if (!isPositiveAmount(amount)) {
       this.amount?.classList.add('is-invalid')
-      if (this.amountError) this.amountError.textContent = 'Enter a valid amount.'
+      this.showAmountError('Enter a valid amount.')
       return
     }
     this.amount?.classList.remove('is-invalid')
@@ -503,7 +515,7 @@ export class HathorTransferForm {
         // Limits the field had not read yet, or that changed since. Nothing was
         // sent, so the amount stays for the user to correct.
         this.amount?.classList.add('is-invalid')
-        if (this.amountError) this.amountError.textContent = error.message
+        this.showAmountError(error.message)
         this.fail(error.message)
       } else if (error instanceof Eip7702DelegatedError) {
         // A delegated destination was never going to work — the guard did its
