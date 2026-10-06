@@ -10,7 +10,7 @@ import type { Deployment } from '../domain/model/deployment'
  * Precedence deliberately preserves today's reachable entry points:
  *  1. `?testnet` query param — the footer link points at `./index.html?testnet`
  *  2. `<html data-deployment="...">` — set per HTML file (added in Phase 3)
- *  3. the filename `testnet.html`
+ *  3. the filename `testnet.html` / `testnet-arb.html`
  *  4. otherwise mainnet
  */
 export function resolveDeployment(location: Location, document: Document): Deployment {
@@ -18,9 +18,14 @@ export function resolveDeployment(location: Location, document: Document): Deplo
   if (params.has('testnet')) return 'testnet'
 
   const declared = document.documentElement.dataset['deployment']
-  if (declared === 'testnet' || declared === 'mainnet') return declared
+  if (declared === 'testnet' || declared === 'testnet-arb' || declared === 'mainnet') {
+    return declared
+  }
 
-  if (location.pathname.endsWith('testnet.html')) return 'testnet'
+  // Compared by final segment, so neither name can match inside the other.
+  const file = location.pathname.split('/').pop()
+  if (file === 'testnet.html') return 'testnet'
+  if (file === 'testnet-arb.html') return 'testnet-arb'
 
   return 'mainnet'
 }

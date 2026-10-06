@@ -1,4 +1,8 @@
-import type { Deployment } from '../../../domain/model/deployment'
+import {
+  hathorNetworkOf,
+  type Deployment,
+  type HathorNetworkId,
+} from '../../../domain/model/deployment'
 import {
   UserRejectedError,
   type HathorSession,
@@ -18,7 +22,7 @@ import { HathorNodeBalanceAdapter } from './node-balance.adapter'
  * runs work on import cannot be composed or tested.
  */
 
-const NETWORKS: Record<Deployment, Record<string, unknown>> = {
+const NETWORKS: Record<HathorNetworkId, Record<string, unknown>> = {
   mainnet: {
     id: 1,
     chainNamespace: 'hathor',
@@ -41,7 +45,7 @@ const NETWORKS: Record<Deployment, Record<string, unknown>> = {
  * The first character of a base58 Hathor address, per network (P2PKH, P2SH). Used where all we have
  * is an address string - the address stored for the restore shortcut.
  */
-const ADDRESS_PREFIXES: Record<Deployment, readonly string[]> = {
+const ADDRESS_PREFIXES: Record<HathorNetworkId, readonly string[]> = {
   mainnet: ['H', 'h'],
   testnet: ['W', 'w'],
 }
@@ -56,7 +60,7 @@ const ADDRESS_PREFIXES: Record<Deployment, readonly string[]> = {
  * wallet as connected on mainnet.
  */
 function accountOn(session: WalletConnectSession, deployment: Deployment): string | null {
-  const prefix = `${String(NETWORKS[deployment]['caipNetworkId'])}:`
+  const prefix = `${String(NETWORKS[hathorNetworkOf(deployment)]['caipNetworkId'])}:`
   const account = (session.namespaces?.hathor?.accounts ?? []).find((a) => a.startsWith(prefix))
   return account ? account.slice(prefix.length) || null : null
 }
@@ -66,10 +70,10 @@ function hasAccounts(session: WalletConnectSession): boolean {
 }
 
 function addressOn(address: string | null, deployment: Deployment): boolean {
-  return !!address && ADDRESS_PREFIXES[deployment].includes(address.charAt(0))
+  return !!address && ADDRESS_PREFIXES[hathorNetworkOf(deployment)].includes(address.charAt(0))
 }
 
-const WRONG_NETWORK_MESSAGE: Record<Deployment, string> = {
+const WRONG_NETWORK_MESSAGE: Record<HathorNetworkId, string> = {
   mainnet:
     'Your Hathor wallet is connected to the testnet. Switch it to Hathor mainnet and connect again.',
   testnet:
@@ -231,7 +235,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     if (hasAccounts(session) && !accountOn(session, deployment)) {
       // The wallet handed back a session on the other network (an existing pairing, or a wallet set
       // to the wrong network). Adopting it would sign mainnet transfers against testnet funds.
-      throw new Error(WRONG_NETWORK_MESSAGE[deployment])
+      throw new Error(WRONG_NETWORK_MESSAGE[hathorNetworkOf(deployment)])
     }
     this.adoptSession(session, deployment)
     if (this.address) this.preferences.setHathorAddress(this.address)
@@ -337,7 +341,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     const result = await this.rpcRequest(
       'htr_sendTransaction',
       {
-        network: deployment,
+        network: hathorNetworkOf(deployment),
         outputs: [
           {
             address: params.bridgeAddress,
@@ -371,7 +375,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
       networks: [
         {
           methods: HATHOR_METHODS,
-          chains: [NETWORKS[deployment]],
+          chains: [NETWORKS[hathorNetworkOf(deployment)]],
           events: [],
           namespace: 'hathor',
         },
@@ -481,7 +485,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     try {
       return await provider.client!.request({
         topic: session.topic,
-        chainId: `hathor:${deployment}`,
+        chainId: `hathor:${hathorNetworkOf(deployment)}`,
         request: { jsonrpc: '2.0', id: ++this.rpcRequestId, method, params },
       })
     } catch (error) {
@@ -494,7 +498,7 @@ export class HathorWalletConnectAdapter implements HathorWalletPort {
     const result = await this.rpcRequest(
       'htr_getBalance',
       // Never send addressIndexes — the wallet answers NotImplementedError.
-      { network: deployment, tokens: [tokenUid] },
+      { network: hathorNetworkOf(deployment), tokens: [tokenUid] },
       deployment,
     )
 

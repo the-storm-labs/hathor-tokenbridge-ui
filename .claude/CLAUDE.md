@@ -149,7 +149,7 @@ backwards is invisible in a unit test and obvious on the page.
 
 ### Bridge Read API (`docs/bridge-api.yaml`)
 
-Transaction history and claim state come from a read-only REST API. Base URL in `VITE_BRIDGE_API_URL` (env files live in `src/`, see `src/.env.example`). Client: `adapters/driven/bridge-api/http-bridge-api.adapter.ts`.
+Transaction history and claim state come from a read-only REST API. Base URL in `VITE_BRIDGE_API_URL`, or `VITE_BRIDGE_API_URL_TESTNET_ARB` on `testnet-arb` — `bridgeApiUrlFor()` in `composition/container.ts` (env files live in `src/`, see `src/.env.example`). Client: `adapters/driven/bridge-api/http-bridge-api.adapter.ts`.
 
 Only `GET /transactions-by-receiver` is used. `/voted-counts` and `/executed-events` are redundant — vote counts and event fields are inlined in the transaction records.
 
@@ -174,7 +174,9 @@ Three different scales, and mixing them is the most expensive kind of bug here:
 
 ### Entry points and deployments
 
-`src/index.html` (Arbitrum One) and `src/testnet.html` (Sepolia) share `app/main.ts`. Which deployment is active comes from `config/env.ts` `resolveDeployment(location, document)`: `?testnet` wins, then `<html data-deployment>`, then mainnet. Never sniff the URL for the substring "testnet" again — that matched a host or path containing the word.
+`src/index.html` (Arbitrum One), `src/testnet.html` (Sepolia) and `src/testnet-arb.html` (Arbitrum Sepolia, the 2-of-3 multisig bridge) share `app/main.ts`. Which deployment is active comes from `config/env.ts` `resolveDeployment(location, document)`: `?testnet` wins, then `<html data-deployment>`, then the filename, then mainnet. Never sniff the URL for the substring "testnet" again — that matched a host or path containing the word.
+
+The two testnets bridge the **same** Hathor testnet, so a `Deployment` is not a Hathor network. Anything that goes to the Hathor side — the wallet's `network` param and `hathor:<id>` chain, the node URL, the address prefixes — is keyed by `hathorNetworkOf(deployment)` (`domain/model/deployment.ts`), never by the deployment itself: the wallet has no idea what `testnet-arb` is. `testnet-arb.html` was cut from `index.html`, not `testnet.html`, which has drifted.
 
 Networks: `config/networks.ts` (`ROUTES.mainnet` / `ROUTES.testnet`), modelled as an acyclic `BridgeRoute { deployment, evm, hathor }`. The legacy `config` / `config.crossToNetwork` cycle is gone: a route holds both sides, so nothing has to walk a back-reference.
 
@@ -266,6 +268,14 @@ in both pages.
 
 - **`VITE_BRIDGE_API_URL`**: no testnet deployment of the Read API is known;
   `testnet.html` points at the same base URL as mainnet.
+- **`testnet-arb` has no deployed Read API**: it reads
+  `VITE_BRIDGE_API_URL_TESTNET_ARB`, and the only thing to point that at today
+  is hathor-functions run locally (`functions/src/scripts/run-http-server.ts`
+  against a Postgres indexing Arbitrum Sepolia, `VOTE_THRESHOLD=2`). Empty, its
+  history shows only what was sent from this browser and claims are not
+  offered. Its EIP-7702 check
+  reads `VITE_EVM_HOST_TESTNET_ARB`, falling back to the public
+  `arbitrum-sepolia-rpc.publicnode.com`.
 - **The testnet token UIDs are stale** — they date from the reset `golf` testnet
   and do not resolve, so HTR→ARB on `testnet.html` cannot work until someone
   re-mints them and updates `config/tokens.ts`.

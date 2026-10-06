@@ -1,4 +1,4 @@
-import type { Deployment } from './model/deployment'
+import { hathorNetworkOf, type Deployment, type HathorNetworkId } from './model/deployment'
 
 /**
  * Hathor address validation: base58 decode, double-SHA256 checksum, and the
@@ -24,7 +24,7 @@ export interface AddressCrypto {
 const ADDRESS_BYTE_LENGTH = 25
 const CHECKSUM_BYTE_LENGTH = 4
 
-const VALID_PREFIXES: Record<Deployment, readonly string[]> = {
+const VALID_PREFIXES: Record<HathorNetworkId, readonly string[]> = {
   mainnet: ['H', 'h'],
   testnet: ['W', 'w'],
 }
@@ -46,7 +46,7 @@ export function validateHathorAddress(
       if (checksum[i] !== expected[i]) return false
     }
 
-    return VALID_PREFIXES[deployment].includes(address.charAt(0))
+    return VALID_PREFIXES[hathorNetworkOf(deployment)].includes(address.charAt(0))
   } catch {
     // Invalid base58 characters make the decoder throw.
     return false

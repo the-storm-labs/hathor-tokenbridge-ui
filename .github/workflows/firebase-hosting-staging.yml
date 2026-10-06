@@ -58,6 +58,8 @@ jobs:
           VITE_BRIDGE_API_URL: ${{ secrets.VITE_BRIDGE_API_URL }}
           VITE_EVM_HOST_MAINNET: ${{ secrets.VITE_EVM_HOST_MAINNET }}
           VITE_EVM_HOST_TESTNET: ${{ secrets.VITE_EVM_HOST_TESTNET }}
+          VITE_EVM_HOST_TESTNET_ARB: ${{ secrets.VITE_EVM_HOST_TESTNET_ARB }}
+          VITE_BRIDGE_API_URL_TESTNET_ARB: ${{ secrets.VITE_BRIDGE_API_URL_TESTNET_ARB }}
       # `channelId` is the only thing separating this from the production
       # workflow, which passes `live`. A named channel is isolated: deploying
       # here cannot touch the site that is up.

@@ -33,6 +33,21 @@ const ARBITRUM_ONE: EvmNetwork = {
   secondsPerBlock: 0.25,
 }
 
+const ARBITRUM_SEPOLIA: EvmNetwork = {
+  chainId: 421614,
+  name: 'Arbitrum Sepolia',
+  bridge: '0x05b5e8751f2dca1a382069BD50C43d7a98eB4247',
+  allowTokens: '0xA1aC84247e03c339Ad4Cd87608751d2477648a50',
+  federation: '0x00670ce01042079ae2AFf4C451E379f08FD43f02',
+  explorer: 'https://sepolia.arbiscan.io',
+  explorerTokenTab: '#tokentxns',
+  // The federators wait 300/600/900 blocks by amount tier (≤10, ≤100, above),
+  // times each one's order; this is the smallest tier.
+  confirmations: 300,
+  confirmationTime: '2 minutes',
+  secondsPerBlock: 0.25,
+}
+
 const HATHOR_TESTNET: HathorNetwork = {
   networkId: 31,
   // The live Hathor testnet is 'testnet-india'; this name dates from the 'golf'
@@ -46,6 +61,24 @@ const HATHOR_TESTNET: HathorNetwork = {
   confirmationTime: '10 minutes',
   secondsPerBlock: 30,
   bridgeHathorAddress: 'wYr7GUqHFDCan2WBN1f6JPJYUWPtpVhb22',
+}
+
+/**
+ * The same Hathor testnet as HATHOR_TESTNET, bridged by a different federation:
+ * the 2-of-3 multisig deployment paired with Arbitrum Sepolia. The name must
+ * differ from HATHOR_TESTNET's — local transfer history is keyed by it, and a
+ * shared key would mix the two bridges' records.
+ */
+const HATHOR_TESTNET_MULTISIG: HathorNetwork = {
+  networkId: 31,
+  name: 'Hathor Testnet',
+  federation: '0xf8E9dE50461AEE95463cc8De28591e7A725E4342',
+  explorer: 'https://explorer.testnet.hathor.network',
+  explorerTokenTab: 'token_detail',
+  confirmations: 1,
+  confirmationTime: '1 minute',
+  secondsPerBlock: 30,
+  bridgeHathorAddress: 'wbihDnF11dfeMRVAWtE6b3MCCy9eSPoi5p',
 }
 
 const HATHOR_MAINNET: HathorNetwork = {
@@ -72,6 +105,13 @@ export const ROUTES: Record<Deployment, BridgeRoute> = {
   // meter waited on 4/4 here until this was split out of vote-progress.ts's
   // shared constant.
   testnet: { deployment: 'testnet', evm: SEPOLIA, hathor: HATHOR_TESTNET, signaturesRequired: 1 },
+  // Three federators, two signatures to release on either side.
+  'testnet-arb': {
+    deployment: 'testnet-arb',
+    evm: ARBITRUM_SEPOLIA,
+    hathor: HATHOR_TESTNET_MULTISIG,
+    signaturesRequired: 2,
+  },
 }
 
 /**

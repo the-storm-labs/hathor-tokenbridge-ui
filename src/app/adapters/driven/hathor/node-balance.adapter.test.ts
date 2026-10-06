@@ -92,6 +92,10 @@ describe('HathorNodeBalanceAdapter', () => {
 
     await adapter.getBalance(ADDRESS, HTR, 'testnet')
     expect(fetchFn.mock.calls[1]![0]).toContain('node1.testnet.hathor.network')
+
+    // Both testnets bridge the same Hathor network.
+    await adapter.getBalance(ADDRESS, HTR, 'testnet-arb')
+    expect(fetchFn.mock.calls[2]![0]).toContain('node1.testnet.hathor.network')
   })
 
   it('follows pagination and accumulates across pages', async () => {

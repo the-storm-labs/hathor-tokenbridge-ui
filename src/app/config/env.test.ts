@@ -35,6 +35,9 @@ describe('resolveDeployment', () => {
     expect(resolveDeployment(fakeLocation('https://x.dev/'), fakeDocument('testnet'))).toBe(
       'testnet',
     )
+    expect(resolveDeployment(fakeLocation('https://x.dev/'), fakeDocument('testnet-arb'))).toBe(
+      'testnet-arb',
+    )
     expect(resolveDeployment(fakeLocation('https://x.dev/'), fakeDocument('mainnet'))).toBe(
       'mainnet',
     )
@@ -50,6 +53,12 @@ describe('resolveDeployment', () => {
     expect(
       resolveDeployment(fakeLocation('https://hathorbridge.xyz/testnet.html'), fakeDocument()),
     ).toBe('testnet')
+  })
+
+  it('falls back to the testnet-arb.html filename', () => {
+    expect(
+      resolveDeployment(fakeLocation('https://hathorbridge.xyz/testnet-arb.html'), fakeDocument()),
+    ).toBe('testnet-arb')
   })
 
   it('does NOT match the word testnet elsewhere in the URL', () => {

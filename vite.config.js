@@ -16,6 +16,7 @@ export default defineConfig({
       input: {
         main: 'src/index.html',
         testnet: 'src/testnet.html',
+        'testnet-arb': 'src/testnet-arb.html',
       },
     },
   },

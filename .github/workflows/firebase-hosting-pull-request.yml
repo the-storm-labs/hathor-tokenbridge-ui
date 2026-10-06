@@ -41,6 +41,8 @@ jobs:
           VITE_BRIDGE_API_URL: ${{ secrets.VITE_BRIDGE_API_URL }}
           VITE_EVM_HOST_MAINNET: ${{ secrets.VITE_EVM_HOST_MAINNET }}
           VITE_EVM_HOST_TESTNET: ${{ secrets.VITE_EVM_HOST_TESTNET }}
+          VITE_EVM_HOST_TESTNET_ARB: ${{ secrets.VITE_EVM_HOST_TESTNET_ARB }}
+          VITE_BRIDGE_API_URL_TESTNET_ARB: ${{ secrets.VITE_BRIDGE_API_URL_TESTNET_ARB }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

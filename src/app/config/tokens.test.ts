@@ -3,12 +3,16 @@ import { tokensFor, findToken } from './tokens'
 import { isOnEvm, isOnHathor } from '../domain/model/token'
 import type { Deployment } from '../domain/model/deployment'
 
-const DEPLOYMENTS: Deployment[] = ['mainnet', 'testnet']
+const DEPLOYMENTS: Deployment[] = ['mainnet', 'testnet', 'testnet-arb']
 
 describe('token table shape', () => {
-  it('exposes the same token keys on both deployments', () => {
+  it('exposes the same token keys on mainnet and the Sepolia testnet', () => {
     expect(tokensFor('mainnet').map((t) => t.key)).toEqual(['USDC', 'SLT7', 'aHTR', 'HTOG3'])
     expect(tokensFor('testnet').map((t) => t.key)).toEqual(['USDC', 'SLT7', 'aHTR', 'HTOG3'])
+  })
+
+  it('lists only USDC on testnet-arb, the one token its AllowTokens whitelists', () => {
+    expect(tokensFor('testnet-arb').map((t) => t.key)).toEqual(['USDC'])
   })
 
   it('always provides a Hathor object, even when unavailable', () => {
@@ -134,10 +138,25 @@ describe('verified on-chain facts', () => {
     )
   })
 
-  it('treats native HTR as UID "00" on both deployments', () => {
-    for (const deployment of DEPLOYMENTS) {
+  it('treats native HTR as UID "00" wherever it is listed', () => {
+    for (const deployment of ['mainnet', 'testnet'] as const) {
       expect(findToken(deployment, 'aHTR')?.hathor.pureHtrAddress).toBe('00')
     }
+  })
+})
+
+describe('testnet-arb', () => {
+  it('bridges tUSDC (6 decimals) to hUSDC (2 decimals)', () => {
+    const usdc = findToken('testnet-arb', 'USDC')!
+    expect(usdc.evm).toEqual({
+      symbol: 'tUSDC',
+      address: '0xACCEbd30ce0206c8d0482E21C8a018391dB368a6',
+      decimals: 6,
+    })
+    expect(usdc.hathor.pureHtrAddress).toBe(
+      '00a83f5072386920b3ee4e843f71e2f1c1c9545b96346af0df32bf332605a2d0',
+    )
+    expect(usdc.hathor.decimals).toBe(2)
   })
 })
 

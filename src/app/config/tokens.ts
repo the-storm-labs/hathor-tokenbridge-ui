@@ -167,9 +167,37 @@ const TESTNET_TOKENS: readonly Token[] = [
   },
 ]
 
+/**
+ * Arbitrum Sepolia ↔ Hathor testnet (the 2-of-3 multisig bridge). One token:
+ * tUSDC is EVM-native (lock/mint out, melt/release back), and nothing else is
+ * whitelisted in this AllowTokens.
+ *
+ * `hathor.address` has no side-token contract behind it — tUSDC is native to
+ * the EVM, so none exists. It is `Bridge.uidToAddress(uid)`, the same
+ * convention as HTR's entry above; the token lookup only uses it as one more
+ * candidate, and on-chain the token shows up as the tUSDC address or `0x` + uid,
+ * both of which it already covers.
+ */
+const TESTNET_ARB_TOKENS: readonly Token[] = [
+  {
+    key: 'USDC',
+    name: 'USDC',
+    icon: usdcIcon,
+    evm: { symbol: 'tUSDC', address: '0xACCEbd30ce0206c8d0482E21C8a018391dB368a6', decimals: 6 },
+    hathor: {
+      symbol: 'hUSDC',
+      address: '0xB794b5C49a73ac63c396858e42bf1884Fd3e2696',
+      hathorAddr: '0x00a83f5072386920b3ee4e843f71e2f1c1c9545b96346af0df32bf332605a2d0',
+      pureHtrAddress: '00a83f5072386920b3ee4e843f71e2f1c1c9545b96346af0df32bf332605a2d0',
+      decimals: 2,
+    },
+  },
+]
+
 const TOKENS_BY_DEPLOYMENT: Record<Deployment, readonly Token[]> = {
   mainnet: MAINNET_TOKENS,
   testnet: TESTNET_TOKENS,
+  'testnet-arb': TESTNET_ARB_TOKENS,
 }
 
 export function tokensFor(deployment: Deployment): readonly Token[] {
