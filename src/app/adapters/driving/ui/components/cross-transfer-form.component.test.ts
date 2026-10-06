@@ -43,7 +43,13 @@ const MARKUP = `
 `
 
 /** Enough fee for a visible quote: 0.2%, min 1, max 100000. */
-const PARAMETERS = { feeRate: 0.002, minTokensAllowed: 1, maxTokensAllowed: 100_000 }
+const PARAMETERS = {
+  // Read for the token the form selects first, so the limits apply to it.
+  parametersFor: TOKENS.find((token) => token.evm)!.evm!.address,
+  feeRate: 0.002,
+  minTokensAllowed: 1,
+  maxTokensAllowed: 100_000,
+}
 
 function setup(overrides: Partial<CrossTransferFormDeps> = {}) {
   document.body.innerHTML = MARKUP
@@ -155,6 +161,55 @@ describe('the amount field', () => {
     expect(amount().classList.contains('is-invalid')).toBe(false)
     expect(el('amountError').style.display).toBe('none')
     expect(el<HTMLButtonElement>('deposit').disabled).toBe(true)
+  })
+
+  it('refuses to check against limits read for another token', async () => {
+    // The HTR→ARB form loads its token's limits into the same store: HTR's
+    // 2,500,000 maximum must not pass a USDC amount.
+    const aHTR = TOKENS.find((token) => token.key === 'aHTR')!.evm!.address
+    await withToken({
+      getParameters: () => ({ ...PARAMETERS, parametersFor: aHTR, maxTokensAllowed: 2_500_000 }),
+    })
+
+    await typeAmountAndCheckAllowance('5000')
+
+    expect(el('amountError').textContent).toBe('Bridge limits for this token are not loaded yet.')
+    expect(el<HTMLButtonElement>('deposit').disabled).toBe(true)
+    expect(el<HTMLButtonElement>('approve').disabled).toBe(true)
+  })
+
+  it('refuses before any limits were read at all', async () => {
+    await withToken({ getParameters: () => ({ ...PARAMETERS, parametersFor: null }) })
+
+    await typeAmountAndCheckAllowance('10')
+
+    expect(el<HTMLButtonElement>('deposit').disabled).toBe(true)
+    expect(el<HTMLButtonElement>('approve').disabled).toBe(true)
+  })
+
+  it('keeps the buttons off on blur after an amount over the maximum', async () => {
+    // The allowance check runs on focusout and used to re-enable Approve or
+    // Convert whatever checkAmount had just decided.
+    await withToken({
+      getParameters: () => ({ ...PARAMETERS, maxTokensAllowed: 2_500 }),
+      isApproved: vi.fn(async () => ({ approved: true })),
+    })
+
+    await typeAmountAndCheckAllowance('5000')
+
+    expect(el('amountError').textContent).toContain('Max amount')
+    expect(el<HTMLButtonElement>('deposit').disabled).toBe(true)
+  })
+
+  it('reloads its own limits when the user switches back to this direction', async () => {
+    const { deps } = await withToken()
+    vi.mocked(deps.loadParameters).mockClear()
+
+    const back = document.querySelector<HTMLInputElement>('input[value="arb-to-htr"]')!
+    back.dispatchEvent(new Event('change', { bubbles: true }))
+    await settle()
+
+    expect(deps.loadParameters).toHaveBeenCalledWith(TOKENS[0]!.evm!.address)
   })
 
   it('caps what is typed at the precision Hathor can represent', async () => {

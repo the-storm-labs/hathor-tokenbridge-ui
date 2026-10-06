@@ -19,6 +19,10 @@ const wei = (whole: number) => new BigNumber(whole).shiftedBy(18).toFixed(0)
 /** USDC has 6 decimals on Arbitrum. */
 const usdc = (whole: number) => new BigNumber(whole).shiftedBy(6).toFixed(0)
 
+/** USDC's live mainnet limits: 5 to 2,500 per transfer. */
+const LIMITS = { min: wei(5), max: wei(2_500), daily: wei(5_000) }
+const getInfoAndLimits = async () => LIMITS
+
 const mined = (overrides: Partial<EvmReceipt> = {}): EvmReceipt => ({
   status: true,
   transactionHash: '0xcrossed',
@@ -42,7 +46,7 @@ function setup(overrides: Record<string, unknown> = {}) {
       approve: async () => '',
     },
     bridge: { receiveTokensTo },
-    allowTokens: { calcMaxWithdraw: async () => wei(10_000) },
+    allowTokens: { calcMaxWithdraw: async () => wei(10_000), getInfoAndLimits },
     chain,
     history: {
       addEvmTransfer: (address: string, network: string, record: StoredTransfer) =>
@@ -153,9 +157,30 @@ describe('crossToken', () => {
     expect(receiveTokensTo).toHaveBeenCalled()
   })
 
+  it('rejects an amount over the per-transfer maximum, fee included', async () => {
+    const { receiveTokensTo, crossToken } = setup({
+      erc20: {
+        balanceOf: async () => usdc(1_000_000),
+        allowance: async () => '0',
+        approve: async () => '',
+      },
+    })
+
+    // 2,500 + 0.2% fee is over 2,500: the contract checks the gross amount.
+    await expect(crossToken(request({ amount: '2500' }))).rejects.toThrow('Max amount 2,500 tokens')
+    expect(receiveTokensTo).not.toHaveBeenCalled()
+  })
+
+  it('rejects an amount under the per-transfer minimum', async () => {
+    const { receiveTokensTo, crossToken } = setup()
+
+    await expect(crossToken(request({ amount: '4' }))).rejects.toThrow('Minimum amount 5 tokens')
+    expect(receiveTokensTo).not.toHaveBeenCalled()
+  })
+
   it('rejects an amount above the daily limit left', async () => {
     const { receiveTokensTo, crossToken } = setup({
-      allowTokens: { calcMaxWithdraw: async () => wei(4) },
+      allowTokens: { calcMaxWithdraw: async () => wei(4), getInfoAndLimits },
     })
 
     await expect(crossToken(request({ amount: '10' }))).rejects.toThrow(
@@ -174,7 +199,7 @@ describe('crossToken', () => {
         allowance: async () => '0',
         approve: async () => '',
       },
-      allowTokens: { calcMaxWithdraw: async () => wei(50) },
+      allowTokens: { calcMaxWithdraw: async () => wei(50), getInfoAndLimits },
     })
 
     await expect(crossToken(request({ amount: '100' }))).rejects.toThrow(/daily limit/)
@@ -182,7 +207,7 @@ describe('crossToken', () => {
 
   it('accepts an amount within the daily limit', async () => {
     const { receiveTokensTo, crossToken } = setup({
-      allowTokens: { calcMaxWithdraw: async () => wei(50) },
+      allowTokens: { calcMaxWithdraw: async () => wei(50), getInfoAndLimits },
     })
 
     await crossToken(request({ amount: '10' }))

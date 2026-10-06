@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js'
 import { clampDecimals } from '../../../../domain/amount-math'
 import { quote, formatQuoteValue } from '../../../../domain/fee-math'
-import { validateAmount, rejectionMessage } from '../../../../domain/limits'
+import { validateAmount, rejectionMessage, type AmountRejection } from '../../../../domain/limits'
 import { findTokenByKey } from '../../../../domain/token-lookup'
 import { isOnEvm, isOnHathor, type Token } from '../../../../domain/model/token'
 import type { BridgeRoute } from '../../../../domain/model/network'
@@ -43,6 +43,8 @@ export const CROSS_FORM_EVENT = {
 } as const
 
 export interface BridgeParametersView {
+  /** The EVM token these limits belong to; null before the first read. */
+  readonly parametersFor: string | null
   readonly feeRate: number
   readonly minTokensAllowed: number
   readonly maxTokensAllowed: number
@@ -152,7 +154,12 @@ export class CrossTransferForm {
 
     this.root.getElementById('directionToggle')?.addEventListener('change', (event) => {
       const input = event.target as HTMLInputElement | null
-      if (input?.name === 'direction') this.setVisible(input.value === 'arb-to-htr')
+      if (input?.name !== 'direction') return
+      const mine = input.value === 'arb-to-htr'
+      this.setVisible(mine)
+      // The HTR→ARB form loads the limits of *its* token into the same place
+      // this one reads them from, so coming back means reading ours again.
+      if (mine && this.selectedToken()) void this.onTokenChanged()
     })
 
     this.setEnabled(false)
@@ -290,15 +297,11 @@ export class CrossTransferForm {
     this.deps.toasts.hide(TOAST.transferSuccess)
     if (!this.amount) return
 
-    const { feeRate, minTokensAllowed, maxTokensAllowed } = this.deps.getParameters()
+    const { feeRate } = this.deps.getParameters()
     const { totalCost, serviceFee } = quote(this.amount.value, feeRate)
     this.showQuote(formatQuoteValue(serviceFee), formatQuoteValue(totalCost))
 
-    const rejection = validateAmount(this.amount.value, totalCost, {
-      min: minTokensAllowed,
-      max: maxTokensAllowed,
-      feeRate,
-    })
+    const rejection = this.amountRejection()
 
     if (rejection) {
       this.setButtons({ approve: false, cross: false })
@@ -314,6 +317,33 @@ export class CrossTransferForm {
     }
 
     this.clearAmountError()
+  }
+
+  /**
+   * Why the typed amount cannot be sent, or null.
+   *
+   * Limits read for a different token count as no limits at all: the HTR→ARB
+   * form and a failed read both leave someone else's values behind — HTR's
+   * 2,500,000 maximum checked against a USDC amount, or the 1–100,000 defaults.
+   */
+  private amountRejection(): AmountRejection | null {
+    const amount = this.amount?.value ?? ''
+    const { feeRate, minTokensAllowed, maxTokensAllowed, parametersFor } = this.deps.getParameters()
+    const { totalCost } = quote(amount, feeRate)
+
+    const rejection = validateAmount(amount, totalCost, {
+      min: minTokensAllowed,
+      max: maxTokensAllowed,
+      feeRate,
+    })
+    if (rejection) return rejection
+
+    const token = this.selectedToken()
+    const evmAddress = token && isOnEvm(token) ? token.evm.address.toLowerCase() : null
+    if (!evmAddress || parametersFor?.toLowerCase() !== evmAddress) {
+      return { kind: 'limits-unknown', message: 'Bridge limits for this token are not loaded yet.' }
+    }
+    return null
   }
 
   private markInvalidAmount(message: string): void {
@@ -406,6 +436,9 @@ export class CrossTransferForm {
       this.markInvalidAmount('Must be bigger than 0')
       return
     }
+    // Enabling Approve or Cross below is only for an amount that passes;
+    // this runs on blur and Enter, after checkAmount may have refused it.
+    if (this.amountRejection()) return
 
     const { feeRate } = this.deps.getParameters()
     const { totalCost } = quote(amount, feeRate)

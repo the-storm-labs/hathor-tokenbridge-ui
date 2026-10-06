@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js'
 import { toBaseUnits } from '../../domain/amount-math'
 import { grossUpForFee, type FeeBasis } from '../../domain/approval-amount'
+import { checkTransferLimits } from '../../domain/limits'
 import { findTokenByKey } from '../../domain/token-lookup'
 import { isOnEvm, type Token } from '../../domain/model/token'
 import type { BridgeRoute } from '../../domain/model/network'
@@ -74,6 +75,7 @@ export function createCrossToken(deps: CrossTokenDeps) {
     const amountUnits = grossUpForFee(toBaseUnits(params.amount, token.evm.decimals), deps.getFee())
 
     await assertSufficientBalance(deps, token, account, amountUnits)
+    await assertWithinTransferLimits(deps, token, amountUnits)
     await assertWithinDailyLimit(deps, token, amountUnits)
 
     const gasPrice = await deps.resolveGasPrice()
@@ -129,6 +131,24 @@ async function assertSufficientBalance(
   throw new Error(
     `Insuficient Balance in your account, your current balance is ${shown} ${token.evm.symbol}`,
   )
+}
+
+/**
+ * The per-transaction limits, read for this token at the moment of sending.
+ *
+ * The form checks them too, but from limits that are shared with the HTR→ARB
+ * form and can belong to another token; this read cannot. The contract would
+ * revert the same transfer — this turns the lost gas into a sentence.
+ */
+async function assertWithinTransferLimits(
+  deps: CrossTokenDeps,
+  token: Token & { evm: NonNullable<Token['evm']> },
+  amountUnits: string,
+): Promise<void> {
+  const limits = await deps.allowTokens.getInfoAndLimits(token.evm.address)
+  const amount = new BigNumber(amountUnits).shiftedBy(-token.evm.decimals).toFixed()
+  const rejection = checkTransferLimits(amount, limits)
+  if (rejection && 'message' in rejection) throw new Error(rejection.message)
 }
 
 /**

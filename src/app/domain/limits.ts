@@ -12,6 +12,8 @@ export type AmountRejection =
   | { readonly kind: 'not-positive' }
   | { readonly kind: 'below-minimum'; readonly message: string }
   | { readonly kind: 'above-maximum'; readonly message: string }
+  /** The limits at hand are not the selected token's, so nothing can be checked. */
+  | { readonly kind: 'limits-unknown'; readonly message: string }
 
 export interface TransferLimits {
   readonly min: number
@@ -61,6 +63,7 @@ export function rejectionMessage(rejection: AmountRejection): string {
       return 'Must be bigger than 0'
     case 'below-minimum':
     case 'above-maximum':
+    case 'limits-unknown':
       return rejection.message
   }
 }
@@ -75,7 +78,12 @@ export interface WeiLimits {
 const LIMIT_DECIMALS = 18
 
 /**
- * Checks an HTR→ARB amount against the token's per-transaction limits.
+ * Checks a transfer amount against the token's per-transaction limits, exactly.
+ *
+ * The bridge contract checks ARB→HTR the same way (gross amount, before fees,
+ * scaled to 18 decimals), so this rejects nothing it would have accepted.
+ *
+ * ## HTR→ARB
  *
  * Nothing on the deposit path enforces these: the Hathor deposit address takes
  * whatever is sent, and the federator only drops a deposit below the minimum —
@@ -90,10 +98,7 @@ const LIMIT_DECIMALS = 18
  * @param amount whole tokens, as typed.
  * @returns `null` when the amount is acceptable.
  */
-export function checkHathorTransferLimits(
-  amount: string,
-  limits: WeiLimits,
-): AmountRejection | null {
+export function checkTransferLimits(amount: string, limits: WeiLimits): AmountRejection | null {
   const scaled = new BigNumber(amount).shiftedBy(LIMIT_DECIMALS)
   const shown = (wei: string) => new BigNumber(wei).shiftedBy(-LIMIT_DECIMALS).toFormat()
 
