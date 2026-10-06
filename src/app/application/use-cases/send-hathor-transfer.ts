@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js'
 import { toBaseUnits } from '../../domain/amount-math'
 import { isEvmAddress } from '../../domain/evm-address'
-import { checkHathorTransferLimits, type WeiLimits } from '../../domain/limits'
+import { checkTransferLimits, type WeiLimits } from '../../domain/limits'
 import { findTokenByKey } from '../../domain/token-lookup'
 import { isOnHathor, type Token } from '../../domain/model/token'
 import { truncateMiddle } from '../../domain/tx-id'
@@ -186,7 +186,7 @@ async function assertWithinLimits(
     throw new Error('Could not read the bridge transfer limits. Please try again in a moment.')
   }
 
-  const rejection = checkHathorTransferLimits(amount, limits)
+  const rejection = checkTransferLimits(amount, limits)
   if (rejection?.kind === 'below-minimum' || rejection?.kind === 'above-maximum') {
     throw new TransferLimitError(rejection.message)
   }

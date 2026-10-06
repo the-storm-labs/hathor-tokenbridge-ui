@@ -34,6 +34,12 @@ export interface AppState {
   tokenContract: unknown
 
   // --- bridge parameters, read from the contracts on connect ---------------
+  /**
+   * The EVM token the limits below were read for, or null before any read.
+   * Limits are per token and both forms load them into this one place, so a
+   * reader has to check they are for its token before trusting them.
+   */
+  parametersFor: string | null
   minTokensAllowed: number
   maxTokensAllowed: number
   maxDailyLimit: number
@@ -55,6 +61,7 @@ export function initialAppState(): AppState {
     federationContract: null,
     tokenContract: null,
 
+    parametersFor: null,
     minTokensAllowed: 1,
     maxTokensAllowed: 100_000,
     maxDailyLimit: 1_000_000,

@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js'
 import { clampDecimals } from '../../../../domain/amount-math'
 import { isEvmAddress } from '../../../../domain/evm-address'
 import { maxSendableHathorAmount } from '../../../../domain/hathor-network-fee'
-import { checkHathorTransferLimits, type WeiLimits } from '../../../../domain/limits'
+import { checkTransferLimits, type WeiLimits } from '../../../../domain/limits'
 import { findTokenByKey } from '../../../../domain/token-lookup'
 import { isOnHathor, type Token } from '../../../../domain/model/token'
 import { truncateMiddle } from '../../../../domain/tx-id'
@@ -443,7 +443,7 @@ export class HathorTransferForm {
     const amount = this.amount?.value ?? ''
     if (!limits || !isPositiveAmount(amount)) return null
 
-    const rejection = checkHathorTransferLimits(amount, limits)
+    const rejection = checkTransferLimits(amount, limits)
     return rejection && 'message' in rejection ? rejection.message : null
   }
 

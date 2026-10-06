@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import BigNumber from 'bignumber.js'
-import { validateAmount, rejectionMessage, checkHathorTransferLimits } from './limits'
+import { validateAmount, rejectionMessage, checkTransferLimits } from './limits'
 
 const limits = { min: 1, max: 100_000, feeRate: 0.002 }
 const bn = (v: string) => new BigNumber(v)
@@ -56,24 +56,24 @@ describe('rejectionMessage', () => {
   })
 })
 
-describe('checkHathorTransferLimits', () => {
+describe('checkTransferLimits', () => {
   // 10 and 50,000 tokens, 18-decimal as AllowTokens reports them.
   const wei = { min: '10' + '0'.repeat(18), max: '50000' + '0'.repeat(18) }
 
   it('accepts an amount inside the limits, both ends included', () => {
-    expect(checkHathorTransferLimits('10', wei)).toBeNull()
-    expect(checkHathorTransferLimits('25000.5', wei)).toBeNull()
-    expect(checkHathorTransferLimits('50000', wei)).toBeNull()
+    expect(checkTransferLimits('10', wei)).toBeNull()
+    expect(checkTransferLimits('25000.5', wei)).toBeNull()
+    expect(checkTransferLimits('50000', wei)).toBeNull()
   })
 
   it('rejects an amount over the maximum, by as little as one hundredth', () => {
-    const rejection = checkHathorTransferLimits('50000.01', wei)
+    const rejection = checkTransferLimits('50000.01', wei)
     expect(rejection?.kind).toBe('above-maximum')
     expect(rejectionMessage(rejection!)).toBe('Max amount 50,000 tokens')
   })
 
   it('rejects an amount under the minimum', () => {
-    const rejection = checkHathorTransferLimits('9.99', wei)
+    const rejection = checkTransferLimits('9.99', wei)
     expect(rejection?.kind).toBe('below-minimum')
     expect(rejectionMessage(rejection!)).toBe('Minimum amount 10 tokens')
   })
@@ -81,12 +81,12 @@ describe('checkHathorTransferLimits', () => {
   it('compares the gross amount, with no fee taken off first', () => {
     // validateAmount quotes limits net of fee; the federator does not, so
     // neither does this.
-    expect(checkHathorTransferLimits('50000', wei)).toBeNull()
+    expect(checkTransferLimits('50000', wei)).toBeNull()
   })
 
   it('keeps a fractional limit exact instead of truncating it', () => {
     // parseInt(fromWei(...)) would read 0.5 as 0 and let 0.1 through.
-    const rejection = checkHathorTransferLimits('0.1', { min: '5' + '0'.repeat(17), max: wei.max })
+    const rejection = checkTransferLimits('0.1', { min: '5' + '0'.repeat(17), max: wei.max })
     expect(rejectionMessage(rejection!)).toBe('Minimum amount 0.5 tokens')
   })
 })

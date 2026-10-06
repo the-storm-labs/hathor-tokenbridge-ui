@@ -107,6 +107,7 @@ function withStoredParameters(
     const parameters = await load(tokenAddress)
 
     store.patch({
+      parametersFor: tokenAddress,
       minTokensAllowed: parameters.minTokensAllowed,
       maxTokensAllowed: parameters.maxTokensAllowed,
       maxDailyLimit: parameters.maxDailyLimit,
