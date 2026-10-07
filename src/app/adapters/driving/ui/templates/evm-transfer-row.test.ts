@@ -64,5 +64,8 @@ describe('evmTransferRow status', () => {
     )
     expect(html).toContain('Delivered')
     expect(html).toContain('https://explorer.hathor.network/transaction/00bf68c99dc4aa11')
+    expect(html).toContain('View on Hathor')
+    // The id only in the link's href, never as text.
+    expect(html.replace(/href="[^"]*"/g, '')).not.toContain('00bf68')
   })
 })

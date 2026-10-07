@@ -4,7 +4,6 @@ import {
   type EvmToHathorStage,
   type FederationProgress,
 } from '../../../../domain/evm-to-hathor-progress'
-import { truncateMiddle } from '../../../../domain/tx-id'
 import { approvalMeter } from './approval-meter'
 import { formatRowAmount } from './amount'
 import { dashboardLink } from './dashboard-link'
@@ -84,7 +83,8 @@ function stageCell(stage: EvmToHathorStage, hathorExplorer: string): string {
       const label = badge('success', 'fa-check-circle', 'Delivered')
       if (!stage.hathorTxId) return label
       const url = `${hathorExplorer}/transaction/${stage.hathorTxId}`
-      return `${label} <a href="${url}" target="_blank" rel="noopener"><small>${truncateMiddle(stage.hathorTxId, 6, 6)}</small></a>`
+      // A link, not the id: half a hash tells the user nothing.
+      return `${label} <a class="dashboard-link" href="${url}" target="_blank" rel="noopener noreferrer" title="The transaction that delivered the tokens on Hathor">View on Hathor&nbsp;&#8599;</a>`
     }
   }
 }
