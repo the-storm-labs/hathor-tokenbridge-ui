@@ -75,7 +75,7 @@ function stageCell(stage: EvmToHathorStage, hathorExplorer: string): string {
     case 'signing':
       // One row: the meter is right-aligned on its own, for the Approvals
       // column of the other table.
-      return `<div class="d-flex align-items-center justify-content-center" style="gap:8px;">${badge('warning', 'fa-hourglass-half', 'Signing on Hathor')}${approvalMeter({ signatures: stage.signatures }, true, stage.required)}</div>`
+      return `<div class="d-flex align-items-center" style="gap:8px;">${badge('warning', 'fa-hourglass-half', 'Signing on Hathor')}${approvalMeter({ signatures: stage.signatures }, true, stage.required)}</div>`
     case 'delayed':
       // The Hathor push failed and the federation proposes it again once its
       // owner resets it. Nothing for the user to do, and nothing is lost.
@@ -105,5 +105,5 @@ function hashCell(
   if (!hash) return `<th scope="row">—</th>`
 
   const short = `${hash.substring(0, 8)}...${hash.slice(-8)}`
-  return `<th scope="row"><a href="${explorer}/tx/${hash}">${short}</a>${dashboardLink(hash, dashboardUrl)}</th>`
+  return `<th scope="row"><a class="tx-hash" href="${explorer}/tx/${hash}">${short}</a>${dashboardLink(hash, dashboardUrl)}</th>`
 }

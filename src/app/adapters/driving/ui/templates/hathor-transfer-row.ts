@@ -73,11 +73,13 @@ function hashCell(
   const track = dashboardLink(transfer.hathorTxId || hash, dashboardUrl)
 
   if (!isHathorHash || !explorerUrl) {
-    return track ? `<th scope="row">${unavailableMarkup()}${track}</th>` : unavailableCell('th')
+    return track
+      ? `<th scope="row"><span class="tx-hash">${unavailableMarkup()}</span>${track}</th>`
+      : unavailableCell('th')
   }
 
   const short = `${hash.substring(0, 8)}...${hash.slice(-8)}`
-  return `<th scope="row"><a href="${explorerUrl}/transaction/${hash}" target="_blank">${short}</a>${track}</th>`
+  return `<th scope="row"><a class="tx-hash" href="${explorerUrl}/transaction/${hash}" target="_blank">${short}</a>${track}</th>`
 }
 
 /**
