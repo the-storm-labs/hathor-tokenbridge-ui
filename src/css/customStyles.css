@@ -1313,6 +1313,19 @@ table.table td {
 
 /* "Track" link next to a history row's hash: the transfer on the bridge dashboard. */
 /*
+ * A history row's amount: the number right-aligned in a fixed-width box, with
+ * equal-width digits where the font has them, so decimal points and the token
+ * symbols after them line up from row to row. 9ch holds "2,500.00", USDC's
+ * per-transfer maximum; a longer value just pushes its own symbol right.
+ */
+.amount-value {
+  display: inline-block;
+  min-width: 9ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
  * A history row's hash, held at one width so the "Track" link after it lines
  * up from row to row: the font is proportional, and "0xb67429...fb42a27a" and
  * "0x230d67...531c2f9b" differ by a few pixels — enough to make the column of

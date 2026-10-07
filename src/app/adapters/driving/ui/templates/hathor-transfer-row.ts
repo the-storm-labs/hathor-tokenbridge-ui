@@ -1,7 +1,7 @@
 import { isEvmSideAddress, truncateMiddle } from '../../../../domain/tx-id'
 import { TransferStatus } from '../../../../ports/driven/bridge-api.port'
 import { approvalMeter } from './approval-meter'
-import { formatRowAmount } from './amount'
+import { amountMarkup, formatRowAmount } from './amount'
 import { dashboardLink } from './dashboard-link'
 import { transferDate, type DateFormatter } from './transfer-date'
 
@@ -58,7 +58,7 @@ export function hathorTransferRow(
         ${hashCell(transfer, hathorExplorerUrl, dashboardUrl)}
         <td class="align-middle">${transferDate(transfer.sentAt, formatDate)}</td>
         <td class="align-middle">${senderCell(transfer.sender)}</td>
-        <td class="align-middle">${amount} ${symbol}</td>
+        <td class="align-middle">${amountMarkup(amount, symbol)}</td>
         <td class="align-middle">${meter}</td>
         <td class="align-middle">${transfer.action ?? ''}</td>
     </tr>`
