@@ -6,7 +6,7 @@ import {
 } from '../../../../domain/evm-to-hathor-progress'
 import { truncateMiddle } from '../../../../domain/tx-id'
 import { approvalMeter } from './approval-meter'
-import { formatRowAmount } from './amount'
+import { amountMarkup, formatRowAmount } from './amount'
 import { transferDate, type DateFormatter } from './transfer-date'
 import { dashboardLink } from './dashboard-link'
 
@@ -68,7 +68,7 @@ export function evmTransferRow(
             ${hashCell(transfer.transactionHash, context.explorer, context.dashboardUrl)}
             <td class="align-middle">${transferDate(transfer.sentAt, context.formatDate)}</td>
             <td class="align-middle">${receiverCell(transfer.receiver, context.hathorExplorer)}</td>
-            <td class="align-middle">${amount} ${transfer.tokenFrom ?? ''}</td>
+            <td class="align-middle">${amountMarkup(amount, transfer.tokenFrom)}</td>
             <td class="align-middle">${stageCell(stage, context.hathorExplorer)}</td>
         </tr>`
 }

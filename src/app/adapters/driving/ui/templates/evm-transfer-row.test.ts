@@ -98,3 +98,12 @@ describe('evmTransferRow status', () => {
     expect(html.replace(/href="[^"]*"/g, '')).not.toContain('00bf68')
   })
 })
+
+describe('evmTransferRow amount', () => {
+  it('puts the number and the symbol in separate boxes, so rows line up', () => {
+    const html = evmTransferRow(transfer({ amount: '1', tokenFrom: 'aHTR' }), CONTEXT)
+    expect(html).toContain(
+      '<span class="amount-value">1.00</span> <span class="amount-symbol">aHTR</span>',
+    )
+  })
+})

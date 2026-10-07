@@ -17,6 +17,16 @@ import BigNumber from 'bignumber.js'
  *
  * @param amountDecimals scale of `amount`, or `null` for a legacy formatted value
  */
+/**
+ * The Amount cell's content: the number in a right-aligned, fixed-width box,
+ * then the symbol. The font's digits are proportional ("1.00" is narrower than
+ * "5.00"), so with plain text each row's symbol started somewhere else; this
+ * lines up the decimal points, and the symbols after them.
+ */
+export function amountMarkup(formatted: string, symbol: string | null | undefined): string {
+  return `<span class="amount-value">${formatted}</span> <span class="amount-symbol">${symbol ?? ''}</span>`
+}
+
 export function formatRowAmount(
   amount: string | null | undefined,
   amountDecimals: number | null,

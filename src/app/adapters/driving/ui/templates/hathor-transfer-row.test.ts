@@ -4,6 +4,9 @@ import { formatRowAmount } from './amount'
 import { approvalMeter } from './approval-meter'
 import { transferStatusCell } from './transfer-status'
 
+/** The row as read on screen: the amount's number and symbol sit in separate spans. */
+const textOf = (html: string) => html.replace(/<[^>]+>/g, '')
+
 const EXPLORER = 'https://explorer.hathor.network'
 const HATHOR_TX = '00002f8b4c63a0cf95c0d8279b77145f6e6fb42acc19046c5bdd888c738b5532'
 const EVM_TX = '0x3649d02e31bc8ec0e0ca27c2968a38c49e3ab49ff19b8f36ef453a4c1c1441dd'
@@ -155,7 +158,7 @@ describe('hathorTransferRow', () => {
   })
 
   it('renders the amount at the token precision, with its symbol', () => {
-    expect(hathorTransferRow(base, EXPLORER, 4)).toContain('2.00 aHTR')
+    expect(textOf(hathorTransferRow(base, EXPLORER, 4))).toContain('2.00 aHTR')
   })
 
   it('renders a hathor_voting amount at its own scale', () => {
@@ -165,7 +168,7 @@ describe('hathorTransferRow', () => {
       4,
     )
     // The regression: unscaling this by 18 rendered a real 5 USDC as 0.00.
-    expect(html).toContain('5.00 hUSDC')
+    expect(textOf(html)).toContain('5.00 hUSDC')
   })
 
   it('produces one table row with six cells, one per header', () => {
