@@ -6,6 +6,7 @@ import type { ClaimRequest } from '../../../../ports/driven/contracts.port'
 import type { StoredTransfer } from '../../../../ports/driven/transfer-history.port'
 import {
   fromStored,
+  type EvmToHathorTransfer,
   type TransferHistory as LoadedHistory,
 } from '../../../../application/use-cases/load-transfer-history'
 import { hathorTransferRow } from '../templates/hathor-transfer-row'
@@ -65,7 +66,7 @@ export interface TransferHistoryDeps {
 
 export class TransferHistory {
   private hathorOrigin: readonly BridgeTransfer[] = []
-  private evmOrigin: readonly StoredTransfer[] = []
+  private evmOrigin: readonly EvmToHathorTransfer[] = []
   private hathorPage = 1
   private evmPage = 1
   private blockNumber = 0
@@ -314,13 +315,15 @@ export class TransferHistory {
     )
   }
 
-  private evmRow(transfer: StoredTransfer): string {
+  private evmRow(transfer: EvmToHathorTransfer): string {
     return evmTransferRow(transfer, {
       currentBlock: this.blockNumber,
       confirmations: this.deps.route.evm.confirmations,
       secondsPerBlock: this.deps.route.evm.secondsPerBlock,
       explorer: this.deps.route.evm.explorer,
       dashboardUrl: this.deps.route.dashboardUrl ?? null,
+      signaturesRequired: this.deps.route.signaturesRequired,
+      hathorExplorer: this.deps.route.hathor.explorer,
     })
   }
 

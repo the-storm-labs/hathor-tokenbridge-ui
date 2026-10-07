@@ -1093,6 +1093,16 @@ table.table tr td:last-child {
   text-align: center;
 }
 
+/*
+ * The ARB→HTR status is a badge followed by a variable-width part (time left,
+ * approval meter, Hathor tx id). Centred, the badge moved with it on every
+ * row; anchored left, every badge starts at the same x.
+ */
+#nav-htr-eth table.table tr th:last-child,
+#htr-eth-tbody tr td:last-child {
+  text-align: left;
+}
+
 .nav-tabs .nav-link {
   border-radius: 0;
 }
@@ -1302,6 +1312,18 @@ table.table td {
 }
 
 /* "Track" link next to a history row's hash: the transfer on the bridge dashboard. */
+/*
+ * A history row's hash, held at one width so the "Track" link after it lines
+ * up from row to row: the font is proportional, and "0xb67429...fb42a27a" and
+ * "0x230d67...531c2f9b" differ by a few pixels — enough to make the column of
+ * links visibly ragged. 18ch holds the 8 + "..." + 8 shortened form (the dots
+ * and lowercase hex run narrower than a "0").
+ */
+.tx-hash {
+  display: inline-block;
+  min-width: 18ch;
+}
+
 .dashboard-link {
   margin-left: 0.5em;
   font-size: 0.8em;

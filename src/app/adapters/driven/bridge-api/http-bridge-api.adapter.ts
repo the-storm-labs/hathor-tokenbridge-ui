@@ -40,6 +40,18 @@ export class HttpBridgeApiAdapter implements BridgeApiPort {
     return Array.isArray(payload) ? payload.map(normalizeTransfer) : []
   }
 
+  async listBySender(sender: string, options: ListTransfersOptions = {}): Promise<ApiTransfer[]> {
+    if (!sender) return []
+
+    const payload = await this.request('/transactions-by-sender', {
+      sender,
+      limit: options.limit,
+      direction: options.direction,
+    })
+
+    return Array.isArray(payload) ? payload.map(normalizeTransfer) : []
+  }
+
   async ping(): Promise<boolean> {
     if (!this.baseUrl) return false
     try {
@@ -116,5 +128,8 @@ function normalizeTransfer(raw: unknown): ApiTransfer {
     originChainId: num(tx['originChainId']),
     destinationChainId: num(tx['destinationChainId']),
     updatedAt: str(tx['updatedAt']),
+    delivered: tx['delivered'] == null ? null : tx['delivered'] === true,
+    deliveryTxId: str(tx['deliveryTxId']),
+    chainTimestamp: str(tx['chainTimestamp']),
   }
 }

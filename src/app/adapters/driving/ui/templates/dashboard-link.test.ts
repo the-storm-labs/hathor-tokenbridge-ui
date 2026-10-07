@@ -38,6 +38,8 @@ describe('history rows', () => {
         secondsPerBlock: 0.25,
         explorer: 'https://arbiscan.io',
         dashboardUrl: DASHBOARD,
+        signaturesRequired: 4,
+        hathorExplorer: 'https://explorer.hathor.network',
       },
     )
     expect(html).toContain(`${DASHBOARD}/tx/${EVM_HASH}`)

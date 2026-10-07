@@ -57,6 +57,16 @@ export interface ApiTransfer {
   readonly originChainId: number | null
   readonly destinationChainId: number | null
   readonly updatedAt: string | null
+  /**
+   * evm_to_hathor, `listBySender` only: the Hathor transaction went out. That
+   * direction's `status` never moves past hathor_voting, so this is the only
+   * sign of delivery. Null where the API does not report it.
+   */
+  readonly delivered: boolean | null
+  /** The delivering Hathor tx id, bare hex, once delivered. */
+  readonly deliveryTxId: string | null
+  /** ISO time of the transfer's first on-chain event — the deposit, for ARB→HTR. */
+  readonly chainTimestamp: string | null
 }
 
 export interface ListTransfersOptions {
@@ -67,6 +77,11 @@ export interface ListTransfersOptions {
 export interface BridgeApiPort {
   /** Transfers for an EVM receiver, newest first. Empty when unavailable. */
   listByReceiver(receiver: string, options?: ListTransfersOptions): Promise<ApiTransfer[]>
+  /**
+   * Transfers an EVM account sent, newest first: the ARB→HTR history, whose
+   * receiver is a Hathor address. Empty when unavailable.
+   */
+  listBySender(sender: string, options?: ListTransfersOptions): Promise<ApiTransfer[]>
   /** Liveness probe. */
   ping(): Promise<boolean>
 }

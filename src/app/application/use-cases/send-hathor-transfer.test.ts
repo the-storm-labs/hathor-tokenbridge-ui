@@ -125,6 +125,14 @@ describe('sendHathorTransfer', () => {
     expect(stored[0]!.network).toBe(ROUTE.hathor.name)
   })
 
+  it('records when it was sent, for the Date column', async () => {
+    const { stored, sendHathorTransfer } = setup()
+
+    await sendHathorTransfer(request())
+
+    expect(Date.parse(String(stored[0]!.record['sentAt']))).not.toBeNaN()
+  })
+
   it('stores the raw amount and its scale, not a formatted string', async () => {
     const { stored, sendHathorTransfer } = setup()
 

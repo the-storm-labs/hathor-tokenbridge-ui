@@ -156,6 +156,8 @@ export function createSendHathorTransfer(deps: SendHathorTransferDeps) {
       votes: 0,
       signatures: 0,
       blockNumber: null,
+      // Exact, unlike the API's, which is its first federation event.
+      sentAt: new Date().toISOString(),
     }
 
     // Keyed by the EVM destination, which is what the history poll queries the

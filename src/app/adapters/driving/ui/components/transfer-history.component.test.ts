@@ -48,6 +48,7 @@ function hathorTransfer(overrides: Partial<BridgeTransfer> = {}): BridgeTransfer
     votes: 4,
     signatures: 4,
     blockNumber: null,
+    sentAt: null,
     claim: CLAIM,
     ...overrides,
   }

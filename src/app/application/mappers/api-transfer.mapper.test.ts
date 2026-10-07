@@ -34,6 +34,9 @@ const apiRecord = (over: Partial<ApiTransfer> = {}): ApiTransfer => ({
   originChainId: 31,
   destinationChainId: 42161,
   updatedAt: null,
+  delivered: null,
+  deliveryTxId: null,
+  chainTimestamp: null,
   ...over,
 })
 
@@ -197,5 +200,27 @@ describe('token fields', () => {
     })
     expect(transfer.tokenSymbol).toBe('hUSDC')
     expect(transfer.tokenDecimals).toBe(2)
+  })
+})
+
+describe('when the transfer was made', () => {
+  it("uses the API's chain time when this browser did not send it", () => {
+    expect(map({ chainTimestamp: '2026-08-27T17:02:24.000Z' }).sentAt).toBe(
+      '2026-08-27T17:02:24.000Z',
+    )
+  })
+
+  it('prefers the local send time, which is exact', () => {
+    // The API's is its first federation event, after the Hathor confirmations.
+    const local = [{ hathorTxId: HATHOR_TX, sentAt: '2026-08-27T16:58:00.000Z' }]
+    const transfer = map(
+      { originTransactionHash: `0x${HATHOR_TX}`, chainTimestamp: '2026-08-27T17:02:24.000Z' },
+      local,
+    )
+    expect(transfer.sentAt).toBe('2026-08-27T16:58:00.000Z')
+  })
+
+  it('is null when neither knows', () => {
+    expect(map().sentAt).toBeNull()
   })
 })
