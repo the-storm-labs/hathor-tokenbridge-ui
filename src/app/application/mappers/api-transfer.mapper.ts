@@ -97,6 +97,9 @@ export function mapApiTransfer(input: MapApiTransferInput): BridgeTransfer {
     votes: remote.votes,
     signatures: remote.signatures,
     blockNumber: remote.blockNumber,
+    // The local send time is the exact one; the API's is its first federation
+    // event, which only comes after the Hathor confirmations.
+    sentAt: (matched?.['sentAt'] as string | undefined) ?? remote.chainTimestamp ?? null,
 
     claim: claimCheck === 'claimable' ? toClaimRequest(remote) : null,
   }

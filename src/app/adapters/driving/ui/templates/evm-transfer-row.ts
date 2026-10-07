@@ -7,6 +7,7 @@ import {
 import { truncateMiddle } from '../../../../domain/tx-id'
 import { approvalMeter } from './approval-meter'
 import { formatRowAmount } from './amount'
+import { transferDate, type DateFormatter } from './transfer-date'
 import { dashboardLink } from './dashboard-link'
 
 /**
@@ -46,10 +47,8 @@ export interface EvmTransferRowContext {
   /** Hathor explorer base URL, for the delivered transaction. */
   readonly hathorExplorer: string
   /** Formats the transfer's date; the viewer's locale and time zone by default. */
-  readonly formatDate?: (date: Date) => string
+  readonly formatDate?: DateFormatter
 }
-
-const DATE_FORMAT = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 export function evmTransferRow(
   transfer: EvmTransferRowData,
@@ -67,21 +66,11 @@ export function evmTransferRow(
 
   return `<tr class="black">
             ${hashCell(transfer.transactionHash, context.explorer, context.dashboardUrl)}
-            <td class="align-middle">${dateCell(transfer.sentAt, context.formatDate)}</td>
+            <td class="align-middle">${transferDate(transfer.sentAt, context.formatDate)}</td>
             <td class="align-middle">${receiverCell(transfer.receiver, context.hathorExplorer)}</td>
             <td class="align-middle">${amount} ${transfer.tokenFrom ?? ''}</td>
             <td class="align-middle">${stageCell(stage, context.hathorExplorer)}</td>
         </tr>`
-}
-
-/**
- * Records written before this build carry no date, and an unparseable one is
- * no better: both show a dash rather than "Invalid Date".
- */
-function dateCell(sentAt: string | null | undefined, format?: (date: Date) => string): string {
-  const date = sentAt ? new Date(sentAt) : null
-  if (!date || Number.isNaN(date.getTime())) return '—'
-  return (format ?? ((d) => DATE_FORMAT.format(d)))(date)
 }
 
 /** The destination, shortened, linked to its page on the Hathor explorer. */

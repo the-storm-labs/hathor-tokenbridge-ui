@@ -3,6 +3,7 @@ import { TransferStatus } from '../../../../ports/driven/bridge-api.port'
 import { approvalMeter } from './approval-meter'
 import { formatRowAmount } from './amount'
 import { dashboardLink } from './dashboard-link'
+import { transferDate, type DateFormatter } from './transfer-date'
 
 /**
  * One row of the Hathor→EVM history table.
@@ -28,6 +29,8 @@ export interface HathorTransferRowData {
   readonly signatures?: number | null
   /** Ready-made markup for the action cell (badge or Claim button). */
   readonly action?: string
+  /** When the transfer was made, ISO. */
+  readonly sentAt?: string | null
 }
 
 export function hathorTransferRow(
@@ -35,6 +38,7 @@ export function hathorTransferRow(
   hathorExplorerUrl: string | null,
   signaturesRequired: number,
   dashboardUrl: string | null = null,
+  formatDate?: DateFormatter,
 ): string {
   const isHathorPhase = transfer.status === TransferStatus.HathorVoting
   const meter = approvalMeter(
@@ -52,6 +56,7 @@ export function hathorTransferRow(
 
   return `<tr class="black">
         ${hashCell(transfer, hathorExplorerUrl, dashboardUrl)}
+        <td class="align-middle">${transferDate(transfer.sentAt, formatDate)}</td>
         <td class="align-middle">${senderCell(transfer.sender)}</td>
         <td class="align-middle">${amount} ${symbol}</td>
         <td class="align-middle">${meter}</td>
@@ -74,12 +79,12 @@ function hashCell(
 
   if (!isHathorHash || !explorerUrl) {
     return track
-      ? `<th scope="row"><span class="tx-hash">${unavailableMarkup()}</span>${track}</th>`
+      ? `<th scope="row" class="align-middle"><span class="tx-hash">${unavailableMarkup()}</span>${track}</th>`
       : unavailableCell('th')
   }
 
   const short = `${hash.substring(0, 8)}...${hash.slice(-8)}`
-  return `<th scope="row"><a class="tx-hash" href="${explorerUrl}/transaction/${hash}" target="_blank">${short}</a>${track}</th>`
+  return `<th scope="row" class="align-middle"><a class="tx-hash" href="${explorerUrl}/transaction/${hash}" target="_blank">${short}</a>${track}</th>`
 }
 
 /**
@@ -95,4 +100,6 @@ const unavailableMarkup = () =>
   `<span class="text-muted" style="font-size:0.85em;">Not available</span>`
 
 const unavailableCell = (tag: 'th' | 'td') =>
-  tag === 'th' ? `<th scope="row">${unavailableMarkup()}</th>` : `<td>${unavailableMarkup()}</td>`
+  tag === 'th'
+    ? `<th scope="row" class="align-middle">${unavailableMarkup()}</th>`
+    : `<td>${unavailableMarkup()}</td>`

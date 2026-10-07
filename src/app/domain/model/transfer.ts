@@ -43,6 +43,12 @@ export interface BridgeTransfer {
   readonly votes: number
   readonly signatures: number
   readonly blockNumber: number | null
+  /**
+   * When the transfer was made, ISO: the moment this browser sent it, or else
+   * the API's chain time — its first federation event, a little after the
+   * Hathor deposit.
+   */
+  readonly sentAt: string | null
 
   /**
    * Everything needed to claim, as a typed object.

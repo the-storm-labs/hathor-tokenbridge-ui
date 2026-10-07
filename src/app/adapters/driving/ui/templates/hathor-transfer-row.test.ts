@@ -168,9 +168,28 @@ describe('hathorTransferRow', () => {
     expect(html).toContain('5.00 hUSDC')
   })
 
-  it('produces one table row with five cells', () => {
+  it('produces one table row with six cells, one per header', () => {
     const html = hathorTransferRow(base, EXPLORER, 4)
     expect((html.match(/<tr/g) ?? []).length).toBe(1)
-    expect((html.match(/<t[hd]/g) ?? []).length).toBe(5)
+    expect((html.match(/<t[hd]/g) ?? []).length).toBe(6)
+  })
+})
+
+describe('the Date column', () => {
+  it('shows when the transfer was made', () => {
+    const html = hathorTransferRow(
+      { sentAt: '2026-08-27T17:02:24.000Z' },
+      'https://explorer.hathor.network',
+      4,
+      null,
+      (date) => date.toISOString().slice(0, 16).replace('T', ' '),
+    )
+    expect(html).toContain('2026-08-27 17:02')
+  })
+
+  it('shows a dash for an older record with no date', () => {
+    expect(hathorTransferRow({}, 'https://explorer.hathor.network', 4)).toContain(
+      '<td class="align-middle">—</td>',
+    )
   })
 })

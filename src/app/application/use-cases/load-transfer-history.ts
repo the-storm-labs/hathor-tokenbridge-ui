@@ -251,6 +251,7 @@ function toStored(transfer: BridgeTransfer): StoredTransfer {
     votes: transfer.votes,
     signatures: transfer.signatures,
     blockNumber: transfer.blockNumber,
+    sentAt: transfer.sentAt,
   }
 }
 
@@ -320,6 +321,7 @@ export function fromStored(record: StoredTransfer): BridgeTransfer {
     votes: record.votes ?? 0,
     signatures: record.signatures ?? 0,
     blockNumber: record.blockNumber ?? null,
+    sentAt: (record['sentAt'] as string | undefined) ?? null,
     claim: null,
   }
 }
