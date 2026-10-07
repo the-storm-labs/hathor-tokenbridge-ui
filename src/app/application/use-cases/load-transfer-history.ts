@@ -35,6 +35,13 @@ export interface LoadTransferHistoryDeps {
 export type EvmToHathorTransfer = StoredTransfer & {
   /** Absent until the API reports the transfer, or when it cannot be reached. */
   readonly federation?: FederationProgress | null
+  /** The Hathor address the tokens go to. */
+  readonly receiver?: string | null
+  /**
+   * When the transfer was made, ISO: the deposit's block time from the API, or
+   * the moment this browser sent it until the API has it.
+   */
+  readonly sentAt?: string | null
 }
 
 export interface TransferHistory {
@@ -126,7 +133,12 @@ function joinEvmToHathor(
     const match = hash ? byHash.get(hash) : undefined
     if (!match) return record
     byHash.delete(hash!)
-    return { ...record, federation: federationOf(match) }
+    return {
+      ...record,
+      federation: federationOf(match),
+      receiver: match.receiver ?? (record['receiver'] as string | undefined) ?? null,
+      sentAt: match.chainTimestamp ?? (record['sentAt'] as string | undefined) ?? null,
+    }
   })
 
   for (const record of byHash.values()) {
@@ -141,6 +153,8 @@ function joinEvmToHathor(
       amountDecimals: token.evm.decimals,
       tokenFrom: token.evm.symbol,
       federation: federationOf(record),
+      receiver: record.receiver,
+      sentAt: record.chainTimestamp,
     })
   }
 

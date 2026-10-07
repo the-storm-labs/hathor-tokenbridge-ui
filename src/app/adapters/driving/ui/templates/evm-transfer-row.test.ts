@@ -26,6 +26,35 @@ const federation = (over: Record<string, unknown> = {}) => ({
   ...over,
 })
 
+describe('evmTransferRow date and receiver', () => {
+  const utc = (date: Date) => date.toISOString().slice(0, 16).replace('T', ' ')
+
+  it('shows when the transfer was made, in place of the block number', () => {
+    const html = evmTransferRow(transfer({ sentAt: '2026-10-06T00:08:42.000Z' }), {
+      ...CONTEXT,
+      formatDate: utc,
+    })
+    expect(html).toContain('2026-10-06 00:08')
+    expect(html).not.toContain('>50<')
+  })
+
+  it('shows a dash for a record with no date, or an unreadable one', () => {
+    expect(evmTransferRow(transfer(), CONTEXT)).toContain('<td class="align-middle">—</td>')
+    expect(evmTransferRow(transfer({ sentAt: 'garbage' }), CONTEXT)).not.toContain('Invalid')
+  })
+
+  it('links the Hathor receiver, shortened, to the explorer', () => {
+    const html = evmTransferRow(
+      transfer({ receiver: 'HUr3CDnARXtYj68xbM6xDuFLBu3Jyt1Pz3' }),
+      CONTEXT,
+    )
+    expect(html).toContain(
+      'https://explorer.hathor.network/address/HUr3CDnARXtYj68xbM6xDuFLBu3Jyt1Pz3',
+    )
+    expect(html).toContain('HUr3CD...1Pz3')
+  })
+})
+
 describe('evmTransferRow status', () => {
   it('counts down the Arbitrum confirmations, with the time left', () => {
     const html = evmTransferRow(transfer({ blockNumber: 900 }), CONTEXT)

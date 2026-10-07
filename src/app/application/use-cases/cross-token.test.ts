@@ -109,7 +109,10 @@ describe('crossToken', () => {
       amount: '10',
       transactionHash: '0xcrossed',
       blockNumber: 4321,
+      // For the history's To and Date columns until the Read API has it.
+      receiver: HATHOR_ADDRESS,
     })
+    expect(Date.parse(String(stored[0]!.record['sentAt']))).not.toBeNaN()
   })
 
   it('does not store the receipt boolean under the API status field', async () => {

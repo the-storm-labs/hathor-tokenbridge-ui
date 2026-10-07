@@ -130,5 +130,6 @@ function normalizeTransfer(raw: unknown): ApiTransfer {
     updatedAt: str(tx['updatedAt']),
     delivered: tx['delivered'] == null ? null : tx['delivered'] === true,
     deliveryTxId: str(tx['deliveryTxId']),
+    chainTimestamp: str(tx['chainTimestamp']),
   }
 }

@@ -65,6 +65,8 @@ export interface ApiTransfer {
   readonly delivered: boolean | null
   /** The delivering Hathor tx id, bare hex, once delivered. */
   readonly deliveryTxId: string | null
+  /** ISO time of the transfer's first on-chain event — the deposit, for ARB→HTR. */
+  readonly chainTimestamp: string | null
 }
 
 export interface ListTransfersOptions {

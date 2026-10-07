@@ -4,6 +4,7 @@ import {
   type EvmToHathorStage,
   type FederationProgress,
 } from '../../../../domain/evm-to-hathor-progress'
+import { truncateMiddle } from '../../../../domain/tx-id'
 import { approvalMeter } from './approval-meter'
 import { formatRowAmount } from './amount'
 import { dashboardLink } from './dashboard-link'
@@ -26,6 +27,10 @@ export interface EvmTransferRowData {
   readonly tokenFrom?: string | null
   /** What the Hathor federation has done, once the Read API reports it. */
   readonly federation?: FederationProgress | null
+  /** The Hathor address the tokens go to. */
+  readonly receiver?: string | null
+  /** When the transfer was made, ISO. */
+  readonly sentAt?: string | null
 }
 
 export interface EvmTransferRowContext {
@@ -40,7 +45,11 @@ export interface EvmTransferRowContext {
   readonly signaturesRequired: number
   /** Hathor explorer base URL, for the delivered transaction. */
   readonly hathorExplorer: string
+  /** Formats the transfer's date; the viewer's locale and time zone by default. */
+  readonly formatDate?: (date: Date) => string
 }
+
+const DATE_FORMAT = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 export function evmTransferRow(
   transfer: EvmTransferRowData,
@@ -58,10 +67,28 @@ export function evmTransferRow(
 
   return `<tr class="black">
             ${hashCell(transfer.transactionHash, context.explorer, context.dashboardUrl)}
-            <td>${transfer.blockNumber ?? ''}</td>
-            <td>${amount} ${transfer.tokenFrom ?? ''}</td>
+            <td class="align-middle">${dateCell(transfer.sentAt, context.formatDate)}</td>
+            <td class="align-middle">${receiverCell(transfer.receiver, context.hathorExplorer)}</td>
+            <td class="align-middle">${amount} ${transfer.tokenFrom ?? ''}</td>
             <td class="align-middle">${stageCell(stage, context.hathorExplorer)}</td>
         </tr>`
+}
+
+/**
+ * Records written before this build carry no date, and an unparseable one is
+ * no better: both show a dash rather than "Invalid Date".
+ */
+function dateCell(sentAt: string | null | undefined, format?: (date: Date) => string): string {
+  const date = sentAt ? new Date(sentAt) : null
+  if (!date || Number.isNaN(date.getTime())) return '—'
+  return (format ?? ((d) => DATE_FORMAT.format(d)))(date)
+}
+
+/** The destination, shortened, linked to its page on the Hathor explorer. */
+function receiverCell(receiver: string | null | undefined, hathorExplorer: string): string {
+  if (!receiver) return '—'
+  const url = `${hathorExplorer}/address/${encodeURIComponent(receiver)}`
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer" title="${receiver}">${truncateMiddle(receiver, 6, 4)}</a>`
 }
 
 /** The status column: where the transfer is on its way to Hathor. */

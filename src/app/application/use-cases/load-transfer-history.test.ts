@@ -48,6 +48,7 @@ const apiRecord = (over: Partial<ApiTransfer> = {}): ApiTransfer => ({
   updatedAt: null,
   delivered: null,
   deliveryTxId: null,
+  chainTimestamp: null,
   ...over,
 })
 
@@ -254,6 +255,36 @@ describe('ARB→HTR progress', () => {
 
     const { evmToHathor } = await load(ADDRESS)
     expect(evmToHathor[0]!.federation).toMatchObject({ delivered: true, deliveryTxId: '00bf68c9' })
+  })
+
+  it('takes the receiver and the chain time from the API over the local ones', async () => {
+    const { load, history } = setup({
+      sent: [sentRecord({ chainTimestamp: '2026-10-06T00:08:42.000Z' })],
+    })
+    history.addEvmTransfer(ADDRESS, ROUTES.mainnet.evm.name, {
+      transactionHash: DEPOSIT,
+      blockNumber: 500,
+      receiver: 'HUr3CDnARXtYj68xbM6xDuFLBu3JytlPz3',
+      sentAt: '2026-10-06T00:08:30.000Z',
+    })
+
+    const [transfer] = (await load(ADDRESS)).evmToHathor
+    expect(transfer).toMatchObject({
+      receiver: 'HUr3CDnARXtYj68xbM6xDuFLBu3JytlPz3',
+      sentAt: '2026-10-06T00:08:42.000Z',
+    })
+  })
+
+  it('keeps the local receiver and send time until the API has the transfer', async () => {
+    const { load, history } = setup()
+    history.addEvmTransfer(ADDRESS, ROUTES.mainnet.evm.name, {
+      transactionHash: DEPOSIT,
+      receiver: 'HUr3CDnARXtYj68xbM6xDuFLBu3JytlPz3',
+      sentAt: '2026-10-06T00:08:30.000Z',
+    })
+
+    const [transfer] = (await load(ADDRESS)).evmToHathor
+    expect(transfer).toMatchObject({ sentAt: '2026-10-06T00:08:30.000Z' })
   })
 
   it('shows a transfer sent from another device, from the API record', async () => {

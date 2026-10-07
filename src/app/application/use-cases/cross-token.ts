@@ -109,6 +109,10 @@ export function createCrossToken(deps: CrossTokenDeps) {
       tokenFrom: token.evm.symbol,
       tokenTo: token.hathor.symbol,
       amount: params.amount,
+      // Shown in the history until the Read API indexes the transfer and
+      // reports its own receiver and chain time.
+      receiver: params.hathorAddress,
+      sentAt: new Date().toISOString(),
       ...minedReceipt,
     })
 
